@@ -1,0 +1,85 @@
+name: Naive MR Backtest
+
+on:
+  # ── Manual trigger (run anytime from the Actions tab) ──────────────────────
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Backtest start date (YYYY-MM-DD)"
+        required: false
+        default: "2004-01-01"
+      end_date:
+        description: "Backtest end date (YYYY-MM-DD, leave blank for today)"
+        required: false
+        default: ""
+      initial_capital:
+        description: "Starting capital in USD"
+        required: false
+        default: "100000"
+
+  # ── Scheduled: re-run every Sunday at midnight UTC ─────────────────────────
+  schedule:
+    - cron: "0 0 * * 0"
+
+jobs:
+  backtest:
+    name: Run Naive Mean-Reversion Backtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 120          # data download can take a while
+
+    permissions:
+      contents: write             # needed to push results back to the repo
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ─────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ── 3. Install dependencies ─────────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── 4. Apply optional overrides from workflow_dispatch inputs ────────────
+      - name: Apply date / capital overrides
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest.py
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            sed -i "s/^END_DATE.*=.*/END_DATE   = \"${{ github.event.inputs.end_date }}\"/" backtest.py
+          fi
+          if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest.py
+          fi
+
+      # ── 5. Run the backtest ─────────────────────────────────────────────────
+      - name: Run backtest
+        run: python backtest.py
+
+      # ── 6. Upload artifacts (always, even on failure) ───────────────────────
+      - name: Upload results as workflow artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backtest-results-${{ github.run_id }}
+          path: results/
+          retention-days: 90
+
+      # ── 7. Commit results back to the repo ──────────────────────────────────
+      - name: Commit results to repository
+        if: success()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/
+          git diff --cached --quiet || git commit -m "chore: backtest results $(date -u +%Y-%m-%d)"
+          git push
