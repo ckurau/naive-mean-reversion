@@ -52,13 +52,13 @@ jobs:
       - name: Apply date / capital overrides
         run: |
           if [ -n "${{ github.event.inputs.start_date }}" ]; then
-            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest.py
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest-nmr.py
           fi
           if [ -n "${{ github.event.inputs.end_date }}" ]; then
-            sed -i "s/^END_DATE.*=.*/END_DATE   = \"${{ github.event.inputs.end_date }}\"/" backtest.py
+            sed -i "s/^END_DATE.*=.*/END_DATE   = \"${{ github.event.inputs.end_date }}\"/" backtest-nmr.py
           fi
           if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
-            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest.py
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest-nmr.py
           fi
 
       # ── 5. Run the backtest ─────────────────────────────────────────────────
