@@ -1,0 +1,19 @@
+{
+  "period_start": "2004-10-19",
+  "period_end": "2026-03-26",
+  "years_tested": 21.43,
+  "total_trades": 8345,
+  "trades_per_year": 389.4,
+  "win_rate_pct": 64.0,
+  "cagr_pct": 3.11,
+  "roi_per_year_pct": 4.34,
+  "avg_days_held": 1.23,
+  "avg_win_pct": 1.11,
+  "avg_loss_pct": -1.53,
+  "profit_factor": 1.28,
+  "max_drawdown_pct": -7.95,
+  "sharpe_ratio": 0.88,
+  "initial_capital": 10000.0,
+  "final_equity": 19292.98,
+  "total_return_pct": 92.93
+}
