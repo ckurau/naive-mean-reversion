@@ -63,7 +63,7 @@ jobs:
 
       # ── 5. Run the backtest ─────────────────────────────────────────────────
       - name: Run backtest
-        run: python backtest.py
+        run: python backtest-nmr.py
 
       # ── 6. Upload artifacts (always, even on failure) ───────────────────────
       - name: Upload results as workflow artifacts
