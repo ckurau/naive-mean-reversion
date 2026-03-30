@@ -57,14 +57,28 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 # 1.  Universe — S&P 500 historical constituents (survivorship-bias free)
 # ─────────────────────────────────────────────────────────────────────────────
+def _fetch_wikipedia_tables() -> list:
+    """Fetch S&P 500 Wikipedia tables with a browser-like User-Agent to avoid 403s."""
+    import io
+    url     = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+    }
+    import requests as _requests
+    resp = _requests.get(url, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return pd.read_html(io.StringIO(resp.text), header=0)
+
+
 def get_sp500_universe() -> list[str]:
     tickers: set[str] = set()
 
     # Current constituents via Wikipedia
     try:
-        tables = pd.read_html(
-            "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", header=0
-        )
+        tables  = _fetch_wikipedia_tables()
         current = tables[0]["Symbol"].tolist()
         tickers.update([t.replace(".", "-") for t in current])
         print(f"[Universe] Current S&P 500 members: {len(current)}")
@@ -73,9 +87,7 @@ def get_sp500_universe() -> list[str]:
 
     # Historical changes via Wikipedia (2nd table)
     try:
-        tables = pd.read_html(
-            "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", header=0
-        )
+        tables = _fetch_wikipedia_tables()
         if len(tables) > 1:
             changes = tables[1]
             for col in changes.columns:
@@ -159,8 +171,14 @@ def download_spy() -> pd.DataFrame:
     print("[Download] Fetching SPY for market regime filter …")
     spy = yf.download("SPY", start=START_DATE, end=END_DATE,
                       auto_adjust=True, progress=False)
-    spy["spy_ma200"] = spy["Close"].rolling(200).mean()
-    spy["spy_ok"]    = spy["Close"] > spy["spy_ma200"]
+
+    # yfinance may return MultiIndex columns even for a single ticker — flatten
+    if isinstance(spy.columns, pd.MultiIndex):
+        spy.columns = spy.columns.get_level_values(0)
+
+    close            = spy["Close"].squeeze()   # guarantee it's a Series
+    spy["spy_ma200"] = close.rolling(200).mean()
+    spy["spy_ok"]    = (close > spy["spy_ma200"].squeeze()).values
     return spy
 
 
