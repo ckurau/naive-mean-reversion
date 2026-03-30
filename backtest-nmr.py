@@ -1,15 +1,21 @@
 """
-Naive Mean Reversion (MR) Backtest
-====================================
-Strategy Rules:
+Enhanced Naive Mean Reversion (MR) Backtest
+=============================================
+Original Rules:
   - Universe : S&P 500 constituents (current + historical) with price >= $10
   - Buy      : Stock > 200-day MA  AND  4 consecutive down days → buy next open
   - Sell     : Close of first up-day after entry
   - Portfolio: Max 20 simultaneous positions, 5% allocation each
-  - Period   : ~20 years (configurable via START_DATE / END_DATE)
+
+Enhancements Added:
+  1. RSI(2) < 20 filter       — only enter at extreme oversold readings
+  2. ATR volatility filter    — skip flat/low-volatility stocks (min 1% daily range)
+  3. Volume confirmation      — only enter if today's volume > 20-day avg volume
+  4. Min profit exit          — don't exit on trivially small up-days (min 0.5%)
+  5. SPY regime filter        — skip all trades when SPY is below its 200-day MA
+  6. Commission model         — $0.005/share or $1.00 min (matching original article)
 """
 
-import os
 import warnings
 import datetime
 import json
@@ -18,7 +24,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import yfinance as yf
-import requests
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
@@ -26,15 +31,26 @@ warnings.filterwarnings("ignore")
 # ─────────────────────────────────────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────────────────────────────────────
-START_DATE      = "2004-01-01"
-END_DATE        = datetime.date.today().isoformat()
-MIN_PRICE       = 10.0          # minimum stock price filter
-MAX_POSITIONS   = 20            # max simultaneous holdings
-POSITION_SIZE   = 0.05          # 5 % of portfolio per trade
-MA_WINDOW       = 200           # long-term trend filter
-CONSEC_DOWN     = 4             # consecutive down-day requirement
-INITIAL_CAPITAL = 100_000.0     # starting portfolio value
-OUTPUT_DIR      = Path("results")
+START_DATE        = "2004-01-01"
+END_DATE          = datetime.date.today().isoformat()
+MIN_PRICE         = 10.0          # minimum stock price filter
+MAX_POSITIONS     = 20            # max simultaneous holdings
+POSITION_SIZE     = 0.05          # 5% of portfolio per trade
+MA_WINDOW         = 200           # long-term trend filter
+CONSEC_DOWN       = 4             # consecutive down-day requirement
+INITIAL_CAPITAL   = 100_000.0     # starting portfolio value
+
+# ── Enhancement parameters ───────────────────────────────────────────────────
+RSI_PERIOD        = 2             # RSI lookback (short = more sensitive)
+RSI_THRESHOLD     = 20            # only buy when RSI(2) < this level
+ATR_PERIOD        = 14            # ATR lookback for volatility filter
+ATR_MIN_PCT       = 0.01          # min ATR as % of price (1% = meaningful volatility)
+VOL_MA_PERIOD     = 20            # volume MA period for confirmation
+MIN_PROFIT_PCT    = 0.005         # minimum up-day gain to trigger exit (0.5%)
+COMMISSION_RATE   = 0.005         # $0.005 per share
+COMMISSION_MIN    = 1.00          # minimum $1.00 per trade
+
+OUTPUT_DIR        = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 
@@ -42,15 +58,9 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 # 1.  Universe — S&P 500 historical constituents (survivorship-bias free)
 # ─────────────────────────────────────────────────────────────────────────────
 def get_sp500_universe() -> list[str]:
-    """
-    Return a deduplicated list of tickers that have ever been in the S&P 500.
-    Primary source  : Wikipedia current table
-    Supplementary   : A curated list of well-known historical additions/removals
-                      so we capture delisted / replaced names back to ~2000.
-    """
     tickers: set[str] = set()
 
-    # --- current constituents via Wikipedia ---
+    # Current constituents via Wikipedia
     try:
         tables = pd.read_html(
             "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", header=0
@@ -61,7 +71,7 @@ def get_sp500_universe() -> list[str]:
     except Exception as e:
         print(f"[Universe] Wikipedia fetch failed: {e}")
 
-    # --- historical changes via Wikipedia (2nd table) ---
+    # Historical changes via Wikipedia (2nd table)
     try:
         tables = pd.read_html(
             "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", header=0
@@ -70,13 +80,12 @@ def get_sp500_universe() -> list[str]:
             changes = tables[1]
             for col in changes.columns:
                 col_str = changes[col].dropna().astype(str)
-                # look for columns that look like ticker symbols
                 if col_str.str.match(r"^[A-Z]{1,5}(-[A-Z])?$").mean() > 0.3:
                     tickers.update([t.replace(".", "-") for t in col_str.tolist()])
     except Exception as e:
         print(f"[Universe] Historical changes fetch failed: {e}")
 
-    # --- well-known historical S&P 500 names (additions guarantee coverage) ---
+    # Well-known historical S&P 500 names
     historical_extras = [
         "LEH","BSC","WB","WAMU","MER","C","AIG","FNM","FRE",
         "YHOO","SUNW","PALM","Q","NT","GLW","JDS","CSCO","T",
@@ -87,14 +96,14 @@ def get_sp500_universe() -> list[str]:
         "UNH","CI","HUM","CNC","MOH","ABC","MCK","CAH",
         "JNJ","PFE","MRK","ABBV","BMY","AMGN","GILD","BIIB",
         "LLY","REGN","VRTX","ZTS","ISRG","BSX","SYK","MDT",
-        "BA","LMT","RTX","NOC","GD","HII","L3H","TXT",
-        "CAT","DE","EMR","HON","MMM","GE","ETN","PH","ROK",
-        "XOM","CVX","COP","EOG","SLB","HAL","BKR","MPC","VLO",
+        "BA","LMT","RTX","NOC","GD","HII","TXT",
+        "CAT","DE","EMR","HON","MMM","ETN","PH","ROK",
+        "COP","EOG","SLB","HAL","BKR","MPC","VLO",
         "NEE","DUK","SO","AEP","EXC","SRE","PCG","ED","FE",
         "AMT","PLD","CCI","SPG","O","WELL","PSA","EQR","AVB",
         "SBUX","MCD","YUM","CMG","DRI","QSR",
-        "DIS","NFLX","CMCSA","VZ","T","CHTR","TMUS",
-        "PG","KO","PEP","UL","CL","KMB","CHD","EL","COTY",
+        "DIS","NFLX","CMCSA","VZ","CHTR","TMUS",
+        "PG","KO","PEP","CL","KMB","CHD","EL",
     ]
     tickers.update(historical_extras)
 
@@ -107,14 +116,9 @@ def get_sp500_universe() -> list[str]:
 # 2.  Download price data
 # ─────────────────────────────────────────────────────────────────────────────
 def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
-    """
-    Download adjusted OHLC for every ticker.  Returns a dict {ticker: df}.
-    Uses yfinance batch download then splits by ticker.
-    """
     print(f"\n[Download] Fetching data for {len(tickers)} tickers "
           f"({START_DATE} → {END_DATE}) …")
 
-    # Batch in chunks of 100 to stay within yfinance limits
     chunk_size = 100
     all_data: dict[str, pd.DataFrame] = {}
 
@@ -132,7 +136,6 @@ def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
             if raw.empty:
                 continue
 
-            # yfinance returns MultiIndex columns when >1 ticker
             if isinstance(raw.columns, pd.MultiIndex):
                 for tkr in chunk:
                     try:
@@ -142,7 +145,6 @@ def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
                     except KeyError:
                         pass
             else:
-                # Single ticker returned
                 if chunk:
                     all_data[chunk[0]] = raw.dropna(how="all")
         except Exception as e:
@@ -152,48 +154,94 @@ def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
     return all_data
 
 
+def download_spy() -> pd.DataFrame:
+    """Download SPY for the market regime filter."""
+    print("[Download] Fetching SPY for market regime filter …")
+    spy = yf.download("SPY", start=START_DATE, end=END_DATE,
+                      auto_adjust=True, progress=False)
+    spy["spy_ma200"] = spy["Close"].rolling(200).mean()
+    spy["spy_ok"]    = spy["Close"] > spy["spy_ma200"]
+    return spy
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# 3.  Signal generation & trade simulation
+# 3.  Signal generation
 # ─────────────────────────────────────────────────────────────────────────────
+def compute_rsi(series: pd.Series, period: int) -> pd.Series:
+    delta = series.diff()
+    gain  = delta.clip(lower=0).rolling(period).mean()
+    loss  = (-delta.clip(upper=0)).rolling(period).mean()
+    rs    = gain / loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
+
 def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Given OHLC dataframe for one ticker, compute:
-      - ma200        : 200-day SMA of Close
-      - above_ma     : Close > ma200
-      - daily_ret    : 1-day return sign
-      - consec_down  : rolling count of consecutive negative days
-      - signal       : True on day where all buy conditions are met
+    Compute all indicators and the composite buy signal.
+
+    Buy signal requires ALL of:
+      1. Close > 200-day MA          (uptrend filter)
+      2. 4+ consecutive down days    (mean reversion setup)
+      3. RSI(2) < 20                 (extreme oversold confirmation)
+      4. ATR(14)/Close > 1%          (meaningful volatility present)
+      5. Volume > 20-day avg volume  (selling volume confirmation)
+      6. Close >= MIN_PRICE          (liquidity filter)
     """
     df = df.copy()
-    df["ma200"]       = df["Close"].rolling(MA_WINDOW).mean()
-    df["above_ma"]    = df["Close"] > df["ma200"]
-    df["down_day"]    = (df["Close"] < df["Close"].shift(1)).astype(int)
 
-    # Rolling consecutive down days
-    consec = []
-    count = 0
+    # Trend filter
+    df["ma200"]    = df["Close"].rolling(MA_WINDOW).mean()
+    df["above_ma"] = df["Close"] > df["ma200"]
+
+    # Consecutive down days
+    df["down_day"] = (df["Close"] < df["Close"].shift(1)).astype(int)
+    consec, count = [], 0
     for d in df["down_day"]:
-        if d == 1:
-            count += 1
-        else:
-            count = 0
+        count = count + 1 if d == 1 else 0
         consec.append(count)
     df["consec_down"] = consec
 
+    # Enhancement 1: RSI(2)
+    df["rsi2"] = compute_rsi(df["Close"], RSI_PERIOD)
+
+    # Enhancement 2: ATR volatility filter
+    tr = pd.concat([
+        df["High"] - df["Low"],
+        (df["High"] - df["Close"].shift(1)).abs(),
+        (df["Low"]  - df["Close"].shift(1)).abs(),
+    ], axis=1).max(axis=1)
+    df["atr"]     = tr.rolling(ATR_PERIOD).mean()
+    df["atr_pct"] = df["atr"] / df["Close"]
+
+    # Enhancement 3: Volume confirmation
+    df["vol_ma20"]    = df["Volume"].rolling(VOL_MA_PERIOD).mean()
+    df["vol_confirm"] = df["Volume"] > df["vol_ma20"]
+
+    # Composite signal
     df["signal"] = (
-        df["above_ma"] &
-        (df["consec_down"] >= CONSEC_DOWN) &
-        (df["Close"] >= MIN_PRICE)
+        df["above_ma"]                          &   # uptrend
+        (df["consec_down"] >= CONSEC_DOWN)      &   # 4 down days
+        (df["rsi2"] < RSI_THRESHOLD)            &   # RSI(2) oversold
+        (df["atr_pct"] > ATR_MIN_PCT)           &   # enough volatility
+        df["vol_confirm"]                       &   # volume confirms selloff
+        (df["Close"] >= MIN_PRICE)                  # liquidity
     )
     return df
 
 
-def run_backtest(price_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    """
-    Event-driven simulation.
-    Returns a DataFrame of individual trades.
-    """
-    print("\n[Backtest] Running simulation …")
+# ─────────────────────────────────────────────────────────────────────────────
+# 4.  Backtest simulation
+# ─────────────────────────────────────────────────────────────────────────────
+def calc_commission(shares: float, price: float) -> float:
+    return max(shares * COMMISSION_RATE, COMMISSION_MIN)
+
+
+def run_backtest(price_data: dict[str, pd.DataFrame],
+                 spy_df: pd.DataFrame) -> pd.DataFrame:
+    print("\n[Backtest] Running enhanced simulation …")
+
+    # Build SPY regime lookup {date: bool}
+    spy_regime = spy_df["spy_ok"].to_dict()
 
     # Collect all trading dates
     all_dates: set = set()
@@ -203,17 +251,22 @@ def run_backtest(price_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
     # Pre-compute signals
     signals: dict[str, pd.DataFrame] = {}
+    min_bars = MA_WINDOW + VOL_MA_PERIOD + ATR_PERIOD + CONSEC_DOWN + 5
     for tkr, df in tqdm(price_data.items(), desc="Generating signals"):
-        if len(df) > MA_WINDOW + CONSEC_DOWN + 5:
+        if len(df) > min_bars:
             signals[tkr] = generate_signals(df)
 
     # Simulation state
     portfolio_value = INITIAL_CAPITAL
-    open_positions: dict[str, dict] = {}   # tkr -> {entry_date, entry_price, shares}
+    open_positions: dict[str, dict] = {}
     trades: list[dict] = []
 
     for today in tqdm(trading_dates, desc="Simulating"):
-        # ── Check exits first (sell at today's close on first up-day) ──
+
+        # ── Enhancement 5: Skip if SPY below 200-day MA ──────────────────────
+        spy_ok = spy_regime.get(today, True)   # default True if date not found
+
+        # ── Check exits ───────────────────────────────────────────────────────
         to_close = []
         for tkr, pos in open_positions.items():
             if tkr not in signals:
@@ -221,17 +274,20 @@ def run_backtest(price_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
             tkr_df = signals[tkr]
             if today not in tkr_df.index:
                 continue
-            row = tkr_df.loc[today]
-            # "First up-day": today's close > yesterday's close
+            row      = tkr_df.loc[today]
             prev_idx = tkr_df.index.get_loc(today)
             if prev_idx == 0:
                 continue
             prev_close = tkr_df.iloc[prev_idx - 1]["Close"]
-            if row["Close"] > prev_close:
-                exit_price = row["Close"]
-                pnl = (exit_price - pos["entry_price"]) * pos["shares"]
-                pnl_pct = (exit_price / pos["entry_price"] - 1) * 100
-                days_held = (today - pos["entry_date"]).days
+
+            # Enhancement 4: only exit if up-day gain >= MIN_PROFIT_PCT
+            up_pct = (row["Close"] - prev_close) / prev_close
+            if up_pct >= MIN_PROFIT_PCT:
+                exit_price  = row["Close"]
+                commission  = calc_commission(pos["shares"], exit_price)
+                pnl         = (exit_price - pos["entry_price"]) * pos["shares"] - commission
+                pnl_pct     = (exit_price / pos["entry_price"] - 1) * 100
+                days_held   = (today - pos["entry_date"]).days
                 trades.append({
                     "ticker"       : tkr,
                     "entry_date"   : pos["entry_date"],
@@ -239,10 +295,12 @@ def run_backtest(price_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
                     "entry_price"  : pos["entry_price"],
                     "exit_price"   : exit_price,
                     "shares"       : pos["shares"],
+                    "commission"   : round(commission + pos["entry_commission"], 4),
                     "pnl_usd"      : pnl,
                     "pnl_pct"      : pnl_pct,
                     "days_held"    : days_held,
                     "portfolio_val": portfolio_value + pnl,
+                    "spy_regime"   : spy_ok,
                 })
                 portfolio_value += pnl
                 to_close.append(tkr)
@@ -250,38 +308,42 @@ def run_backtest(price_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
         for tkr in to_close:
             del open_positions[tkr]
 
-        # ── Check entries (buy at next day's open, so we look at signal on today) ──
+        # ── Skip entries if market in downtrend ───────────────────────────────
+        if not spy_ok:
+            continue
+
         if len(open_positions) >= MAX_POSITIONS:
             continue
 
+        # ── Check entries ─────────────────────────────────────────────────────
         candidates = []
         for tkr, tkr_df in signals.items():
             if tkr in open_positions:
                 continue
             if today not in tkr_df.index:
                 continue
-            row = tkr_df.loc[today]
-            if row["signal"]:
+            if tkr_df.loc[today]["signal"]:
                 candidates.append(tkr)
 
-        # For each candidate, enter at next day's open
         for tkr in candidates:
             if len(open_positions) >= MAX_POSITIONS:
                 break
-            tkr_df = signals[tkr]
+            tkr_df    = signals[tkr]
             today_idx = tkr_df.index.get_loc(today)
             if today_idx + 1 >= len(tkr_df):
                 continue
-            next_row = tkr_df.iloc[today_idx + 1]
+            next_row    = tkr_df.iloc[today_idx + 1]
             entry_price = next_row["Open"]
             if entry_price < MIN_PRICE or entry_price <= 0:
                 continue
-            position_cash = portfolio_value * POSITION_SIZE
-            shares = position_cash / entry_price
+            position_cash    = portfolio_value * POSITION_SIZE
+            shares           = position_cash / entry_price
+            entry_commission = calc_commission(shares, entry_price)
             open_positions[tkr] = {
-                "entry_date"  : tkr_df.index[today_idx + 1],
-                "entry_price" : entry_price,
-                "shares"      : shares,
+                "entry_date"       : tkr_df.index[today_idx + 1],
+                "entry_price"      : entry_price,
+                "shares"           : shares,
+                "entry_commission" : entry_commission,
             }
 
     print(f"[Backtest] Simulation complete — {len(trades)} trades executed.")
@@ -289,15 +351,14 @@ def run_backtest(price_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4.  Performance metrics
+# 5.  Performance metrics
 # ─────────────────────────────────────────────────────────────────────────────
-def compute_metrics(trades_df: pd.DataFrame) -> dict:
+def compute_metrics(trades_df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
     if trades_df.empty:
-        return {"error": "No trades generated."}
+        return {"error": "No trades generated."}, pd.DataFrame()
 
     trades_df = trades_df.sort_values("exit_date").reset_index(drop=True)
 
-    # Reconstruct equity curve from trades
     equity = INITIAL_CAPITAL
     equity_curve = []
     for _, row in trades_df.iterrows():
@@ -305,54 +366,43 @@ def compute_metrics(trades_df: pd.DataFrame) -> dict:
         equity_curve.append({"date": row["exit_date"], "equity": equity})
     eq_df = pd.DataFrame(equity_curve)
 
-    # CAGR
     start_dt = pd.to_datetime(trades_df["entry_date"].min())
     end_dt   = pd.to_datetime(trades_df["exit_date"].max())
     years    = max((end_dt - start_dt).days / 365.25, 1e-6)
     cagr     = (equity / INITIAL_CAPITAL) ** (1 / years) - 1
 
-    # Win rate
     winners  = trades_df[trades_df["pnl_usd"] > 0]
     losers   = trades_df[trades_df["pnl_usd"] <= 0]
     win_rate = len(winners) / len(trades_df) * 100
 
-    # ROI per year
-    roi_per_year = (equity - INITIAL_CAPITAL) / INITIAL_CAPITAL / years * 100
+    roi_per_year  = (equity - INITIAL_CAPITAL) / INITIAL_CAPITAL / years * 100
+    avg_days      = trades_df["days_held"].mean()
+    avg_win       = winners["pnl_pct"].mean() if len(winners) else 0
+    avg_loss      = losers["pnl_pct"].mean()  if len(losers)  else 0
 
-    # Avg days held
-    avg_days = trades_df["days_held"].mean()
+    eq_df["peak"] = eq_df["equity"].cummax()
+    eq_df["dd"]   = (eq_df["equity"] - eq_df["peak"]) / eq_df["peak"] * 100
+    max_drawdown  = eq_df["dd"].min()
 
-    # Avg win / avg loss
-    avg_win  = winners["pnl_pct"].mean() if len(winners) else 0
-    avg_loss = losers["pnl_pct"].mean()  if len(losers)  else 0
-
-    # Max drawdown
-    eq_df["peak"]    = eq_df["equity"].cummax()
-    eq_df["dd"]      = (eq_df["equity"] - eq_df["peak"]) / eq_df["peak"] * 100
-    max_drawdown     = eq_df["dd"].min()
-
-    # Profit factor
-    gross_profit = winners["pnl_usd"].sum()
-    gross_loss   = abs(losers["pnl_usd"].sum())
+    gross_profit  = winners["pnl_usd"].sum()
+    gross_loss    = abs(losers["pnl_usd"].sum())
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
 
-    # Sharpe (annualised, using monthly returns for stability)
-    eq_df["date"]    = pd.to_datetime(eq_df["date"])
+    eq_df["date"] = pd.to_datetime(eq_df["date"])
     eq_df.set_index("date", inplace=True)
-    monthly_eq       = eq_df["equity"].resample("ME").last().ffill()
-    monthly_ret      = monthly_eq.pct_change().dropna()
-    sharpe           = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
-                        if monthly_ret.std() > 0 else 0)
+    monthly_eq  = eq_df["equity"].resample("ME").last().ffill()
+    monthly_ret = monthly_eq.pct_change().dropna()
+    sharpe      = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
+                   if monthly_ret.std() > 0 else 0)
 
-    # Trades per year
-    trades_per_year  = len(trades_df) / years
+    total_commission = trades_df["commission"].sum() if "commission" in trades_df else 0
 
     metrics = {
         "period_start"         : start_dt.date().isoformat(),
         "period_end"           : end_dt.date().isoformat(),
         "years_tested"         : round(years, 2),
         "total_trades"         : len(trades_df),
-        "trades_per_year"      : round(trades_per_year, 1),
+        "trades_per_year"      : round(len(trades_df) / years, 1),
         "win_rate_pct"         : round(win_rate, 2),
         "cagr_pct"             : round(cagr * 100, 2),
         "roi_per_year_pct"     : round(roi_per_year, 2),
@@ -362,15 +412,25 @@ def compute_metrics(trades_df: pd.DataFrame) -> dict:
         "profit_factor"        : round(profit_factor, 2),
         "max_drawdown_pct"     : round(max_drawdown, 2),
         "sharpe_ratio"         : round(sharpe, 2),
+        "total_commission_usd" : round(total_commission, 2),
         "initial_capital"      : INITIAL_CAPITAL,
         "final_equity"         : round(equity, 2),
         "total_return_pct"     : round((equity / INITIAL_CAPITAL - 1) * 100, 2),
+        # Enhancement flags (for reference)
+        "enhancements"         : {
+            "rsi2_threshold"   : RSI_THRESHOLD,
+            "atr_min_pct"      : ATR_MIN_PCT,
+            "vol_ma_period"    : VOL_MA_PERIOD,
+            "min_profit_pct"   : MIN_PROFIT_PCT,
+            "spy_regime_filter": True,
+            "commission_rate"  : COMMISSION_RATE,
+        }
     }
     return metrics, eq_df.reset_index()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5.  Save outputs
+# 6.  Save outputs
 # ─────────────────────────────────────────────────────────────────────────────
 def save_outputs(trades_df: pd.DataFrame, metrics: dict, eq_df: pd.DataFrame):
     trades_path  = OUTPUT_DIR / "trades.csv"
@@ -383,27 +443,32 @@ def save_outputs(trades_df: pd.DataFrame, metrics: dict, eq_df: pd.DataFrame):
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2, default=str)
 
-    # Pretty-print summary
     print("\n" + "="*60)
-    print("  NAIVE MEAN REVERSION BACKTEST — RESULTS SUMMARY")
+    print("  ENHANCED NAIVE MR BACKTEST — RESULTS SUMMARY")
     print("="*60)
     for k, v in metrics.items():
-        label = k.replace("_", " ").title()
-        print(f"  {label:<30}: {v}")
+        if k == "enhancements":
+            print(f"\n  {'Enhancements Applied':<30}:")
+            for ek, ev in v.items():
+                print(f"    {ek:<28}: {ev}")
+        else:
+            label = k.replace("_", " ").title()
+            print(f"  {label:<30}: {v}")
     print("="*60)
-    print(f"\n  Files saved to:  {OUTPUT_DIR.resolve()}")
+    print(f"\n  Files saved to: {OUTPUT_DIR.resolve()}")
     print(f"    • {trades_path}")
     print(f"    • {metrics_path}")
     print(f"    • {equity_path}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6.  Entry point
+# 7.  Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     universe   = get_sp500_universe()
     price_data = download_prices(universe)
-    trades_df  = run_backtest(price_data)
+    spy_df     = download_spy()
+    trades_df  = run_backtest(price_data, spy_df)
 
     if trades_df.empty:
         print("[ERROR] No trades were generated. Check your universe / date range.")
