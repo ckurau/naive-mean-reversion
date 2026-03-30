@@ -52,7 +52,7 @@ warnings.filterwarnings("ignore")
 START_DATE              = "2004-01-01"
 END_DATE                = datetime.date.today().isoformat()
 MIN_DOLLAR_VOLUME       = 5_000_000
-MAX_POSITIONS           = 20          # reduced from 30 to target lower drawdown
+MAX_POSITIONS           = 30          # restored to 30 — drawdown managed by circuit breaker
 POSITION_SIZE           = 0.05
 POSITION_SIZE_HIGH      = 0.075       # VIX < 15
 POSITION_SIZE_LOW       = 0.025       # VIX > 25
@@ -98,6 +98,7 @@ REENTRY_COOLDOWN_DAYS   = 5
 COMMISSION_RATE         = 0.005
 COMMISSION_MIN          = 1.00
 EARNINGS_MONTHS         = {1, 4, 7, 10}
+CIRCUIT_BREAKER_PCT     = 0.10        # halt new entries if portfolio drops 10% from peak
 
 OUTPUT_DIR              = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -433,7 +434,7 @@ def check_vix_spike(today, vix_df: pd.DataFrame,
 # 6.  Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V7 Final simulation ...")
+    print("\n[Backtest] Running V7 Final + Circuit Breaker simulation ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -447,7 +448,9 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         if len(df) > min_bars:
             signals[tkr] = generate_signals(df)
 
-    portfolio_value = INITIAL_CAPITAL
+    portfolio_value  = INITIAL_CAPITAL
+    portfolio_peak   = INITIAL_CAPITAL   # tracks rolling high-water mark
+    circuit_open     = False              # True = entries halted
     open_positions: dict[str, dict] = {}
     trades:         list[dict]      = []
     cooldown_map:   dict            = {}
@@ -456,6 +459,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok                 = spy_regime.get(today, True)
         paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
+
+        # ── Circuit breaker: update peak and check drawdown ───────────────────
+        if portfolio_value > portfolio_peak:
+            portfolio_peak = portfolio_value
+        current_dd = (portfolio_value - portfolio_peak) / portfolio_peak
+        circuit_open = current_dd <= -CIRCUIT_BREAKER_PCT
 
         # ── Exits ─────────────────────────────────────────────────────────────
         to_close = []
@@ -544,7 +553,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        if not spy_ok or paused:
+        if not spy_ok or paused or circuit_open:
             continue
         if len(open_positions) >= MAX_POSITIONS:
             continue
@@ -721,6 +730,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "earnings_month_cap"    : f"{POSITION_SIZE_EARNINGS*100}%",
             "universe"              : "S&P500 + S&P400",
             "commission"            : f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
+            "circuit_breaker_pct"    : CIRCUIT_BREAKER_PCT,
         }
     }
     return metrics, eq_df.reset_index()
@@ -736,7 +746,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "="*66)
-    print("  NAIVE MR BACKTEST — V7 FINAL RESULTS SUMMARY")
+    print("  NAIVE MR BACKTEST — V7 FINAL + CIRCUIT BREAKER")
     print("="*66)
     for k, v in metrics.items():
         if k == "tier_stats":
