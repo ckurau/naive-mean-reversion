@@ -449,10 +449,10 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         if len(df) > min_bars:
             signals[tkr] = generate_signals(df)
 
-    portfolio_value  = INITIAL_CAPITAL
-    portfolio_peak   = INITIAL_CAPITAL   # tracks rolling high-water mark
-    peak_initialised = False              # only start tracking peak after first trade
-    circuit_open     = False              # True = entries halted
+    portfolio_value   = INITIAL_CAPITAL
+    portfolio_peak    = None              # None until first trade closes
+    circuit_open      = False             # True = new entries halted
+    circuit_days_open = 0                 # diagnostic counter
     open_positions: dict[str, dict] = {}
     trades:         list[dict]      = []
     cooldown_map:   dict            = {}
@@ -462,22 +462,23 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         spy_ok                 = spy_regime.get(today, True)
         paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
 
-        # ── Circuit breaker: update peak and check drawdown ───────────────────
-        # Only initialise peak tracking after first trade closes (portfolio moved)
-        if not peak_initialised and portfolio_value != INITIAL_CAPITAL:
-            peak_initialised = True
-        if peak_initialised:
+        # ── Circuit breaker: update rolling peak and check drawdown ─────────
+        # Peak tracking starts after first trade closes and portfolio has moved.
+        # Trip: halt entries if drawdown from peak >= CIRCUIT_BREAKER_PCT (10%).
+        # Resume: allow entries again once drawdown recovers to CIRCUIT_BREAKER_RESUME (5%).
+        if portfolio_peak is None:
+            if portfolio_value != INITIAL_CAPITAL:
+                portfolio_peak = portfolio_value   # initialise on first P&L move
+        else:
             if portfolio_value > portfolio_peak:
-                portfolio_peak = portfolio_value
-            current_dd = (portfolio_value - portfolio_peak) / portfolio_peak
+                portfolio_peak = portfolio_value   # new high-water mark
+            drawdown_from_peak = (portfolio_value - portfolio_peak) / portfolio_peak
+            if not circuit_open and drawdown_from_peak <= -CIRCUIT_BREAKER_PCT:
+                circuit_open = True                # trip breaker
+            elif circuit_open and drawdown_from_peak >= -CIRCUIT_BREAKER_RESUME:
+                circuit_open = False               # reset breaker
             if circuit_open:
-                # Resume when recovered to within CIRCUIT_BREAKER_RESUME of peak
-                if current_dd >= -CIRCUIT_BREAKER_RESUME:
-                    circuit_open = False
-            else:
-                # Trip the breaker if drawdown exceeds threshold
-                if current_dd <= -CIRCUIT_BREAKER_PCT:
-                    circuit_open = True
+                circuit_days_open += 1
 
         # ── Exits ─────────────────────────────────────────────────────────────
         to_close = []
@@ -633,7 +634,9 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 "entry_commission"    : entry_comm,
             }
 
+    pct_blocked = round(circuit_days_open / max(len(trading_dates), 1) * 100, 1)
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
+    print(f"[Backtest] Circuit breaker active: {circuit_days_open} days ({pct_blocked}% of period)")
     return pd.DataFrame(trades)
 
 
@@ -745,6 +748,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "commission"            : f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
             "circuit_breaker_pct"    : CIRCUIT_BREAKER_PCT,
             "circuit_breaker_resume" : CIRCUIT_BREAKER_RESUME,
+            "circuit_days_open"      : getattr(run_backtest, "_circuit_days", "see trades"),
         }
     }
     return metrics, eq_df.reset_index()
