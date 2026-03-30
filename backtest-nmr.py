@@ -98,8 +98,13 @@ REENTRY_COOLDOWN_DAYS   = 5
 COMMISSION_RATE         = 0.005
 COMMISSION_MIN          = 1.00
 EARNINGS_MONTHS         = {1, 4, 7, 10}
-CIRCUIT_BREAKER_PCT     = 0.10        # halt new entries if portfolio drops 10% from peak
-CIRCUIT_BREAKER_RESUME  = 0.05        # resume when recovered to within 5% of peak
+# ── Drawdown-based position sizing (volatility scaling) ───────────────────
+# Instead of halting trading during drawdowns, reduce position size.
+# This keeps the strategy compounding while naturally reducing exposure.
+DD_SCALE_MILD           = 0.05        # drawdown threshold for mild reduction
+DD_SCALE_SEVERE         = 0.10        # drawdown threshold for severe reduction
+POSITION_SIZE_DD_MILD   = 0.03        # 3% per trade when DD 5-10% from peak
+POSITION_SIZE_DD_SEVERE = 0.02        # 2% per trade when DD 10%+ from peak
 
 OUTPUT_DIR              = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -380,22 +385,41 @@ def calc_commission(shares: float, price: float) -> float:
     return max(shares * COMMISSION_RATE, COMMISSION_MIN)
 
 
-def get_position_size(today, vix_df: pd.DataFrame) -> float:
+def get_position_size(today, vix_df: pd.DataFrame,
+                      drawdown_pct: float = 0.0) -> float:
+    """
+    Position size layered by priority (smallest wins):
+      1. Base size (5%)
+      2. VIX adjustment (0.5x to 1.5x)
+      3. Drawdown scaling (3% mild, 2% severe)
+      4. Earnings month cap (3%)
+    """
     month          = pd.Timestamp(today).month
     earnings_month = month in EARNINGS_MONTHS
-    base           = POSITION_SIZE
+
+    # VIX-adjusted base
+    base = POSITION_SIZE
     try:
         vc = vix_df["Close"].squeeze()
         if today in vc.index:
             v = float(vc.loc[today])
             if v > VIX_HIGH:
-                base = POSITION_SIZE_LOW
+                base = POSITION_SIZE_LOW    # 2.5%
             elif v < VIX_LOW:
-                base = POSITION_SIZE_HIGH
+                base = POSITION_SIZE_HIGH   # 7.5%
     except Exception:
         pass
+
+    # Drawdown override — caps position size during stressed periods
+    if drawdown_pct <= -DD_SCALE_SEVERE:
+        base = min(base, POSITION_SIZE_DD_SEVERE)   # max 2%
+    elif drawdown_pct <= -DD_SCALE_MILD:
+        base = min(base, POSITION_SIZE_DD_MILD)     # max 3%
+
+    # Earnings month cap
     if earnings_month and base > POSITION_SIZE_EARNINGS:
-        return POSITION_SIZE_EARNINGS
+        base = POSITION_SIZE_EARNINGS
+
     return base
 
 
@@ -435,7 +459,7 @@ def check_vix_spike(today, vix_df: pd.DataFrame,
 # 6.  Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V7 Final + Circuit Breaker simulation ...")
+    print("\n[Backtest] Running V7 Final + Drawdown Scaling simulation ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -450,9 +474,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             signals[tkr] = generate_signals(df)
 
     portfolio_value   = INITIAL_CAPITAL
-    portfolio_peak    = None              # None until first trade closes
-    circuit_open      = False             # True = new entries halted
-    circuit_days_open = 0                 # diagnostic counter
+    portfolio_peak    = None              # rolling high-water mark (None until first trade)
+    current_drawdown  = 0.0               # current drawdown from peak (negative = loss)
     open_positions: dict[str, dict] = {}
     trades:         list[dict]      = []
     cooldown_map:   dict            = {}
@@ -462,23 +485,19 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         spy_ok                 = spy_regime.get(today, True)
         paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
 
-        # ── Circuit breaker: update rolling peak and check drawdown ─────────
-        # Peak tracking starts after first trade closes and portfolio has moved.
-        # Trip: halt entries if drawdown from peak >= CIRCUIT_BREAKER_PCT (10%).
-        # Resume: allow entries again once drawdown recovers to CIRCUIT_BREAKER_RESUME (5%).
+        # ── Drawdown tracking: update rolling peak and current drawdown ──────
+        # Starts after first trade closes. Used by get_position_size to scale
+        # down position size during drawdown periods (no hard halt).
         if portfolio_peak is None:
             if portfolio_value != INITIAL_CAPITAL:
-                portfolio_peak = portfolio_value   # initialise on first P&L move
+                portfolio_peak   = portfolio_value
+                current_drawdown = 0.0
         else:
             if portfolio_value > portfolio_peak:
-                portfolio_peak = portfolio_value   # new high-water mark
-            drawdown_from_peak = (portfolio_value - portfolio_peak) / portfolio_peak
-            if not circuit_open and drawdown_from_peak <= -CIRCUIT_BREAKER_PCT:
-                circuit_open = True                # trip breaker
-            elif circuit_open and drawdown_from_peak >= -CIRCUIT_BREAKER_RESUME:
-                circuit_open = False               # reset breaker
-            if circuit_open:
-                circuit_days_open += 1
+                portfolio_peak   = portfolio_value
+                current_drawdown = 0.0
+            else:
+                current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
         # ── Exits ─────────────────────────────────────────────────────────────
         to_close = []
@@ -567,7 +586,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        if not spy_ok or paused or circuit_open:
+        if not spy_ok or paused:
             continue
         if len(open_positions) >= MAX_POSITIONS:
             continue
@@ -613,7 +632,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
 
             tier_cfg   = get_tier(consec_val)
-            pos_size   = get_position_size(today, vix_df)
+            pos_size   = get_position_size(today, vix_df, current_drawdown)
             shares     = (portfolio_value * pos_size) / entry_price
             entry_comm = calc_commission(shares, entry_price)
 
@@ -634,9 +653,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 "entry_commission"    : entry_comm,
             }
 
-    pct_blocked = round(circuit_days_open / max(len(trading_dates), 1) * 100, 1)
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
-    print(f"[Backtest] Circuit breaker active: {circuit_days_open} days ({pct_blocked}% of period)")
     return pd.DataFrame(trades)
 
 
@@ -746,9 +763,10 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "earnings_month_cap"    : f"{POSITION_SIZE_EARNINGS*100}%",
             "universe"              : "S&P500 + S&P400",
             "commission"            : f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
-            "circuit_breaker_pct"    : CIRCUIT_BREAKER_PCT,
-            "circuit_breaker_resume" : CIRCUIT_BREAKER_RESUME,
-            "circuit_days_open"      : getattr(run_backtest, "_circuit_days", "see trades"),
+            "dd_scale_mild_pct"      : DD_SCALE_MILD,
+            "dd_size_mild"           : POSITION_SIZE_DD_MILD,
+            "dd_scale_severe_pct"    : DD_SCALE_SEVERE,
+            "dd_size_severe"         : POSITION_SIZE_DD_SEVERE,
         }
     }
     return metrics, eq_df.reset_index()
@@ -764,7 +782,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "="*66)
-    print("  NAIVE MR BACKTEST — V7 FINAL + CIRCUIT BREAKER")
+    print("  NAIVE MR BACKTEST — V7 FINAL + DRAWDOWN SCALING")
     print("="*66)
     for k, v in metrics.items():
         if k == "tier_stats":
