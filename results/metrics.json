@@ -1,51 +1,51 @@
 {
   "period_start": "2004-10-19",
-  "period_end": "2006-05-25",
-  "years_tested": 1.6,
-  "total_trades": 1315,
-  "trades_per_year": 823.8,
-  "win_rate_pct": 58.71,
-  "cagr_pct": 19.57,
-  "roi_per_year_pct": 20.68,
-  "avg_days_held": 4.34,
-  "avg_win_pct": 2.46,
-  "avg_loss_pct": -2.15,
-  "profit_factor": 1.34,
-  "max_drawdown_pct": -13.19,
-  "sharpe_ratio": 1.5,
-  "time_stop_rate_pct": 70.1,
+  "period_end": "2026-03-26",
+  "years_tested": 21.43,
+  "total_trades": 15643,
+  "trades_per_year": 729.9,
+  "win_rate_pct": 57.37,
+  "cagr_pct": 1.73,
+  "roi_per_year_pct": 2.08,
+  "avg_days_held": 4.32,
+  "avg_win_pct": 2.49,
+  "avg_loss_pct": -2.67,
+  "profit_factor": 1.06,
+  "max_drawdown_pct": -22.13,
+  "sharpe_ratio": 0.26,
+  "time_stop_rate_pct": 69.6,
   "exit_reasons": {
-    "time_stop": 889,
-    "profit_target": 380,
-    "partial_exit": 46
+    "time_stop": 10492,
+    "profit_target": 4572,
+    "partial_exit": 579
   },
   "tier_stats": {
     "tier_1": {
-      "trades": 123,
-      "win_rate": 75.6,
-      "avg_win": 3.08,
-      "avg_loss": -1.81,
-      "avg_days": 6.1
+      "trades": 1610,
+      "win_rate": 69.1,
+      "avg_win": 2.96,
+      "avg_loss": -3.96,
+      "avg_days": 6.3
     },
     "tier_2": {
-      "trades": 213,
-      "win_rate": 52.6,
-      "avg_win": 2.55,
-      "avg_loss": -2.43,
-      "avg_days": 5.1
+      "trades": 2264,
+      "win_rate": 57.8,
+      "avg_win": 2.64,
+      "avg_loss": -3.12,
+      "avg_days": 4.9
     },
     "tier_3": {
-      "trades": 979,
-      "win_rate": 57.9,
-      "avg_win": 2.35,
-      "avg_loss": -2.1,
+      "trades": 11769,
+      "win_rate": 55.7,
+      "avg_win": 2.39,
+      "avg_loss": -2.47,
       "avg_days": 3.9
     }
   },
-  "total_commission_usd": 8012.81,
+  "total_commission_usd": 40546.68,
   "initial_capital": 100000.0,
-  "final_equity": 133005.82,
-  "total_return_pct": 33.01,
+  "final_equity": 144484.27,
+  "total_return_pct": 44.48,
   "parameters": {
     "max_positions": 30,
     "tier1_6plus_days": "2% target, 8d window, partial at 1%",
@@ -62,8 +62,9 @@
     "earnings_month_cap": "3.0%",
     "universe": "S&P500 + S&P400",
     "commission": "$0.005/share, $1.0 min",
-    "circuit_breaker_pct": 0.1,
-    "circuit_breaker_resume": 0.05,
-    "circuit_days_open": "see trades"
+    "dd_scale_mild_pct": 0.05,
+    "dd_size_mild": 0.03,
+    "dd_scale_severe_pct": 0.1,
+    "dd_size_severe": 0.02
   }
 }
