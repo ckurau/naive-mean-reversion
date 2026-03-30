@@ -42,9 +42,9 @@
       "avg_days": 3.9
     }
   },
-  "total_commission_usd": 8018.47,
+  "total_commission_usd": 8018.51,
   "initial_capital": 100000.0,
-  "final_equity": 133063.52,
+  "final_equity": 133063.39,
   "total_return_pct": 33.06,
   "parameters": {
     "max_positions": 30,
@@ -63,6 +63,7 @@
     "universe": "S&P500 + S&P400",
     "commission": "$0.005/share, $1.0 min",
     "circuit_breaker_pct": 0.1,
-    "circuit_breaker_resume": 0.05
+    "circuit_breaker_resume": 0.05,
+    "circuit_days_open": "see trades"
   }
 }
