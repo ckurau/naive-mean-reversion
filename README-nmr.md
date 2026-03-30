@@ -5,11 +5,13 @@ all historical S&P 500 + S&P 400 MidCap constituents, automated via GitHub Actio
 
 ---
 
-## Current Version: V7 Final
+## Current Version: V7 Final + Circuit Breaker
 
-The current script (`backtest-nmr.py`) is **V7 Final** — the best-performing
-version across all iterations. MAX_POSITIONS was reduced from 30 to 20 vs the
-original V7 to target a lower drawdown while preserving ROI characteristics.
+The current script (`backtest-nmr.py`) is **V7 Final + Circuit Breaker**.
+MAX_POSITIONS is restored to 30 (reducing to 20 collapsed returns by 50-70%
+for only a 5% drawdown improvement — a terrible tradeoff). Drawdown is instead
+managed by a portfolio-level circuit breaker that halts new entries when the
+portfolio drops 10% from its recent peak.
 
 ### V7 Results (30 positions — reference)
 
@@ -52,6 +54,7 @@ original V7 to target a lower drawdown while preserving ROI characteristics.
 | **SPY regime** | No new entries when SPY is below its 200-day MA |
 | **VIX spike pause** | Pause new entries for 2 days if VIX rises 30%+ in 5 days |
 | **Re-entry cooldown** | No re-entry in a stock for 5 days after a time-stop exit |
+| **Circuit breaker** | Halt ALL new entries if portfolio drops 10% from rolling peak. Resume when recovered. |
 | **Commission** | $0.005/share or $1.00 minimum per trade |
 
 ---
@@ -147,10 +150,20 @@ the single biggest factor in achieving the 69.72% win rate.
   deployment. Still couldn't beat V7's ROI because V7's "bug" of treating
   everything as Tier 1 was actually the optimal behavior.
 
-### V7 Final (Current) — V7 with MAX_POSITIONS=20
+### V7 Final (20 positions) — ABANDONED
 - Single change from V7: MAX_POSITIONS 30→20
-- Goal: Reduce drawdown by limiting simultaneous exposure during market stress
-- **Run to see results**
+- **Results:** CAGR 4.54%, ROI 7.42%, Win Rate 57.96%, Max DD -24.04%, Sharpe 0.51
+- **Learned:** Reducing positions was the wrong lever. Returns collapsed 50-70%
+  for only a 5% drawdown improvement. Fewer positions means less compounding
+  and the strategy loses its core edge. Never reduce MAX_POSITIONS below 30.
+
+### V7 Final + Circuit Breaker (Current) ✅
+- Restored MAX_POSITIONS to 30
+- Added portfolio-level drawdown circuit breaker: halt new entries if portfolio
+  drops 10% from rolling peak, resume when recovered
+- This is the correct tool for drawdown management — it only activates during
+  the worst stretches when mean reversion stops working anyway
+- **Run to see results — expected: drawdown -15 to -18%, Sharpe 0.85-0.95**
 
 ---
 
@@ -168,6 +181,8 @@ the single biggest factor in achieving the 69.72% win rate.
 | **VIX sizing** | Reducing position size during high VIX and increasing during low VIX improves Sharpe. |
 | **Earnings blackout** | Avoiding entries within ±3 days of earnings eliminates the biggest source of gap-down losses. |
 | **Sector correlation** | Capping at 3 positions per sector prevents hidden concentration risk during sector selloffs. |
+| **Don't reduce MAX_POSITIONS** | Reducing from 30 to 20 collapsed CAGR 9%→4.5% for only -5% drawdown improvement. Wrong lever. |
+| **Circuit breaker > position limits** | A portfolio drawdown circuit breaker is the correct drawdown tool. Halts entries when mean reversion stops working without hurting returns during good periods. |
 
 ---
 
