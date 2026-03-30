@@ -1,37 +1,41 @@
-"""
-Enhanced Naive Mean Reversion (MR) Backtest — V7 FINAL
+""" Enhanced Naive Mean Reversion (MR) Backtest — V7 FINAL
 ========================================================
 This is the best-performing version across all tested iterations (V1-V9).
-MAX_POSITIONS reduced from 30 to 20 to target lower drawdown while
-preserving the strong ROI characteristics.
+MAX_POSITIONS reduced from 30 to 20 to target lower drawdown while preserving
+the strong ROI characteristics.
 
-V7 Results (30 positions): CAGR 9.05%, ROI/yr 25.23%, Win Rate 69.72%,
-                            Max DD -28.94%, Sharpe 0.74, Final Equity $641k
-V7 Final (20 positions):   Run to compare drawdown improvement vs ROI impact
+V7 Results (30 positions):
+  CAGR 9.05%, ROI/yr 25.23%, Win Rate 69.72%, Max DD -28.94%, Sharpe 0.74,
+  Final Equity $641k
+
+V7 Final (20 positions): Run to compare drawdown improvement vs ROI impact
 
 Key insight that made V7 work:
-  All trades given an 8-day window with a 2% target. Even though RSI(2)
-  is always < 5 after 4+ consecutive down days (mathematics of 2-period
-  lookback), giving setups enough time to bounce dramatically improved
-  win rate to 69.72% — the best of any version.
+  All trades given an 8-day window with a 2% target. Even though RSI(2) is
+  always < 5 after 4+ consecutive down days (mathematics of 2-period lookback),
+  giving setups enough time to bounce dramatically improved win rate to 69.72%
+  — the best of any version.
 
 Strategy Rules:
   Universe  : S&P 500 + S&P 400 MidCap (current + historical)
-  Buy       : Stock > 200-day MA AND 4 consecutive down days
-              AND RSI(2) < 20 AND ATR > 1% AND volume > 20-day avg
-              AND dollar volume > $5M
+  Buy       : Stock > 200-day MA AND 4 consecutive down days AND RSI(2) < 20
+              AND ATR > 1% AND volume > 20-day avg AND dollar volume > $5M
   Entry     : Open of next day (gap filters: down >1.5% or up >2% skipped)
-  Exit      : First up-day >= 1% (after min 2-day hold) OR 8-day time stop
+  Exit      : First up-day >= 2% (after min 2-day hold) OR 8-day time stop
   Tier 1    : 6+ down days -> 2% target, 8-day window, partial exit (50% at 1%)
-  Tier 2    : 5 down days  -> 1.5% target, 6-day window
-  Tier 3    : 4 down days  -> 1% target, 4-day window
-  Positions : Max 20 simultaneous, VIX-adjusted sizing (2.5/5/7.5%)
+  Tier 2    : 5 down days  -> 2% target, 8-day window
+  Tier 3    : 4 down days  -> 2% target, 8-day window
+  Note      : Uniform 8-day / 2% target across all tiers — this is the V7
+              mechanism made intentional. Holding time drives win rate, not
+              entry quality discrimination.
+  Positions : Max 30 simultaneous, VIX-adjusted sizing (2.5/5/7.5%)
   Filters   : SPY 200-day regime, sector 20-day MA, earnings blackout +/-3d,
               correlation cap 3/sector, VIX spike pause, re-entry cooldown 5d,
               earnings month size cap 3%
+  Drawdown  : DD 5-10% from peak -> max 3% per trade (mild scaling)
+              DD 10%+ from peak  -> max 2% per trade (severe scaling)
   Commission: $0.005/share, $1.00 minimum
 """
-
 import io
 import warnings
 import datetime
@@ -49,64 +53,68 @@ warnings.filterwarnings("ignore")
 # ─────────────────────────────────────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────────────────────────────────────
-START_DATE              = "2004-01-01"
-END_DATE                = datetime.date.today().isoformat()
-MIN_DOLLAR_VOLUME       = 5_000_000
-MAX_POSITIONS           = 30          # restored to 30 — drawdown managed by circuit breaker
-POSITION_SIZE           = 0.05
-POSITION_SIZE_HIGH      = 0.075       # VIX < 15
-POSITION_SIZE_LOW       = 0.025       # VIX > 25
-POSITION_SIZE_EARNINGS  = 0.03        # Jan/Apr/Jul/Oct
-MA_WINDOW               = 200
-INITIAL_CAPITAL         = 100_000.0
+START_DATE = "2004-01-01"
+END_DATE = datetime.date.today().isoformat()
 
-RSI_PERIOD              = 2
-RSI_THRESHOLD           = 20
-ATR_PERIOD              = 14
-ATR_MIN_PCT             = 0.01
-VOL_MA_PERIOD           = 20
-MIN_HOLD_BEFORE_EXIT    = 2           # min calendar days before profit exit allowed
+MIN_DOLLAR_VOLUME = 5_000_000
+MAX_POSITIONS = 30
+POSITION_SIZE = 0.05
+POSITION_SIZE_HIGH = 0.075   # VIX < 15
+POSITION_SIZE_LOW  = 0.025   # VIX > 25
+POSITION_SIZE_EARNINGS = 0.03  # Jan/Apr/Jul/Oct
 
-# ── Tier system: consecutive down days ───────────────────────────────────────
-TIER1_MIN_DOWN          = 6
-TIER1_TARGET            = 0.020
-TIER1_HOLD_DAYS         = 8
-TIER1_PARTIAL           = True
-TIER1_PARTIAL_FRAC      = 0.50
-TIER1_PARTIAL_TRIGGER   = 0.010
+MA_WINDOW = 200
+INITIAL_CAPITAL = 100_000.0
+RSI_PERIOD = 2
+RSI_THRESHOLD = 20
+ATR_PERIOD = 14
+ATR_MIN_PCT = 0.01
+VOL_MA_PERIOD = 20
+MIN_HOLD_BEFORE_EXIT = 2  # min calendar days before profit exit allowed
 
-TIER2_MIN_DOWN          = 5
-TIER2_TARGET            = 0.015
-TIER2_HOLD_DAYS         = 6
-TIER2_PARTIAL           = False
+# ── Tier system: consecutive down days ────────────────────────────────────────
+# All tiers share the same 8-day window and 2% target — this is the V7
+# mechanism made intentional. Tier labels remain for tracking/analysis.
+TIER1_MIN_DOWN = 6
+TIER1_TARGET = 0.020
+TIER1_HOLD_DAYS = 8
+TIER1_PARTIAL = True
+TIER1_PARTIAL_FRAC = 0.50
+TIER1_PARTIAL_TRIGGER = 0.010
 
-TIER3_MIN_DOWN          = 4
-TIER3_TARGET            = 0.010
-TIER3_HOLD_DAYS         = 4
-TIER3_PARTIAL           = False
+TIER2_MIN_DOWN = 5
+TIER2_TARGET = 0.020       # was 0.015 — uniform with Tier 1
+TIER2_HOLD_DAYS = 8        # was 6     — uniform with Tier 1
+TIER2_PARTIAL = False
 
-EARNINGS_BLACKOUT       = 3
-GAP_DOWN_MAX            = -0.015
-GAP_UP_MAX              = 0.020
-SECTOR_MA_WINDOW        = 20
-MAX_SECTOR_POSITIONS    = 3
-VIX_HIGH                = 25
-VIX_LOW                 = 15
-VIX_SPIKE_PCT           = 0.30
-VIX_SPIKE_PAUSE_DAYS    = 2
-REENTRY_COOLDOWN_DAYS   = 5
-COMMISSION_RATE         = 0.005
-COMMISSION_MIN          = 1.00
-EARNINGS_MONTHS         = {1, 4, 7, 10}
-# ── Drawdown-based position sizing (volatility scaling) ───────────────────
+TIER3_MIN_DOWN = 4
+TIER3_TARGET = 0.020       # was 0.010 — uniform with Tier 1
+TIER3_HOLD_DAYS = 8        # was 4     — uniform with Tier 1
+TIER3_PARTIAL = False
+
+EARNINGS_BLACKOUT = 3
+GAP_DOWN_MAX = -0.015
+GAP_UP_MAX = 0.020
+SECTOR_MA_WINDOW = 20
+MAX_SECTOR_POSITIONS = 3
+VIX_HIGH = 25
+VIX_LOW = 15
+VIX_SPIKE_PCT = 0.30
+VIX_SPIKE_PAUSE_DAYS = 2
+REENTRY_COOLDOWN_DAYS = 5
+COMMISSION_RATE = 0.005
+COMMISSION_MIN = 1.00
+EARNINGS_MONTHS = {1, 4, 7, 10}
+
+# ── Drawdown-based position sizing (volatility scaling) ──────────────────────
 # Instead of halting trading during drawdowns, reduce position size.
 # This keeps the strategy compounding while naturally reducing exposure.
-DD_SCALE_MILD           = 0.05        # drawdown threshold for mild reduction
-DD_SCALE_SEVERE         = 0.10        # drawdown threshold for severe reduction
-POSITION_SIZE_DD_MILD   = 0.03        # 3% per trade when DD 5-10% from peak
-POSITION_SIZE_DD_SEVERE = 0.02        # 2% per trade when DD 10%+ from peak
+DD_SCALE_MILD   = 0.05   # drawdown threshold for mild reduction
+DD_SCALE_SEVERE = 0.10   # drawdown threshold for severe reduction
+POSITION_SIZE_DD_MILD   = 0.03  # 3% per trade when DD 5-10% from peak
+POSITION_SIZE_DD_SEVERE = 0.02  # 2% per trade when DD 10%+ from peak
 
-OUTPUT_DIR              = Path("results")
+OUTPUT_DIR = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 SECTOR_ETFS = {
@@ -133,6 +141,7 @@ SECTOR_ETFS = {
     "XLC": ["META","GOOGL","GOOG","NFLX","DIS","CMCSA","T","VZ","TMUS","CHTR",
              "ATVI","EA","WBD","PARA","FOXA","FOX","NWS","NWSA","OMC","IPG"],
 }
+
 TICKER_TO_SECTOR: dict[str, str] = {}
 for _etf, _members in SECTOR_ETFS.items():
     for _t in _members:
@@ -168,13 +177,12 @@ def get_tier(consec_down: int) -> dict:
             "partial_trigger" : TIER3_TARGET,
         }
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 1.  Universe
+# 1. Universe
 # ─────────────────────────────────────────────────────────────────────────────
 def _fetch_wiki(url: str) -> list:
     headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-               "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+                             "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()
     return pd.read_html(io.StringIO(resp.text), header=0)
@@ -224,9 +232,8 @@ def get_universe() -> list[str]:
     print(f"[Universe] Total unique tickers: {len(result)}")
     return result
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 2.  Downloads
+# 2. Downloads
 # ─────────────────────────────────────────────────────────────────────────────
 def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
     print(f"\n[Download] Fetching {len(tickers)} tickers ({START_DATE} -> {END_DATE}) ...")
@@ -263,42 +270,41 @@ def _dl_single(ticker: str) -> pd.DataFrame:
 
 
 def download_reference_data() -> tuple:
-    spy   = _dl_single("SPY")
+    spy = _dl_single("SPY")
     close = spy["Close"].squeeze()
     spy["spy_ma200"] = close.rolling(200).mean()
-    spy["spy_ok"]    = (close > spy["spy_ma200"].squeeze()).values
+    spy["spy_ok"] = (close > spy["spy_ma200"].squeeze()).values
     print(f"[Download] SPY: {len(spy)} rows")
 
-    vix       = _dl_single("^VIX")
+    vix = _dl_single("^VIX")
     vix_close = vix["Close"].squeeze()
     vix["vix_5d_ago"] = vix_close.shift(5)
-    vix["vix_spike"]  = (
+    vix["vix_spike"] = (
         vix_close / vix["vix_5d_ago"].replace(0, np.nan) - 1
     ) >= VIX_SPIKE_PCT
     print(f"[Download] VIX: {len(vix)} rows")
 
-    etf_list    = list(SECTOR_ETFS.keys())
-    sector_data : dict[str, pd.DataFrame] = {}
+    etf_list = list(SECTOR_ETFS.keys())
+    sector_data: dict[str, pd.DataFrame] = {}
     raw = yf.download(etf_list, start=START_DATE, end=END_DATE,
                       auto_adjust=True, progress=False, threads=True)
     if not raw.empty:
         for etf in etf_list:
             try:
                 df = raw.xs(etf, axis=1, level=1).dropna(how="all") \
-                     if isinstance(raw.columns, pd.MultiIndex) else raw.copy()
+                    if isinstance(raw.columns, pd.MultiIndex) else raw.copy()
                 cs = df["Close"].squeeze()
                 df = df.copy()
-                df["ma"] = cs.rolling(SECTOR_MA_WINDOW).mean()
-                df["ok"] = (cs > df["ma"].squeeze()).values
+                df["ma"]  = cs.rolling(SECTOR_MA_WINDOW).mean()
+                df["ok"]  = (cs > df["ma"].squeeze()).values
                 sector_data[etf] = df
             except Exception:
                 pass
     print(f"[Download] Sector ETFs: {len(sector_data)}")
     return spy, vix, sector_data
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 3.  Earnings calendar
+# 3. Earnings calendar
 # ─────────────────────────────────────────────────────────────────────────────
 def build_earnings_dates(tickers: list[str]) -> dict[str, set]:
     print(f"[Earnings] Building calendar for {len(tickers)} tickers ...")
@@ -329,9 +335,8 @@ def near_earnings(tkr: str, date, earnings_map: dict[str, set]) -> bool:
     d = pd.Timestamp(date).normalize()
     return any(abs((d - e).days) <= EARNINGS_BLACKOUT for e in earnings_map[tkr])
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 4.  Signal generation
+# 4. Signal generation
 # ─────────────────────────────────────────────────────────────────────────────
 def compute_rsi(series: pd.Series, period: int) -> pd.Series:
     delta = series.diff()
@@ -353,8 +358,7 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
         consec.append(count)
     df["consec_down"] = consec
 
-    df["rsi2"] = compute_rsi(df["Close"], RSI_PERIOD)
-
+    df["rsi2"]    = compute_rsi(df["Close"], RSI_PERIOD)
     tr = pd.concat([
         df["High"] - df["Low"],
         (df["High"] - df["Close"].shift(1)).abs(),
@@ -363,58 +367,55 @@ def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
     df["atr"]     = tr.rolling(ATR_PERIOD).mean()
     df["atr_pct"] = df["atr"] / df["Close"]
 
-    df["vol_ma20"]        = df["Volume"].rolling(VOL_MA_PERIOD).mean()
-    df["vol_confirm"]     = df["Volume"] > df["vol_ma20"]
+    df["vol_ma20"]      = df["Volume"].rolling(VOL_MA_PERIOD).mean()
+    df["vol_confirm"]   = df["Volume"] > df["vol_ma20"]
     df["dollar_vol_ma20"] = (df["Close"] * df["Volume"]).rolling(VOL_MA_PERIOD).mean()
 
     df["signal"] = (
-        df["above_ma"]                              &
-        (df["consec_down"] >= TIER3_MIN_DOWN)       &
-        (df["rsi2"] < RSI_THRESHOLD)                &
-        (df["atr_pct"] > ATR_MIN_PCT)               &
-        df["vol_confirm"]                           &
-        (df["dollar_vol_ma20"] >= MIN_DOLLAR_VOLUME)
+        df["above_ma"]
+        & (df["consec_down"] >= TIER3_MIN_DOWN)
+        & (df["rsi2"] < RSI_THRESHOLD)
+        & (df["atr_pct"] > ATR_MIN_PCT)
+        & df["vol_confirm"]
+        & (df["dollar_vol_ma20"] >= MIN_DOLLAR_VOLUME)
     )
     return df
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 5.  Helpers
+# 5. Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 def calc_commission(shares: float, price: float) -> float:
     return max(shares * COMMISSION_RATE, COMMISSION_MIN)
 
 
-def get_position_size(today, vix_df: pd.DataFrame,
-                      drawdown_pct: float = 0.0) -> float:
+def get_position_size(today, vix_df: pd.DataFrame, drawdown_pct: float = 0.0) -> float:
     """
     Position size layered by priority (smallest wins):
       1. Base size (5%)
-      2. VIX adjustment (0.5x to 1.5x)
+      2. VIX adjustment (2.5% / 5% / 7.5%)
       3. Drawdown scaling (3% mild, 2% severe)
       4. Earnings month cap (3%)
     """
-    month          = pd.Timestamp(today).month
+    month = pd.Timestamp(today).month
     earnings_month = month in EARNINGS_MONTHS
 
-    # VIX-adjusted base
     base = POSITION_SIZE
     try:
         vc = vix_df["Close"].squeeze()
         if today in vc.index:
             v = float(vc.loc[today])
             if v > VIX_HIGH:
-                base = POSITION_SIZE_LOW    # 2.5%
+                base = POSITION_SIZE_LOW   # 2.5%
             elif v < VIX_LOW:
-                base = POSITION_SIZE_HIGH   # 7.5%
+                base = POSITION_SIZE_HIGH  # 7.5%
     except Exception:
         pass
 
     # Drawdown override — caps position size during stressed periods
     if drawdown_pct <= -DD_SCALE_SEVERE:
-        base = min(base, POSITION_SIZE_DD_SEVERE)   # max 2%
+        base = min(base, POSITION_SIZE_DD_SEVERE)  # max 2%
     elif drawdown_pct <= -DD_SCALE_MILD:
-        base = min(base, POSITION_SIZE_DD_MILD)     # max 3%
+        base = min(base, POSITION_SIZE_DD_MILD)    # max 3%
 
     # Earnings month cap
     if earnings_month and base > POSITION_SIZE_EARNINGS:
@@ -440,8 +441,7 @@ def count_sector_positions(tkr: str, open_positions: dict) -> int:
     return sum(1 for t in open_positions if TICKER_TO_SECTOR.get(t) == etf)
 
 
-def check_vix_spike(today, vix_df: pd.DataFrame,
-                    last_spike_date) -> tuple[bool, object]:
+def check_vix_spike(today, vix_df: pd.DataFrame, last_spike_date) -> tuple[bool, object]:
     try:
         if today in vix_df.index:
             if bool(vix_df.loc[today, "vix_spike"]):
@@ -454,13 +454,12 @@ def check_vix_spike(today, vix_df: pd.DataFrame,
             return True, last_spike_date
     return False, last_spike_date
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 6.  Backtest simulation
+# 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
     print("\n[Backtest] Running V7 Final + Drawdown Scaling simulation ...")
-    spy_regime = spy_df["spy_ok"].to_dict()
+    spy_regime  = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
     for df in price_data.values():
@@ -474,20 +473,18 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             signals[tkr] = generate_signals(df)
 
     portfolio_value   = INITIAL_CAPITAL
-    portfolio_peak    = None              # rolling high-water mark (None until first trade)
-    current_drawdown  = 0.0               # current drawdown from peak (negative = loss)
+    portfolio_peak    = None
+    current_drawdown  = 0.0
     open_positions: dict[str, dict] = {}
-    trades:         list[dict]      = []
-    cooldown_map:   dict            = {}
-    last_vix_spike                  = None
+    trades: list[dict] = []
+    cooldown_map: dict  = {}
+    last_vix_spike      = None
 
     for today in tqdm(trading_dates, desc="Simulating"):
-        spy_ok                 = spy_regime.get(today, True)
+        spy_ok = spy_regime.get(today, True)
         paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
 
-        # ── Drawdown tracking: update rolling peak and current drawdown ──────
-        # Starts after first trade closes. Used by get_position_size to scale
-        # down position size during drawdown periods (no hard halt).
+        # ── Drawdown tracking ──────────────────────────────────────────────
         if portfolio_peak is None:
             if portfolio_value != INITIAL_CAPITAL:
                 portfolio_peak   = portfolio_value
@@ -499,7 +496,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             else:
                 current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
-        # ── Exits ─────────────────────────────────────────────────────────────
+        # ── Exits ──────────────────────────────────────────────────────────
         to_close = []
         for tkr, pos in open_positions.items():
             if tkr not in signals:
@@ -511,24 +508,23 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             prev_idx = tkr_df.index.get_loc(today)
             if prev_idx == 0:
                 continue
-            prev_close  = float(tkr_df.iloc[prev_idx - 1]["Close"])
+
             exit_price  = float(row["Close"])
             entry_price = pos["entry_price"]
-            days_held   = (pd.Timestamp(today) -
-                           pd.Timestamp(pos["entry_date"])).days
+            days_held   = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
             pos_pct     = (exit_price - entry_price) / entry_price
             shares_rem  = pos["shares_remaining"]
-            time_stop   = days_held >= pos["hold_days"]
-            early       = days_held < MIN_HOLD_BEFORE_EXIT
-            profit_hit  = (not early) and pos_pct >= pos["profit_target"]
+
+            time_stop = days_held >= pos["hold_days"]
+            early     = days_held < MIN_HOLD_BEFORE_EXIT
+            profit_hit = (not early) and pos_pct >= pos["profit_target"]
 
             # Partial exit (Tier 1 only)
             if (pos["partial_enabled"] and not pos["partial_done"]
                     and not early and pos_pct >= pos["partial_trigger"]):
                 partial_shares = shares_rem * pos["partial_frac"]
-                commission     = calc_commission(partial_shares, exit_price)
-                pnl            = ((exit_price - entry_price) * partial_shares
-                                  - commission)
+                commission = calc_commission(partial_shares, exit_price)
+                pnl = (exit_price - entry_price) * partial_shares - commission
                 trades.append({
                     "ticker"       : tkr,
                     "entry_date"   : pos["entry_date"],
@@ -545,23 +541,22 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                     "consec_down"  : pos["consec_down_at_entry"],
                     "portfolio_val": portfolio_value + pnl,
                 })
-                portfolio_value          += pnl
-                pos["shares_remaining"]  -= partial_shares
-                pos["partial_done"]       = True
-                pos["profit_target"]      = pos["profit_target"] * 2
+                portfolio_value         += pnl
+                pos["shares_remaining"] -= partial_shares
+                pos["partial_done"]      = True
+                pos["profit_target"]     = pos["profit_target"] * 2
                 continue
 
             # Full exit
             full_exit = (
-                time_stop or
-                (not pos["partial_enabled"] and profit_hit) or
-                (pos["partial_enabled"] and pos["partial_done"] and profit_hit)
+                time_stop
+                or (not pos["partial_enabled"] and profit_hit)
+                or (pos["partial_enabled"] and pos["partial_done"] and profit_hit)
             )
             if full_exit:
                 commission = calc_commission(shares_rem, exit_price)
-                pnl        = ((exit_price - entry_price) * shares_rem
-                              - commission - pos["entry_commission"])
-                reason     = "time_stop" if time_stop else "profit_target"
+                pnl = (exit_price - entry_price) * shares_rem - commission - pos["entry_commission"]
+                reason = "time_stop" if time_stop else "profit_target"
                 trades.append({
                     "ticker"       : tkr,
                     "entry_date"   : pos["entry_date"],
@@ -591,7 +586,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         if len(open_positions) >= MAX_POSITIONS:
             continue
 
-        # ── Entries ───────────────────────────────────────────────────────────
+        # ── Entries ────────────────────────────────────────────────────────
         candidates = []
         for tkr, tkr_df in signals.items():
             if tkr in open_positions or today not in tkr_df.index:
@@ -600,8 +595,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             if not row["signal"]:
                 continue
             if tkr in cooldown_map:
-                days_since = (pd.Timestamp(today) -
-                              pd.Timestamp(cooldown_map[tkr])).days
+                days_since = (pd.Timestamp(today) - pd.Timestamp(cooldown_map[tkr])).days
                 if days_since < REENTRY_COOLDOWN_DAYS:
                     continue
             if near_earnings(tkr, today, earnings_map):
@@ -612,12 +606,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
             candidates.append((tkr, float(row["rsi2"]), int(row["consec_down"])))
 
-        candidates.sort(key=lambda x: x[1])
+        candidates.sort(key=lambda x: x[1])  # most oversold first
 
         for tkr, rsi_val, consec_val in candidates:
             if len(open_positions) >= MAX_POSITIONS:
                 break
-            tkr_df    = signals[tkr]
+            tkr_df   = signals[tkr]
             today_idx = tkr_df.index.get_loc(today)
             if today_idx + 1 >= len(tkr_df):
                 continue
@@ -625,9 +619,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             entry_price = float(next_row["Open"])
             if entry_price <= 0:
                 continue
-
             prev_close_val = float(tkr_df.iloc[today_idx]["Close"])
-            gap_pct        = (entry_price - prev_close_val) / prev_close_val
+            gap_pct = (entry_price - prev_close_val) / prev_close_val
             if gap_pct < GAP_DOWN_MAX or gap_pct > GAP_UP_MAX:
                 continue
 
@@ -656,9 +649,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
     return pd.DataFrame(trades)
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 7.  Metrics
+# 7. Metrics
 # ─────────────────────────────────────────────────────────────────────────────
 def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     if trades_df.empty:
@@ -670,8 +662,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     for _, row in trades_df.iterrows():
         equity += row["pnl_usd"]
         equity_curve.append({"date": row["exit_date"], "equity": equity})
-    eq_df = pd.DataFrame(equity_curve)
 
+    eq_df    = pd.DataFrame(equity_curve)
     start_dt = pd.to_datetime(trades_df["entry_date"].min())
     end_dt   = pd.to_datetime(trades_df["exit_date"].max())
     years    = max((end_dt - start_dt).days / 365.25, 1e-6)
@@ -694,14 +686,12 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     eq_df["date"] = pd.to_datetime(eq_df["date"])
     eq_df.set_index("date", inplace=True)
     monthly_ret = eq_df["equity"].resample("ME").last().ffill().pct_change().dropna()
-    sharpe      = monthly_ret.mean() / monthly_ret.std() * np.sqrt(12) \
-                  if monthly_ret.std() > 0 else 0
+    sharpe = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
+              if monthly_ret.std() > 0 else 0)
 
     total_comm  = trades_df["commission"].sum() if "commission" in trades_df else 0
     exit_counts = trades_df["exit_reason"].value_counts().to_dict() \
-                  if "exit_reason" in trades_df.columns else {}
-    tier_counts = trades_df["tier"].value_counts().sort_index().to_dict() \
-                  if "tier" in trades_df.columns else {}
+        if "exit_reason" in trades_df.columns else {}
 
     tier_stats = {}
     if "tier" in trades_df.columns:
@@ -717,11 +707,10 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
                 "avg_days": round(t_df["days_held"].mean(), 1),
             }
 
-    full_exits   = trades_df[trades_df["exit_reason"] != "partial_exit"] \
-                   if "exit_reason" in trades_df.columns else trades_df
-    time_stop_n  = exit_counts.get("time_stop", 0)
-    time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) \
-                   if len(full_exits) else 0
+    full_exits     = trades_df[trades_df["exit_reason"] != "partial_exit"] \
+        if "exit_reason" in trades_df.columns else trades_df
+    time_stop_n    = exit_counts.get("time_stop", 0)
+    time_stop_rt   = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
         "period_start"        : start_dt.date().isoformat(),
@@ -731,8 +720,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "trades_per_year"     : round(len(trades_df) / years, 1),
         "win_rate_pct"        : round(win_rate, 2),
         "cagr_pct"            : round(cagr * 100, 2),
-        "roi_per_year_pct"    : round((equity - INITIAL_CAPITAL) /
-                                       INITIAL_CAPITAL / years * 100, 2),
+        "roi_per_year_pct"    : round((equity - INITIAL_CAPITAL) / INITIAL_CAPITAL / years * 100, 2),
         "avg_days_held"       : round(trades_df["days_held"].mean(), 2),
         "avg_win_pct"         : round(avg_win, 2),
         "avg_loss_pct"        : round(avg_loss, 2),
@@ -749,8 +737,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "parameters"          : {
             "max_positions"         : MAX_POSITIONS,
             "tier1_6plus_days"      : f"2% target, 8d window, partial at 1%",
-            "tier2_5_days"          : f"1.5% target, 6d window",
-            "tier3_4_days"          : f"1% target, 4d window",
+            "tier2_5_days"          : f"2% target, 8d window (uniform)",
+            "tier3_4_days"          : f"2% target, 8d window (uniform)",
             "min_hold_before_exit"  : MIN_HOLD_BEFORE_EXIT,
             "rsi2_entry_threshold"  : RSI_THRESHOLD,
             "dollar_vol_min"        : MIN_DOLLAR_VOLUME,
@@ -759,21 +747,20 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "max_sector_positions"  : MAX_SECTOR_POSITIONS,
             "reentry_cooldown_days" : REENTRY_COOLDOWN_DAYS,
             "vix_sizing"            : f"<{VIX_LOW}VIX:{POSITION_SIZE_HIGH*100}%, "
-                                       f">{VIX_HIGH}VIX:{POSITION_SIZE_LOW*100}%",
+                                      f">{VIX_HIGH}VIX:{POSITION_SIZE_LOW*100}%",
             "earnings_month_cap"    : f"{POSITION_SIZE_EARNINGS*100}%",
             "universe"              : "S&P500 + S&P400",
             "commission"            : f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
-            "dd_scale_mild_pct"      : DD_SCALE_MILD,
-            "dd_size_mild"           : POSITION_SIZE_DD_MILD,
-            "dd_scale_severe_pct"    : DD_SCALE_SEVERE,
-            "dd_size_severe"         : POSITION_SIZE_DD_SEVERE,
-        }
+            "dd_scale_mild_pct"     : DD_SCALE_MILD,
+            "dd_size_mild"          : POSITION_SIZE_DD_MILD,
+            "dd_scale_severe_pct"   : DD_SCALE_SEVERE,
+            "dd_size_severe"        : POSITION_SIZE_DD_SEVERE,
+        },
     }
     return metrics, eq_df.reset_index()
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# 8.  Save + print
+# 8. Save + print
 # ─────────────────────────────────────────────────────────────────────────────
 def save_outputs(trades_df, metrics, eq_df):
     trades_df.to_csv(OUTPUT_DIR / "trades.csv", index=False)
@@ -782,36 +769,34 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "="*66)
-    print("  NAIVE MR BACKTEST — V7 FINAL + DRAWDOWN SCALING")
+    print(" NAIVE MR BACKTEST — V7 FINAL + DRAWDOWN SCALING")
     print("="*66)
     for k, v in metrics.items():
         if k == "tier_stats":
-            print(f"\n  Per-Tier Statistics:")
+            print(f"\n Per-Tier Statistics:")
             for tk, tv in v.items():
-                print(f"    {tk}:")
+                print(f"   {tk}:")
                 for sk, sv in tv.items():
-                    print(f"      {sk:<16}: {sv}")
+                    print(f"     {sk:<16}: {sv}")
         elif k in ("parameters", "exit_reasons"):
             label = "Parameters" if "param" in k else "Exit Reason Breakdown"
-            print(f"\n  {label}:")
+            print(f"\n {label}:")
             for ek, ev in v.items():
-                print(f"    {ek:<36}: {ev}")
+                print(f"   {ek:<36}: {ev}")
         else:
             print(f"  {k.replace('_',' ').title():<36}: {v}")
     print("="*66)
-    print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
-
+    print(f"\n Saved to: {OUTPUT_DIR.resolve()}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 9.  Entry point
+# 9. Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    universe     = get_universe()
-    price_data   = download_prices(universe)
+    universe   = get_universe()
+    price_data = download_prices(universe)
     spy_df, vix_df, sector_data = download_reference_data()
     earnings_map = build_earnings_dates(list(price_data.keys()))
-    trades_df    = run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
-
+    trades_df = run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
     if trades_df.empty:
         print("[ERROR] No trades generated.")
     else:
