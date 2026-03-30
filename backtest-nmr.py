@@ -85,16 +85,16 @@ TIER1_PARTIAL_TRIGGER = 0.010
 TIER2_MIN_DOWN = 5
 TIER2_TARGET = 0.020       # was 0.015 — uniform with Tier 1
 TIER2_HOLD_DAYS = 8        # was 6     — uniform with Tier 1
-TIER2_PARTIAL = True       # was False — partial exit at 1%, rest at 2%
-TIER2_PARTIAL_FRAC = 0.50
-TIER2_PARTIAL_TRIGGER = 0.010
+TIER2_PARTIAL = False
+TIER2_PARTIAL_FRAC = 0.0
+TIER2_PARTIAL_TRIGGER = 0.0
 
 TIER3_MIN_DOWN = 4
 TIER3_TARGET = 0.020       # was 0.010 — uniform with Tier 1
 TIER3_HOLD_DAYS = 8        # was 4     — uniform with Tier 1
-TIER3_PARTIAL = True       # was False — partial exit at 1%, rest at 2%
-TIER3_PARTIAL_FRAC = 0.50
-TIER3_PARTIAL_TRIGGER = 0.010
+TIER3_PARTIAL = False
+TIER3_PARTIAL_FRAC = 0.0
+TIER3_PARTIAL_TRIGGER = 0.0
 
 EARNINGS_BLACKOUT = 3
 GAP_DOWN_MAX = -0.015
@@ -169,7 +169,7 @@ def get_tier(consec_down: int) -> dict:
             "hold_days"       : TIER2_HOLD_DAYS,
             "partial_enabled" : TIER2_PARTIAL,
             "partial_frac"    : TIER2_PARTIAL_FRAC,
-            "partial_trigger" : TIER2_PARTIAL_TRIGGER,
+            "partial_trigger" : TIER2_TARGET,
         }
     else:
         return {
@@ -178,7 +178,7 @@ def get_tier(consec_down: int) -> dict:
             "hold_days"       : TIER3_HOLD_DAYS,
             "partial_enabled" : TIER3_PARTIAL,
             "partial_frac"    : TIER3_PARTIAL_FRAC,
-            "partial_trigger" : TIER3_PARTIAL_TRIGGER,
+            "partial_trigger" : TIER3_TARGET,
         }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -741,8 +741,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "parameters"          : {
             "max_positions"         : MAX_POSITIONS,
             "tier1_6plus_days"      : f"2% target, 8d window, partial at 1%",
-            "tier2_5_days"          : f"2% target, 8d window, partial at 1% (uniform)",
-            "tier3_4_days"          : f"2% target, 8d window, partial at 1% (uniform)",
+            "tier2_5_days"          : f"2% target, 8d window, no partial (uniform)",
+            "tier3_4_days"          : f"2% target, 8d window, no partial (uniform)",
             "min_hold_before_exit"  : MIN_HOLD_BEFORE_EXIT,
             "rsi2_entry_threshold"  : RSI_THRESHOLD,
             "dollar_vol_min"        : MIN_DOLLAR_VOLUME,
