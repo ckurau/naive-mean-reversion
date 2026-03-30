@@ -113,10 +113,10 @@ EARNINGS_MONTHS = {1, 4, 7, 10}
 # ── Drawdown-based position sizing (volatility scaling) ──────────────────────
 # Instead of halting trading during drawdowns, reduce position size.
 # This keeps the strategy compounding while naturally reducing exposure.
-DD_SCALE_MILD   = 0.05   # drawdown threshold for mild reduction
-DD_SCALE_SEVERE = 0.10   # drawdown threshold for severe reduction
-POSITION_SIZE_DD_MILD   = 0.03  # 3% per trade when DD 5-10% from peak
-POSITION_SIZE_DD_SEVERE = 0.02  # 2% per trade when DD 10%+ from peak
+DD_SCALE_MILD   = 0.08   # drawdown threshold for mild reduction (was 0.05)
+DD_SCALE_SEVERE = 0.15   # drawdown threshold for severe reduction (was 0.10)
+POSITION_SIZE_DD_MILD   = 0.03  # 3% per trade when DD 8-15% from peak
+POSITION_SIZE_DD_SEVERE = 0.02  # 2% per trade when DD 15%+ from peak
 
 OUTPUT_DIR = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
