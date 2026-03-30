@@ -42,13 +42,14 @@ INITIAL_CAPITAL   = 100_000.0     # starting portfolio value
 
 # ── Enhancement parameters ───────────────────────────────────────────────────
 RSI_PERIOD        = 2             # RSI lookback (short = more sensitive)
-RSI_THRESHOLD     = 20            # only buy when RSI(2) < this level
+RSI_THRESHOLD     = 10            # only buy when RSI(2) < this level
 ATR_PERIOD        = 14            # ATR lookback for volatility filter
 ATR_MIN_PCT       = 0.01          # min ATR as % of price (1% = meaningful volatility)
 VOL_MA_PERIOD     = 20            # volume MA period for confirmation
-MIN_PROFIT_PCT    = 0.005         # minimum up-day gain to trigger exit (0.5%)
+MIN_PROFIT_PCT    = 0.010         # minimum up-day gain to trigger exit (0.5%)
 COMMISSION_RATE   = 0.005         # $0.005 per share
 COMMISSION_MIN    = 1.00          # minimum $1.00 per trade
+STOP_LOSS_PCT     = -0.03         # hard stop-loss at -3% from entry price
 
 OUTPUT_DIR        = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -298,9 +299,15 @@ def run_backtest(price_data: dict[str, pd.DataFrame],
                 continue
             prev_close = tkr_df.iloc[prev_idx - 1]["Close"]
 
-            # Enhancement 4: only exit if up-day gain >= MIN_PROFIT_PCT
-            up_pct = (row["Close"] - prev_close) / prev_close
-            if up_pct >= MIN_PROFIT_PCT:
+            # Exit 1: hard stop-loss — close fell >= 3% below entry
+            pos_pct   = (row["Close"] - pos["entry_price"]) / pos["entry_price"]
+            stop_hit  = pos_pct <= STOP_LOSS_PCT
+
+            # Exit 2: profit target — up-day with gain >= MIN_PROFIT_PCT (1%)
+            up_pct    = (row["Close"] - prev_close) / prev_close
+            profit_hit = up_pct >= MIN_PROFIT_PCT
+
+            if stop_hit or profit_hit:
                 exit_price  = row["Close"]
                 commission  = calc_commission(pos["shares"], exit_price)
                 pnl         = (exit_price - pos["entry_price"]) * pos["shares"] - commission
@@ -317,6 +324,7 @@ def run_backtest(price_data: dict[str, pd.DataFrame],
                     "pnl_usd"      : pnl,
                     "pnl_pct"      : pnl_pct,
                     "days_held"    : days_held,
+                    "exit_reason"  : "stop_loss" if stop_hit else "profit_target",
                     "portfolio_val": portfolio_value + pnl,
                     "spy_regime"   : spy_ok,
                 })
@@ -415,6 +423,13 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
 
     total_commission = trades_df["commission"].sum() if "commission" in trades_df else 0
 
+    # Stop-loss vs profit-target breakdown
+    if "exit_reason" in trades_df.columns:
+        stop_exits   = (trades_df["exit_reason"] == "stop_loss").sum()
+        profit_exits = (trades_df["exit_reason"] == "profit_target").sum()
+    else:
+        stop_exits, profit_exits = 0, len(trades_df)
+
     metrics = {
         "period_start"         : start_dt.date().isoformat(),
         "period_end"           : end_dt.date().isoformat(),
@@ -430,6 +445,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
         "profit_factor"        : round(profit_factor, 2),
         "max_drawdown_pct"     : round(max_drawdown, 2),
         "sharpe_ratio"         : round(sharpe, 2),
+        "stop_loss_exits"      : int(stop_exits),
+        "profit_target_exits"  : int(profit_exits),
         "total_commission_usd" : round(total_commission, 2),
         "initial_capital"      : INITIAL_CAPITAL,
         "final_equity"         : round(equity, 2),
@@ -440,6 +457,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
             "atr_min_pct"      : ATR_MIN_PCT,
             "vol_ma_period"    : VOL_MA_PERIOD,
             "min_profit_pct"   : MIN_PROFIT_PCT,
+            "stop_loss_pct"    : STOP_LOSS_PCT,
             "spy_regime_filter": True,
             "commission_rate"  : COMMISSION_RATE,
         }
