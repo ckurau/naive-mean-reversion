@@ -99,6 +99,7 @@ COMMISSION_RATE         = 0.005
 COMMISSION_MIN          = 1.00
 EARNINGS_MONTHS         = {1, 4, 7, 10}
 CIRCUIT_BREAKER_PCT     = 0.10        # halt new entries if portfolio drops 10% from peak
+CIRCUIT_BREAKER_RESUME  = 0.05        # resume when recovered to within 5% of peak
 
 OUTPUT_DIR              = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -450,6 +451,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
 
     portfolio_value  = INITIAL_CAPITAL
     portfolio_peak   = INITIAL_CAPITAL   # tracks rolling high-water mark
+    peak_initialised = False              # only start tracking peak after first trade
     circuit_open     = False              # True = entries halted
     open_positions: dict[str, dict] = {}
     trades:         list[dict]      = []
@@ -461,10 +463,21 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
 
         # ── Circuit breaker: update peak and check drawdown ───────────────────
-        if portfolio_value > portfolio_peak:
-            portfolio_peak = portfolio_value
-        current_dd = (portfolio_value - portfolio_peak) / portfolio_peak
-        circuit_open = current_dd <= -CIRCUIT_BREAKER_PCT
+        # Only initialise peak tracking after first trade closes (portfolio moved)
+        if not peak_initialised and portfolio_value != INITIAL_CAPITAL:
+            peak_initialised = True
+        if peak_initialised:
+            if portfolio_value > portfolio_peak:
+                portfolio_peak = portfolio_value
+            current_dd = (portfolio_value - portfolio_peak) / portfolio_peak
+            if circuit_open:
+                # Resume when recovered to within CIRCUIT_BREAKER_RESUME of peak
+                if current_dd >= -CIRCUIT_BREAKER_RESUME:
+                    circuit_open = False
+            else:
+                # Trip the breaker if drawdown exceeds threshold
+                if current_dd <= -CIRCUIT_BREAKER_PCT:
+                    circuit_open = True
 
         # ── Exits ─────────────────────────────────────────────────────────────
         to_close = []
@@ -731,6 +744,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "universe"              : "S&P500 + S&P400",
             "commission"            : f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
             "circuit_breaker_pct"    : CIRCUIT_BREAKER_PCT,
+            "circuit_breaker_resume" : CIRCUIT_BREAKER_RESUME,
         }
     }
     return metrics, eq_df.reset_index()
