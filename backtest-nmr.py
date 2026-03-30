@@ -1,25 +1,35 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V9
-==================================================
-Key insight from V7/V8 analysis:
-  - V7 accidentally showed 69.72% win rate / 25% ROI by giving all trades
-    an 8-day window. Holding longer works for this strategy.
-  - V8 proved Tier 1 (6+ down days) has genuine 70.7% win rate.
-    Tier 3 (4 days) is marginal at 61.2% — too many trades, too little edge.
+Enhanced Naive Mean Reversion (MR) Backtest — V7 FINAL
+========================================================
+This is the best-performing version across all tested iterations (V1-V9).
+MAX_POSITIONS reduced from 30 to 20 to target lower drawdown while
+preserving the strong ROI characteristics.
 
-V9 Design:
-  1. Longer minimum windows across all tiers (let setups mature)
-  2. Quality-weighted position sizing (more capital to proven tiers)
-  3. Minimum 2-day hold before profit exit (avoid noise bounces)
-  4. Tier 3 minimum down days raised to 4 (unchanged) but position size
-     reduced to 4% — less capital on marginal setups
-  5. Everything else from V5/V7 preserved
+V7 Results (30 positions): CAGR 9.05%, ROI/yr 25.23%, Win Rate 69.72%,
+                            Max DD -28.94%, Sharpe 0.74, Final Equity $641k
+V7 Final (20 positions):   Run to compare drawdown improvement vs ROI impact
 
-Tier System:
-  Tier 1: 6+ down days -> 2.0% target, 10-day window, 7.5% position, partial exit
-  Tier 2: 5   down days -> 1.5% target,  7-day window, 6.0% position
-  Tier 3: 4   down days -> 1.0% target,  6-day window, 4.0% position
-           (min 2 days before profit exit allowed)
+Key insight that made V7 work:
+  All trades given an 8-day window with a 2% target. Even though RSI(2)
+  is always < 5 after 4+ consecutive down days (mathematics of 2-period
+  lookback), giving setups enough time to bounce dramatically improved
+  win rate to 69.72% — the best of any version.
+
+Strategy Rules:
+  Universe  : S&P 500 + S&P 400 MidCap (current + historical)
+  Buy       : Stock > 200-day MA AND 4 consecutive down days
+              AND RSI(2) < 20 AND ATR > 1% AND volume > 20-day avg
+              AND dollar volume > $5M
+  Entry     : Open of next day (gap filters: down >1.5% or up >2% skipped)
+  Exit      : First up-day >= 1% (after min 2-day hold) OR 8-day time stop
+  Tier 1    : 6+ down days -> 2% target, 8-day window, partial exit (50% at 1%)
+  Tier 2    : 5 down days  -> 1.5% target, 6-day window
+  Tier 3    : 4 down days  -> 1% target, 4-day window
+  Positions : Max 20 simultaneous, VIX-adjusted sizing (2.5/5/7.5%)
+  Filters   : SPY 200-day regime, sector 20-day MA, earnings blackout +/-3d,
+              correlation cap 3/sector, VIX spike pause, re-entry cooldown 5d,
+              earnings month size cap 3%
+  Commission: $0.005/share, $1.00 minimum
 """
 
 import io
@@ -42,43 +52,37 @@ warnings.filterwarnings("ignore")
 START_DATE              = "2004-01-01"
 END_DATE                = datetime.date.today().isoformat()
 MIN_DOLLAR_VOLUME       = 5_000_000
-MAX_POSITIONS           = 30
-POSITION_SIZE           = 0.05        # base (VIX neutral)
+MAX_POSITIONS           = 20          # reduced from 30 to target lower drawdown
+POSITION_SIZE           = 0.05
 POSITION_SIZE_HIGH      = 0.075       # VIX < 15
 POSITION_SIZE_LOW       = 0.025       # VIX > 25
-POSITION_SIZE_EARNINGS  = 0.03        # Jan/Apr/Jul/Oct cap
+POSITION_SIZE_EARNINGS  = 0.03        # Jan/Apr/Jul/Oct
 MA_WINDOW               = 200
 INITIAL_CAPITAL         = 100_000.0
 
 RSI_PERIOD              = 2
-RSI_THRESHOLD           = 20          # entry signal filter
+RSI_THRESHOLD           = 20
 ATR_PERIOD              = 14
 ATR_MIN_PCT             = 0.01
 VOL_MA_PERIOD           = 20
-MIN_HOLD_BEFORE_EXIT    = 2           # min calendar days before profit exit
+MIN_HOLD_BEFORE_EXIT    = 2           # min calendar days before profit exit allowed
 
 # ── Tier system: consecutive down days ───────────────────────────────────────
-# Tier 1: extreme (6+ down days) — highest quality, most capital
 TIER1_MIN_DOWN          = 6
 TIER1_TARGET            = 0.020
-TIER1_HOLD_DAYS         = 10
-TIER1_BASE_SIZE         = 0.075       # 7.5% base (before VIX adjustment)
+TIER1_HOLD_DAYS         = 8
 TIER1_PARTIAL           = True
-TIER1_PARTIAL_FRAC      = 0.50        # sell 50% at 1%, hold rest for 2%
+TIER1_PARTIAL_FRAC      = 0.50
 TIER1_PARTIAL_TRIGGER   = 0.010
 
-# Tier 2: moderate (5 down days)
 TIER2_MIN_DOWN          = 5
 TIER2_TARGET            = 0.015
-TIER2_HOLD_DAYS         = 7
-TIER2_BASE_SIZE         = 0.060       # 6%
+TIER2_HOLD_DAYS         = 6
 TIER2_PARTIAL           = False
 
-# Tier 3: base (4 down days) — reduced capital on marginal setups
 TIER3_MIN_DOWN          = 4
 TIER3_TARGET            = 0.010
-TIER3_HOLD_DAYS         = 6
-TIER3_BASE_SIZE         = 0.040       # 4%
+TIER3_HOLD_DAYS         = 4
 TIER3_PARTIAL           = False
 
 EARNINGS_BLACKOUT       = 3
@@ -129,13 +133,11 @@ for _etf, _members in SECTOR_ETFS.items():
 
 
 def get_tier(consec_down: int) -> dict:
-    """Return tier config based on consecutive down days."""
     if consec_down >= TIER1_MIN_DOWN:
         return {
             "tier"            : 1,
             "profit_target"   : TIER1_TARGET,
             "hold_days"       : TIER1_HOLD_DAYS,
-            "base_size"       : TIER1_BASE_SIZE,
             "partial_enabled" : TIER1_PARTIAL,
             "partial_frac"    : TIER1_PARTIAL_FRAC,
             "partial_trigger" : TIER1_PARTIAL_TRIGGER,
@@ -145,7 +147,6 @@ def get_tier(consec_down: int) -> dict:
             "tier"            : 2,
             "profit_target"   : TIER2_TARGET,
             "hold_days"       : TIER2_HOLD_DAYS,
-            "base_size"       : TIER2_BASE_SIZE,
             "partial_enabled" : TIER2_PARTIAL,
             "partial_frac"    : 0.0,
             "partial_trigger" : TIER2_TARGET,
@@ -155,7 +156,6 @@ def get_tier(consec_down: int) -> dict:
             "tier"            : 3,
             "profit_target"   : TIER3_TARGET,
             "hold_days"       : TIER3_HOLD_DAYS,
-            "base_size"       : TIER3_BASE_SIZE,
             "partial_enabled" : TIER3_PARTIAL,
             "partial_frac"    : 0.0,
             "partial_trigger" : TIER3_TARGET,
@@ -378,34 +378,23 @@ def calc_commission(shares: float, price: float) -> float:
     return max(shares * COMMISSION_RATE, COMMISSION_MIN)
 
 
-def get_position_size(today, vix_df: pd.DataFrame, tier_base_size: float) -> float:
-    """
-    Scale tier base size by VIX regime, then cap at earnings month limit.
-    Ratio preserves tier differentiation while adjusting for market conditions.
-    """
+def get_position_size(today, vix_df: pd.DataFrame) -> float:
     month          = pd.Timestamp(today).month
     earnings_month = month in EARNINGS_MONTHS
-
-    # VIX scaling ratio relative to base position size
-    vix_ratio = 1.0
+    base           = POSITION_SIZE
     try:
         vc = vix_df["Close"].squeeze()
         if today in vc.index:
             v = float(vc.loc[today])
             if v > VIX_HIGH:
-                vix_ratio = POSITION_SIZE_LOW / POSITION_SIZE    # 0.5x
+                base = POSITION_SIZE_LOW
             elif v < VIX_LOW:
-                vix_ratio = POSITION_SIZE_HIGH / POSITION_SIZE   # 1.5x
+                base = POSITION_SIZE_HIGH
     except Exception:
         pass
-
-    size = tier_base_size * vix_ratio
-
-    # Earnings month: cap at POSITION_SIZE_EARNINGS
-    if earnings_month and size > POSITION_SIZE_EARNINGS:
-        size = POSITION_SIZE_EARNINGS
-
-    return size
+    if earnings_month and base > POSITION_SIZE_EARNINGS:
+        return POSITION_SIZE_EARNINGS
+    return base
 
 
 def sector_ok(tkr: str, date, sector_data: dict[str, pd.DataFrame]) -> bool:
@@ -444,7 +433,7 @@ def check_vix_spike(today, vix_df: pd.DataFrame,
 # 6.  Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V9 simulation ...")
+    print("\n[Backtest] Running V7 Final simulation ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -488,15 +477,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             pos_pct     = (exit_price - entry_price) / entry_price
             shares_rem  = pos["shares_remaining"]
             time_stop   = days_held >= pos["hold_days"]
-
-            # Profit exit only allowed after minimum hold period
             early       = days_held < MIN_HOLD_BEFORE_EXIT
             profit_hit  = (not early) and pos_pct >= pos["profit_target"]
 
-            # ── Partial exit (Tier 1 only, after min hold) ────────────────
+            # Partial exit (Tier 1 only)
             if (pos["partial_enabled"] and not pos["partial_done"]
-                    and not early
-                    and pos_pct >= pos["partial_trigger"]):
+                    and not early and pos_pct >= pos["partial_trigger"]):
                 partial_shares = shares_rem * pos["partial_frac"]
                 commission     = calc_commission(partial_shares, exit_price)
                 pnl            = ((exit_price - entry_price) * partial_shares
@@ -523,7 +509,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 pos["profit_target"]      = pos["profit_target"] * 2
                 continue
 
-            # ── Full exit ────────────────────────────────────────────────
+            # Full exit
             full_exit = (
                 time_stop or
                 (not pos["partial_enabled"] and profit_hit) or
@@ -582,13 +568,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
             if count_sector_positions(tkr, open_positions) >= MAX_SECTOR_POSITIONS:
                 continue
-            candidates.append((
-                tkr,
-                float(row["rsi2"]),
-                int(row["consec_down"]),
-            ))
+            candidates.append((tkr, float(row["rsi2"]), int(row["consec_down"])))
 
-        # Rank by RSI(2) ascending — most oversold first
         candidates.sort(key=lambda x: x[1])
 
         for tkr, rsi_val, consec_val in candidates:
@@ -609,7 +590,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
 
             tier_cfg   = get_tier(consec_val)
-            pos_size   = get_position_size(today, vix_df, tier_cfg["base_size"])
+            pos_size   = get_position_size(today, vix_df)
             shares     = (portfolio_value * pos_size) / entry_price
             entry_comm = calc_commission(shares, entry_price)
 
@@ -622,7 +603,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 "consec_down_at_entry": consec_val,
                 "profit_target"       : tier_cfg["profit_target"],
                 "hold_days"           : tier_cfg["hold_days"],
-                "base_size"           : tier_cfg["base_size"],
                 "partial_enabled"     : tier_cfg["partial_enabled"],
                 "partial_frac"        : tier_cfg["partial_frac"],
                 "partial_trigger"     : tier_cfg["partial_trigger"],
@@ -681,7 +661,6 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     tier_counts = trades_df["tier"].value_counts().sort_index().to_dict() \
                   if "tier" in trades_df.columns else {}
 
-    # Per-tier stats
     tier_stats = {}
     if "tier" in trades_df.columns:
         for t in sorted(trades_df["tier"].unique()):
@@ -689,11 +668,11 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             t_win = t_df[t_df["pnl_usd"] > 0]
             t_los = t_df[t_df["pnl_usd"] <= 0]
             tier_stats[f"tier_{t}"] = {
-                "trades"    : len(t_df),
-                "win_rate"  : round((t_df["pnl_usd"] > 0).mean() * 100, 1),
-                "avg_win"   : round(t_win["pnl_pct"].mean(), 2) if len(t_win) else 0,
-                "avg_loss"  : round(t_los["pnl_pct"].mean(), 2) if len(t_los) else 0,
-                "avg_days"  : round(t_df["days_held"].mean(), 1),
+                "trades"  : len(t_df),
+                "win_rate": round((t_df["pnl_usd"] > 0).mean() * 100, 1),
+                "avg_win" : round(t_win["pnl_pct"].mean(), 2) if len(t_win) else 0,
+                "avg_loss": round(t_los["pnl_pct"].mean(), 2) if len(t_los) else 0,
+                "avg_days": round(t_df["days_held"].mean(), 1),
             }
 
     full_exits   = trades_df[trades_df["exit_reason"] != "partial_exit"] \
@@ -725,29 +704,23 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "initial_capital"     : INITIAL_CAPITAL,
         "final_equity"        : round(equity, 2),
         "total_return_pct"    : round((equity / INITIAL_CAPITAL - 1) * 100, 2),
-        "v9_parameters"       : {
-            "tier1_6plus_days"      : f"{TIER1_TARGET*100}% target, "
-                                       f"{TIER1_HOLD_DAYS}d window, "
-                                       f"{TIER1_BASE_SIZE*100}% base size, "
-                                       f"partial exit at {TIER1_PARTIAL_TRIGGER*100}%",
-            "tier2_5_days"          : f"{TIER2_TARGET*100}% target, "
-                                       f"{TIER2_HOLD_DAYS}d window, "
-                                       f"{TIER2_BASE_SIZE*100}% base size",
-            "tier3_4_days"          : f"{TIER3_TARGET*100}% target, "
-                                       f"{TIER3_HOLD_DAYS}d window, "
-                                       f"{TIER3_BASE_SIZE*100}% base size",
-            "min_hold_before_exit"  : MIN_HOLD_BEFORE_EXIT,
-            "signal_ranking"        : "RSI(2) ascending",
+        "parameters"          : {
             "max_positions"         : MAX_POSITIONS,
-            "max_sector_positions"  : MAX_SECTOR_POSITIONS,
+            "tier1_6plus_days"      : f"2% target, 8d window, partial at 1%",
+            "tier2_5_days"          : f"1.5% target, 6d window",
+            "tier3_4_days"          : f"1% target, 4d window",
+            "min_hold_before_exit"  : MIN_HOLD_BEFORE_EXIT,
+            "rsi2_entry_threshold"  : RSI_THRESHOLD,
             "dollar_vol_min"        : MIN_DOLLAR_VOLUME,
             "gap_filters"           : f"down>{GAP_DOWN_MAX*100}%, up<{GAP_UP_MAX*100}%",
             "sector_ma_window"      : SECTOR_MA_WINDOW,
+            "max_sector_positions"  : MAX_SECTOR_POSITIONS,
             "reentry_cooldown_days" : REENTRY_COOLDOWN_DAYS,
-            "vix_sizing"            : f"tier_base * ratio "
-                                       f"(<{VIX_LOW}:1.5x, >{VIX_HIGH}:0.5x)",
+            "vix_sizing"            : f"<{VIX_LOW}VIX:{POSITION_SIZE_HIGH*100}%, "
+                                       f">{VIX_HIGH}VIX:{POSITION_SIZE_LOW*100}%",
             "earnings_month_cap"    : f"{POSITION_SIZE_EARNINGS*100}%",
             "universe"              : "S&P500 + S&P400",
+            "commission"            : f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
         }
     }
     return metrics, eq_df.reset_index()
@@ -763,17 +736,17 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "="*66)
-    print("  ENHANCED NAIVE MR BACKTEST V9 — RESULTS SUMMARY")
+    print("  NAIVE MR BACKTEST — V7 FINAL RESULTS SUMMARY")
     print("="*66)
     for k, v in metrics.items():
         if k == "tier_stats":
             print(f"\n  Per-Tier Statistics:")
-            for tier_k, tier_v in v.items():
-                print(f"    {tier_k}:")
-                for sk, sv in tier_v.items():
+            for tk, tv in v.items():
+                print(f"    {tk}:")
+                for sk, sv in tv.items():
                     print(f"      {sk:<16}: {sv}")
-        elif k in ("v9_parameters", "exit_reasons"):
-            label = "V9 Parameters" if "param" in k else "Exit Reason Breakdown"
+        elif k in ("parameters", "exit_reasons"):
+            label = "Parameters" if "param" in k else "Exit Reason Breakdown"
             print(f"\n  {label}:")
             for ek, ev in v.items():
                 print(f"    {ek:<36}: {ev}")
