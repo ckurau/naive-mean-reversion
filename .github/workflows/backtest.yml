@@ -16,6 +16,10 @@ on:
         description: "Starting capital in USD"
         required: false
         default: "100000"
+      run_walkforward:
+        description: "Also run walk-forward test? (true/false)"
+        required: false
+        default: "false"
 
   # ── Scheduled: re-run every Sunday at midnight UTC ─────────────────────────
   schedule:
@@ -25,8 +29,7 @@ jobs:
   backtest:
     name: Run Naive Mean-Reversion Backtest
     runs-on: ubuntu-latest
-    timeout-minutes: 120          # data download can take a while
-
+    timeout-minutes: 480          # walk-forward needs up to 6 hrs
     permissions:
       contents: write             # needed to push results back to the repo
 
@@ -48,24 +51,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ── 4. Apply optional overrides from workflow_dispatch inputs ────────────
+      # ── 4. Apply optional overrides from workflow_dispatch inputs ───────────
       - name: Apply date / capital overrides
         run: |
           if [ -n "${{ github.event.inputs.start_date }}" ]; then
             sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest-nmr.py
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest_nmr_lib.py
           fi
           if [ -n "${{ github.event.inputs.end_date }}" ]; then
-            sed -i "s/^END_DATE.*=.*/END_DATE   = \"${{ github.event.inputs.end_date }}\"/" backtest-nmr.py
+            sed -i "s/^END_DATE.*=.*/END_DATE = \"${{ github.event.inputs.end_date }}\"/" backtest-nmr.py
+            sed -i "s/^END_DATE.*=.*/END_DATE = \"${{ github.event.inputs.end_date }}\"/" backtest_nmr_lib.py
           fi
           if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
             sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest-nmr.py
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest_nmr_lib.py
           fi
 
-      # ── 5. Run the backtest ─────────────────────────────────────────────────
+      # ── 5. Run the main backtest ─────────────────────────────────────────────
       - name: Run backtest
         run: python backtest-nmr.py
 
-      # ── 6. Upload artifacts (always, even on failure) ───────────────────────
+      # ── 6. Run walk-forward test (optional — set run_walkforward=true) ───────
+      - name: Run walk-forward test
+        if: github.event.inputs.run_walkforward == 'true'
+        run: python walkforward.py
+
+      # ── 7. Upload artifacts (always, even on failure) ───────────────────────
       - name: Upload results as workflow artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -74,11 +85,11 @@ jobs:
           path: results/
           retention-days: 90
 
-      # ── 7. Commit results back to the repo ──────────────────────────────────
+      # ── 8. Commit results back to the repo ──────────────────────────────────
       - name: Commit results to repository
         if: success()
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add results/
           git diff --cached --quiet || git commit -m "chore: backtest results $(date -u +%Y-%m-%d)"
