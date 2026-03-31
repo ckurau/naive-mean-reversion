@@ -105,7 +105,6 @@ VIX_HIGH = 25
 VIX_LOW = 15
 VIX_SPIKE_PCT = 0.30
 VIX_SPIKE_PAUSE_DAYS = 2
-VIX_SPIKE_EXIT_LOSS = -0.005      # exit losing positions on VIX spike if down >0.5%
 REENTRY_COOLDOWN_DAYS = 5
 COMMISSION_RATE = 0.005
 COMMISSION_MIN = 1.00
@@ -524,17 +523,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             early     = days_held < MIN_HOLD_BEFORE_EXIT
             profit_hit = (not early) and pos_pct >= pos["profit_target"]
 
-            # VIX spike exit — if a panic spike is active AND the position is
-            # already losing beyond the threshold, exit at close rather than
-            # hold through a correlation-1 environment where MR breaks down.
-            # Only fires on currently-losing positions (winners ride normally).
-            vix_spike_active = paused  # paused is True during VIX_SPIKE_PAUSE_DAYS window
-            vix_spike_exit = (
-                vix_spike_active
-                and not early
-                and pos_pct < VIX_SPIKE_EXIT_LOSS
-            )
-
             # Partial exit (Tier 1 only)
             if (pos["partial_enabled"] and not pos["partial_done"]
                     and not early and pos_pct >= pos["partial_trigger"]):
@@ -566,19 +554,13 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             # Full exit
             full_exit = (
                 time_stop
-                or vix_spike_exit
                 or (not pos["partial_enabled"] and profit_hit)
                 or (pos["partial_enabled"] and pos["partial_done"] and profit_hit)
             )
             if full_exit:
                 commission = calc_commission(shares_rem, exit_price)
                 pnl = (exit_price - entry_price) * shares_rem - commission - pos["entry_commission"]
-                if vix_spike_exit:
-                    reason = "vix_spike_exit"
-                elif time_stop:
-                    reason = "time_stop"
-                else:
-                    reason = "profit_target"
+                reason = "time_stop" if time_stop else "profit_target"
                 trades.append({
                     "ticker"       : tkr,
                     "entry_date"   : pos["entry_date"],
@@ -596,7 +578,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                     "portfolio_val": portfolio_value + pnl,
                 })
                 portfolio_value += pnl
-                if time_stop or vix_spike_exit:
+                if time_stop:
                     cooldown_map[tkr] = today
                 to_close.append(tkr)
 
@@ -771,7 +753,6 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "reentry_cooldown_days" : REENTRY_COOLDOWN_DAYS,
             "vix_sizing"            : f"<{VIX_LOW}VIX:{POSITION_SIZE_HIGH*100}%, "
                                       f">{VIX_HIGH}VIX:{POSITION_SIZE_LOW*100}%",
-            "vix_spike_exit"        : f"exit losing positions (< {VIX_SPIKE_EXIT_LOSS*100}%) during VIX spike pause",
             "earnings_month_cap"    : f"{POSITION_SIZE_EARNINGS*100}%",
             "universe"              : "S&P500 + S&P400",
             "commission"            : f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
