@@ -99,6 +99,7 @@ TIER3_PARTIAL_TRIGGER = 0.0
 EARNINGS_BLACKOUT = 3
 GAP_DOWN_MAX = -0.015
 GAP_UP_MAX = 0.020
+SPY_DAY_DOWN_MAX = -0.005          # skip entries if SPY closed down >0.5% today
 SECTOR_MA_WINDOW = 20
 MAX_SECTOR_POSITIONS = 3
 VIX_HIGH = 25
@@ -276,8 +277,9 @@ def _dl_single(ticker: str) -> pd.DataFrame:
 def download_reference_data() -> tuple:
     spy = _dl_single("SPY")
     close = spy["Close"].squeeze()
-    spy["spy_ma200"] = close.rolling(200).mean()
-    spy["spy_ok"] = (close > spy["spy_ma200"].squeeze()).values
+    spy["spy_ma200"]     = close.rolling(200).mean()
+    spy["spy_ok"]        = (close > spy["spy_ma200"].squeeze()).values
+    spy["spy_daily_ret"] = close.pct_change()          # for same-day entry filter
     print(f"[Download] SPY: {len(spy)} rows")
 
     vix = _dl_single("^VIX")
@@ -587,6 +589,13 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
 
         if not spy_ok or paused:
             continue
+
+        # Skip entries if SPY itself closed down >0.5% today — entering into
+        # a broad market down-tape day increases correlated loss risk.
+        spy_day_ret = spy_df["spy_daily_ret"].get(today, 0.0)
+        if spy_day_ret < SPY_DAY_DOWN_MAX:
+            continue
+
         if len(open_positions) >= MAX_POSITIONS:
             continue
 
@@ -747,6 +756,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "rsi2_entry_threshold"  : RSI_THRESHOLD,
             "dollar_vol_min"        : MIN_DOLLAR_VOLUME,
             "gap_filters"           : f"down>{GAP_DOWN_MAX*100}%, up<{GAP_UP_MAX*100}%",
+            "spy_day_down_filter"   : f"skip entries if SPY day ret < {SPY_DAY_DOWN_MAX*100}%",
             "sector_ma_window"      : SECTOR_MA_WINDOW,
             "max_sector_positions"  : MAX_SECTOR_POSITIONS,
             "reentry_cooldown_days" : REENTRY_COOLDOWN_DAYS,
