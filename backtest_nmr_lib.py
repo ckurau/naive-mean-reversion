@@ -1,50 +1,59 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V13
+Enhanced Naive Mean Reversion (MR) Backtest — V14
 ==================================================
-Grounded entirely in V12 regime breakdown data.
+Grounded entirely in V13 data. Three changes targeting the three clearest
+structural problems identified across V10–V13.
 
-── V12 DIAGNOSIS ─────────────────────────────────────────────────────────────
-  V12 confirmed that Tier 2 (5-day setups) has a structural 59-60% win rate
-  ceiling that no target, partial, or hold-window adjustment can fix. This has
-  been consistent across V10 (59.9%), V11 (72.8% artificially, real ~60%),
-  V12 (59.4%). The problem is signal quality, not parameters.
+── V13 DIAGNOSIS ─────────────────────────────────────────────────────────────
+  Problem 1 — Avg win stuck at 2.83% (V7 had 3.34%):
+    The V10 filters (min 5 days, ROC -2.5%) select harder drops that need
+    more than 8 days to bounce. Evidence: 52% time-stop rate (target <35%).
+    Stocks are not recovering in 8 days because they fell harder.
 
-  However, regime breakdown reveals the solution. V12 bull regime win rate
-  collapsed to 56.4% — negative expected value at any position size. The
-  other regimes remain viable (sweet spot ~67%, co-oversold ~64%, neutral
-  ~62-63%). Blocking Tier 2 in bull regime removes the worst 21% of trades
-  while preserving ~230-260 trades/year (well above 115/yr Tier-1-only).
+  Problem 2 — 2022 catastrophic (29.7% WR, -$8k, getting worse each version):
+    SPY 200-day SMA filter is too slow. Entries in early 2022 (Feb–Apr)
+    happened before SPY crossed below 200d, but SPY was already below its
+    50-day SMA. The 50d reacts 3-4 months faster to deteriorating markets.
 
-── V13 CHANGES (2 only) ──────────────────────────────────────────────────────
-  [V13-1] Tier 2 entries blocked in bull regime
-      When spy_bull_regime is True, Tier 2 (5-day) entries are skipped.
-      Tier 1 (6+ day) entries still allowed in bull regime — 68.3% WR is
-      positive edge even there. This removes ~21% of trades (the worst ones)
-      while preserving ~79% of volume. Expected: trade count 342 → ~270/yr,
-      overall win rate lifts from 62% toward 65%+, bull regime win rate
-      improves because only high-quality Tier 1 setups remain there.
+  Problem 3 — ROC -2.5% filter selecting wrong setups:
+    The -2.5% minimum drop was designed to exclude slow bleeders, but it's
+    also excluding fast-bounce shallow-drop setups that drove V7's 3.34%
+    avg win. Removing it should restore trade volume and avg win.
 
-  [V13-2] Tier 2 target lowered back: 1.75% → 1.5%
-      V12 Tier 2 had 59.4% WR at 1.75% target and 52.6% time-stop rate.
-      The 1.75% target is too ambitious for 5-day setups — too many are
-      timing out before reaching it. Back to 1.5% for Tier 2 (the target
-      that maximizes win rate on these weaker setups), now that bull regime
-      trades are blocked (which were dragging the 1.5% trades down in V11).
+── V14 CHANGES (3 only) ──────────────────────────────────────────────────────
+  [V14-1] Extend hold windows: Tier 2 8→11d, Tier 1 8→12d
+      Directly attacks 52% time-stop rate. These harder drops need more
+      runway to recover. If time-stop rate drops below 40%, it's working.
+      If avg win recovers toward 3.1%+, confirm and keep.
 
-── UNCHANGED FROM V12 ────────────────────────────────────────────────────────
-  - ROC filter -2.5%, bull regime thresholds 18%/25%, RSI exit 85
-  - SPY regime break 4-day hold shortcut (NEW6 from V11)
-  - Crash position limit: SPY 20d ret < -8% → max 5 positions
-  - Tier 2: no partial exit (FIX-A from V12)
-  - Tier 1: 2% target, 8d, partial at +1% (unchanged throughout)
-  - All filters, regime + year + tier optimization report
+  [V14-2] Add SPY 50-day SMA entry guard
+      No new entries when SPY is below its 50-day SMA. Works alongside the
+      existing 200-day guard — the 50d gate closes earlier in deteriorating
+      markets. Expected: blocks ~70% of 2022 entries, also helps 2018/2021.
+      Computed daily from SPY prices, no lookahead.
+
+  [V14-3] Remove ROC -2.5% filter
+      Set ROC_MIN_DROP = 0.0 (disabled). Restores the shallow-drop fast-
+      bounce setups screened out since V10. Expected: trade count recovers
+      toward 400+/year, avg win recovers toward 3.1-3.2%.
+
+── UNCHANGED FROM V13 ────────────────────────────────────────────────────────
+  - Min 5 consecutive down days (Tier 3 eliminated)
+  - Tier 2 blocked in bull regime (V13-1)
+  - Tier 1: 2% target, 12d window, partial at +1%
+  - Tier 2: 1.5% target, 11d window, no partial, blocked in bull regime
+  - Crash position limit: SPY 20d < -8% → max 5 positions
+  - SPY regime break 4d hold shortcut
+  - Bull regime thresholds 18%/25%, 3% cap on Tier 1
+  - RSI exit at 85, all filters, regime + year + tier report
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
-  V7  (best): CAGR 9.05% | WR 69.72% | PF 1.14 | DD -28.94% | Sharpe 0.74
-  V10:        CAGR 1.05% | WR 63.11% | PF 1.07 | DD -18.27% | Sharpe 0.20
-  V11:        CAGR 0.65% | WR 71.81% | PF 1.04 | DD -24.34% | Sharpe 0.13
-  V12:        CAGR 0.72% | WR 62.13% | PF 1.05 | DD -21.81% | Sharpe 0.15
-  V13 target: CAGR >5%   | WR >65%   | PF >1.10 | DD <-24%  | Sharpe >0.55
+  V7  (best): CAGR 9.05% | WR 69.72% | PF 1.14 | Sharpe 0.74 | 872/yr
+  V10:        CAGR 1.05% | WR 63.11% | PF 1.07 | Sharpe 0.20 | 283/yr
+  V11:        CAGR 0.65% | WR 71.81% | PF 1.04 | Sharpe 0.13 | 482/yr
+  V12:        CAGR 0.72% | WR 62.13% | PF 1.05 | Sharpe 0.15 | 342/yr
+  V13:        CAGR 0.99% | WR 64.30% | PF 1.07 | Sharpe 0.19 | 320/yr
+  V14 target: CAGR >5%   | WR >66%   | PF >1.11 | Sharpe >0.50 | 380+/yr
 """
 
 import io
@@ -85,14 +94,14 @@ MIN_HOLD_BEFORE_EXIT   = 2
 # ── Tier system ───────────────────────────────────────────────────────────────
 TIER1_MIN_DOWN         = 6
 TIER1_TARGET           = 0.020
-TIER1_HOLD_DAYS        = 8
+TIER1_HOLD_DAYS        = 12             # [V14-1] extended 8 → 12
 TIER1_PARTIAL          = True
 TIER1_PARTIAL_FRAC     = 0.50
 TIER1_PARTIAL_TRIGGER  = 0.010         # 50% out at +1%
 
 TIER2_MIN_DOWN         = 5
 TIER2_TARGET           = 0.015         # [V13-2] back to 1.5% (1.75% had 52.6% time-stop rate)
-TIER2_HOLD_DAYS        = 8
+TIER2_HOLD_DAYS        = 11             # [V14-1] extended 8 → 11
 TIER2_PARTIAL          = False         # no partial — established in V12
 TIER2_PARTIAL_FRAC     = 0.0
 TIER2_PARTIAL_TRIGGER  = 0.0
@@ -100,7 +109,7 @@ TIER2_PARTIAL_TRIGGER  = 0.0
 MIN_CONSEC_DOWN        = TIER2_MIN_DOWN
 
 # ── [FIX 1] Rate-of-change filter ────────────────────────────────────────────
-ROC_MIN_DROP           = -0.025        # was -0.040
+ROC_MIN_DROP           = 0.0            # [V14-3] disabled (was -2.5%) — restores fast-bounce shallow setups
 
 # ── Distance from 50-day SMA (ranking only) ───────────────────────────────────
 MA50_WINDOW            = 50
@@ -313,6 +322,8 @@ def download_reference_data() -> tuple:
 
     spy["spy_ma200"]        = close.rolling(200).mean()
     spy["spy_ok"]           = (close > spy["spy_ma200"].squeeze()).values
+    spy["spy_ma50"]         = close.rolling(50).mean()                   # [V14-2] fast bear guard
+    spy["spy_ok_50"]        = (close > spy["spy_ma50"].squeeze()).values  # [V14-2] True when above 50d SMA
     spy["spy_12m_ret"]      = close.pct_change(252)
     spy["spy_20d_ret"]      = close.pct_change(20)                   # [FIX C] crash detection
     spy["spy_pct_above_ma"] = (close / spy["spy_ma200"].squeeze()) - 1
@@ -530,8 +541,9 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V13 simulation ...")
-    spy_regime = spy_df["spy_ok"].to_dict()
+    print("\n[Backtest] Running V14 simulation ...")
+    spy_regime    = spy_df["spy_ok"].to_dict()
+    spy_regime_50 = spy_df["spy_ok_50"].to_dict()   # [V14-2] 50d SMA fast bear guard
 
     all_dates: set = set()
     for df in price_data.values():
@@ -553,7 +565,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     last_vix_spike   = None
 
     for today in tqdm(trading_dates, desc="Simulating"):
-        spy_ok = spy_regime.get(today, True)
+        spy_ok    = spy_regime.get(today, True)
+        spy_ok_50 = spy_regime_50.get(today, True)   # [V14-2] False when SPY below 50d SMA
         paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
 
         if portfolio_peak is None:
@@ -583,9 +596,9 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             shares_rem  = pos["shares_remaining"]
             rsi_now     = float(row["rsi2"]) if not np.isnan(float(row["rsi2"])) else 50.0
 
-            # [NEW 6] Shorten hold window if SPY broke below 200d
+            # [V14-2] Shorten hold window if SPY broke below 200d or 50d SMA
             effective_hold = pos["hold_days"]
-            if not spy_ok:
+            if not spy_ok or not spy_ok_50:
                 effective_hold = min(effective_hold, SPY_BREAK_HOLD_DAYS)
 
             early      = days_held < MIN_HOLD_BEFORE_EXIT
@@ -665,7 +678,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        if not spy_ok or paused:
+        if not spy_ok or not spy_ok_50 or paused:   # [V14-2] blocks both 200d and 50d breaks
             continue
 
         # [FIX C] Crash mode: cap max positions when SPY is down hard over 20 days
@@ -868,7 +881,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V13",
+        "version":              "V14",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -893,16 +906,18 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity":         round(equity, 2),
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version":                   "V13",
+            "version":                   "V14",
             "min_consec_down":           MIN_CONSEC_DOWN,
-            "tier1_6plus_days":          "2% target, 8d, partial at +1% — allowed in ALL regimes",
-            "tier2_5_days":              "1.5% target [V13-2], 8d, no partial — BLOCKED in bull regime [V13-1]",
-            "tier2_bull_regime_block":   "Tier 2 entries skipped when spy_bull_regime=True [V13-1]",
-            "roc_min_drop":              f"{ROC_MIN_DROP*100:.1f}% from streak start",
+            "tier1_6plus_days":          f"2% target, {TIER1_HOLD_DAYS}d window [V14-1], partial at +1% — all regimes",
+            "tier2_5_days":              f"1.5% target, {TIER2_HOLD_DAYS}d window [V14-1], no partial — blocked in bull regime",
+            "roc_filter":                "DISABLED [V14-3] — restores fast-bounce shallow-drop setups",
+            "spy_50d_guard":             "No entries when SPY below 50-day SMA [V14-2]",
+            "spy_200d_guard":            "No entries when SPY below 200-day SMA (existing)",
             "bull_regime_12m":           f">{BULL_REGIME_12M_RETURN*100:.0f}% SPY 12m → {POSITION_SIZE_BULL_CAP*100:.0f}% cap (Tier1 only)",
             "bull_regime_above_ma200":   f">{BULL_REGIME_ABOVE_MA200*100:.0f}% above 200d → {POSITION_SIZE_BULL_CAP*100:.0f}% cap (Tier1 only)",
+            "tier2_bull_block":          "Tier 2 entries blocked in bull regime (from V13)",
             "rsi_exit_overbought":       f"{RSI_EXIT_OVERBOUGHT}",
-            "spy_break_hold_days":       f"{SPY_BREAK_HOLD_DAYS}d max hold when SPY below 200d",
+            "spy_break_hold_days":       f"{SPY_BREAK_HOLD_DAYS}d max hold when SPY below 50d or 200d SMA",
             "crash_limit":               f"SPY 20d ret <{CRASH_SPY_20D_THRESHOLD*100:.0f}% → max {CRASH_MAX_POSITIONS} positions",
             "sweet_spot_size":           f"{SWEET_SPOT_SIZE*100:.1f}% (SPY above 20wk + below ATH {SWEET_SPOT_BELOW_ATH_MIN*100:.0f}%+)",
             "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → {POSITION_SIZE_CO_OVERSOLD*100:.0f}% + priority",
@@ -940,7 +955,7 @@ def save_outputs(trades_df, metrics, eq_df):
 
     opt_report = {
         "run_date":         datetime.date.today().isoformat(),
-        "version":          "V13",
+        "version":          "V14",
         "summary":          {k: metrics[k] for k in [
             "cagr_pct","win_rate_pct","profit_factor","sharpe_ratio",
             "max_drawdown_pct","avg_win_pct","avg_loss_pct",
@@ -956,7 +971,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(opt_report, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V13")
+    print("  NAIVE MR BACKTEST — V14")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
