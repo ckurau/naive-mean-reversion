@@ -1,224 +1,226 @@
 {
   "run_date": "2026-04-01",
-  "version": "V11",
+  "version": "V12",
   "summary": {
-    "cagr_pct": 0.65,
-    "win_rate_pct": 71.81,
-    "profit_factor": 1.04,
-    "sharpe_ratio": 0.13,
-    "max_drawdown_pct": -24.34,
-    "avg_win_pct": 2.83,
-    "avg_loss_pct": -3.44,
-    "trades_per_year": 481.8,
-    "final_equity": 114790.64,
-    "time_stop_rate_pct": 55.6
+    "cagr_pct": 0.72,
+    "win_rate_pct": 62.13,
+    "profit_factor": 1.05,
+    "sharpe_ratio": 0.15,
+    "max_drawdown_pct": -21.81,
+    "avg_win_pct": 2.86,
+    "avg_loss_pct": -3.5,
+    "trades_per_year": 341.8,
+    "final_equity": 116726.03,
+    "time_stop_rate_pct": 52.6
   },
   "regime_breakdown": {
     "neutral": {
-      "trades": 4349,
-      "win_rate": 72.3,
-      "avg_win": 2.74,
-      "avg_loss": -2.95,
-      "pct_of_trades": 42.1
+      "trades": 3068,
+      "win_rate": 62.5,
+      "avg_win": 2.77,
+      "avg_loss": -3.04,
+      "pct_of_trades": 41.9
     },
     "co_oversold": {
-      "trades": 2535,
-      "win_rate": 73.0,
-      "avg_win": 2.78,
-      "avg_loss": -3.84,
-      "pct_of_trades": 24.6
+      "trades": 1774,
+      "win_rate": 63.6,
+      "avg_win": 2.83,
+      "avg_loss": -3.89,
+      "pct_of_trades": 24.2
     },
     "sweet_spot": {
-      "trades": 1350,
-      "win_rate": 76.2,
-      "avg_win": 3.14,
-      "avg_loss": -3.68,
-      "pct_of_trades": 13.1
+      "trades": 948,
+      "win_rate": 67.3,
+      "avg_win": 3.15,
+      "avg_loss": -3.71,
+      "pct_of_trades": 12.9
     },
     "bull": {
-      "trades": 2089,
-      "win_rate": 66.4,
-      "avg_win": 2.9,
-      "avg_loss": -3.77,
-      "pct_of_trades": 20.2
+      "trades": 1533,
+      "win_rate": 56.4,
+      "avg_win": 2.93,
+      "avg_loss": -3.82,
+      "pct_of_trades": 20.9
     }
   },
   "year_breakdown": {
     "2004": {
-      "trades": 56,
-      "win_rate": 83.9,
-      "pnl_usd": 3784.43,
-      "avg_win": 2.65
-    },
-    "2005": {
-      "trades": 506,
-      "win_rate": 73.3,
-      "pnl_usd": 12723.5,
-      "avg_win": 2.68
-    },
-    "2006": {
-      "trades": 536,
-      "win_rate": 76.5,
-      "pnl_usd": 5103.35,
-      "avg_win": 2.8
-    },
-    "2007": {
-      "trades": 403,
-      "win_rate": 71.0,
-      "pnl_usd": 1996.66,
-      "avg_win": 2.72
-    },
-    "2008": {
-      "trades": 4,
-      "win_rate": 100.0,
-      "pnl_usd": 833.46,
-      "avg_win": 4.54
-    },
-    "2009": {
-      "trades": 344,
-      "win_rate": 72.4,
-      "pnl_usd": 6688.4,
-      "avg_win": 3.39
-    },
-    "2010": {
-      "trades": 294,
-      "win_rate": 76.5,
-      "pnl_usd": 6898.87,
-      "avg_win": 3.03
-    },
-    "2011": {
-      "trades": 421,
-      "win_rate": 68.6,
-      "pnl_usd": -21500.72,
-      "avg_win": 2.74
-    },
-    "2012": {
-      "trades": 597,
-      "win_rate": 72.5,
-      "pnl_usd": 2809.94,
-      "avg_win": 2.73
-    },
-    "2013": {
-      "trades": 696,
-      "win_rate": 76.3,
-      "pnl_usd": 6623.77,
-      "avg_win": 2.67
-    },
-    "2014": {
-      "trades": 603,
-      "win_rate": 70.0,
-      "pnl_usd": -2564.04,
-      "avg_win": 2.42
-    },
-    "2015": {
-      "trades": 397,
-      "win_rate": 76.1,
-      "pnl_usd": 2401.87,
-      "avg_win": 2.51
-    },
-    "2016": {
-      "trades": 406,
-      "win_rate": 68.2,
-      "pnl_usd": -1083.55,
-      "avg_win": 2.43
-    },
-    "2017": {
-      "trades": 711,
-      "win_rate": 74.5,
-      "pnl_usd": 4318.27,
-      "avg_win": 2.48
-    },
-    "2018": {
-      "trades": 441,
-      "win_rate": 64.9,
-      "pnl_usd": -6306.77,
-      "avg_win": 2.75
-    },
-    "2019": {
-      "trades": 462,
-      "win_rate": 74.7,
-      "pnl_usd": 3337.13,
-      "avg_win": 2.61
-    },
-    "2020": {
-      "trades": 385,
-      "win_rate": 73.5,
-      "pnl_usd": 352.88,
-      "avg_win": 3.07
-    },
-    "2021": {
-      "trades": 775,
-      "win_rate": 68.9,
-      "pnl_usd": -6013.07,
-      "avg_win": 3.11
-    },
-    "2022": {
-      "trades": 107,
-      "win_rate": 38.3,
-      "pnl_usd": -5979.95,
+      "trades": 35,
+      "win_rate": 77.1,
+      "pnl_usd": 3524.21,
       "avg_win": 2.55
     },
+    "2005": {
+      "trades": 359,
+      "win_rate": 64.6,
+      "pnl_usd": 11936.35,
+      "avg_win": 2.65
+    },
+    "2006": {
+      "trades": 373,
+      "win_rate": 68.4,
+      "pnl_usd": 4931.21,
+      "avg_win": 2.86
+    },
+    "2007": {
+      "trades": 288,
+      "win_rate": 62.2,
+      "pnl_usd": 752.24,
+      "avg_win": 2.57
+    },
+    "2008": {
+      "trades": 2,
+      "win_rate": 100.0,
+      "pnl_usd": 438.34,
+      "avg_win": 2.46
+    },
+    "2009": {
+      "trades": 254,
+      "win_rate": 64.6,
+      "pnl_usd": 6321.03,
+      "avg_win": 3.5
+    },
+    "2010": {
+      "trades": 208,
+      "win_rate": 67.3,
+      "pnl_usd": 5937.81,
+      "avg_win": 3.0
+    },
+    "2011": {
+      "trades": 315,
+      "win_rate": 60.6,
+      "pnl_usd": -18376.51,
+      "avg_win": 2.9
+    },
+    "2012": {
+      "trades": 419,
+      "win_rate": 62.5,
+      "pnl_usd": 3085.68,
+      "avg_win": 2.84
+    },
+    "2013": {
+      "trades": 471,
+      "win_rate": 66.5,
+      "pnl_usd": 6490.21,
+      "avg_win": 2.74
+    },
+    "2014": {
+      "trades": 433,
+      "win_rate": 59.6,
+      "pnl_usd": -2391.15,
+      "avg_win": 2.61
+    },
+    "2015": {
+      "trades": 272,
+      "win_rate": 66.9,
+      "pnl_usd": 2586.3,
+      "avg_win": 2.54
+    },
+    "2016": {
+      "trades": 297,
+      "win_rate": 58.9,
+      "pnl_usd": -382.06,
+      "avg_win": 2.37
+    },
+    "2017": {
+      "trades": 491,
+      "win_rate": 64.8,
+      "pnl_usd": 5761.84,
+      "avg_win": 2.41
+    },
+    "2018": {
+      "trades": 316,
+      "win_rate": 53.2,
+      "pnl_usd": -6841.67,
+      "avg_win": 2.67
+    },
+    "2019": {
+      "trades": 304,
+      "win_rate": 62.5,
+      "pnl_usd": 3598.39,
+      "avg_win": 2.66
+    },
+    "2020": {
+      "trades": 276,
+      "win_rate": 64.9,
+      "pnl_usd": 2922.5,
+      "avg_win": 3.19
+    },
+    "2021": {
+      "trades": 548,
+      "win_rate": 58.6,
+      "pnl_usd": -6908.31,
+      "avg_win": 3.16
+    },
+    "2022": {
+      "trades": 86,
+      "win_rate": 30.2,
+      "pnl_usd": -5877.16,
+      "avg_win": 2.29
+    },
     "2023": {
-      "trades": 609,
-      "win_rate": 70.8,
-      "pnl_usd": 1223.14,
-      "avg_win": 3.05
+      "trades": 427,
+      "win_rate": 60.0,
+      "pnl_usd": 969.82,
+      "avg_win": 3.0
     },
     "2024": {
-      "trades": 834,
-      "win_rate": 71.6,
-      "pnl_usd": -32.34,
-      "avg_win": 3.26
+      "trades": 621,
+      "win_rate": 63.6,
+      "pnl_usd": 894.26,
+      "avg_win": 3.3
     },
     "2025": {
-      "trades": 548,
-      "win_rate": 71.0,
-      "pnl_usd": 756.45,
-      "avg_win": 2.95
+      "trades": 384,
+      "win_rate": 59.6,
+      "pnl_usd": -402.47,
+      "avg_win": 2.89
     },
     "2026": {
-      "trades": 188,
-      "win_rate": 69.7,
-      "pnl_usd": -1581.04,
-      "avg_win": 3.96
+      "trades": 144,
+      "win_rate": 61.1,
+      "pnl_usd": -2244.84,
+      "avg_win": 4.11
     }
   },
   "tier_breakdown": {
     "tier_1": {
-      "trades": 2246,
+      "trades": 2264,
       "win_rate": 68.3,
       "avg_win": 3.07,
-      "avg_loss": -3.89,
+      "avg_loss": -3.86,
       "avg_days": 6.0
     },
     "tier_2": {
-      "trades": 8077,
-      "win_rate": 72.8,
-      "avg_win": 2.77,
-      "avg_loss": -3.29,
-      "avg_days": 5.5
+      "trades": 5059,
+      "win_rate": 59.4,
+      "avg_win": 2.76,
+      "avg_loss": -3.38,
+      "avg_days": 5.9
     }
   },
   "exit_breakdown": {
-    "partial_exit": 3830,
-    "time_stop": 3609,
-    "profit_target": 2050,
-    "rsi_overbought": 834
+    "time_stop": 3438,
+    "profit_target": 2138,
+    "rsi_overbought": 958,
+    "partial_exit": 789
   },
   "parameters": {
-    "version": "V11",
+    "version": "V12",
     "min_consec_down": 5,
     "tier1_6plus_days": "2% target, 8d, partial at +1%",
-    "tier2_5_days": "1.5% target [FIX4], 8d, partial at +0.75% [NEW7]",
-    "roc_min_drop": "-2.5% from streak start [FIX1]",
-    "bull_regime_12m": ">25% SPY 12m \u2192 3% cap [FIX2]",
-    "bull_regime_above_ma200": ">18% above 200d \u2192 3% cap [FIX2]",
-    "rsi_exit_overbought": "85 [FIX3]",
-    "spy_break_hold_days": "4d max hold when SPY below 200d [NEW6]",
+    "tier2_5_days": "1.75% target [FIX-B], 8d, no partial [FIX-A]",
+    "roc_min_drop": "-2.5% from streak start",
+    "bull_regime_12m": ">25% SPY 12m \u2192 3% cap",
+    "bull_regime_above_ma200": ">18% above 200d \u2192 3% cap",
+    "rsi_exit_overbought": "85",
+    "spy_break_hold_days": "4d max hold when SPY below 200d",
+    "crash_limit": "SPY 20d ret <-8% \u2192 max 5 positions [FIX-C]",
     "sweet_spot_size": "7.5% (SPY above 20wk + below ATH 3%+)",
     "spy_co_oversold_rsi": "SPY RSI(2)<15 \u2192 6% + priority",
     "dist_ma50": "secondary ranking (not hard filter)",
     "max_positions": 30,
+    "crash_max_positions": 5,
     "min_hold_before_exit": 2,
     "rsi2_entry_threshold": 20,
     "dollar_vol_min": 5000000,
