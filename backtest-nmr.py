@@ -1,59 +1,57 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V15
+Enhanced Naive Mean Reversion (MR) Backtest — V16
 ==================================================
-Return to V7's core structure. Keep only the four changes proven to help
-across V10–V14. Strip everything that didn't move avg win or CAGR.
+Two targeted changes based on V15 data. V15 was the breakthrough:
+5.69% CAGR, 73.34% WR, 1.15 PF, 834 trades/yr. Two problems remain.
 
-── V10–V14 CONCLUSIONS ───────────────────────────────────────────────────────
-  After 5 versions of targeted iteration, the data proves:
-  - Avg win is stuck at 2.83-2.85% in every post-V7 version
-  - V7's 3.34% avg win came from Tier 3 (4-day) fast-bounce setups
-  - Removing Tier 3 (V10+) is the root cause of the CAGR collapse
-  - Hold window extension (V14) barely moved avg win (+0.02%)
-  - SPY 50d guard (V14) destroyed 2009 recovery trades (-$22k swing)
-  - ROC filter (V10-V13) selected slower-bounce setups, hurting avg win
-  - Regime-aware sizing IS working (sweet spot, co-oversold, bull cap)
-  - Tier 2 bull regime block (V13) DID improve bull WR 56%→63%
-  - Crash position limit (V12) is sound risk management, keep it
+── V15 DIAGNOSIS ─────────────────────────────────────────────────────────────
+  Problem 1 — Avg win 2.61% vs V7's 3.34% (entire CAGR gap lives here):
+    Tier 3 avg win is only 2.56%. The 1% target + 0.5% partial is causing
+    4-day setups to exit at the partial and time-stop on the remainder.
+    Net: small partial gain, break-even remainder = low avg win despite
+    75.8% win rate. V7's uniform 2% target let all setups run further.
+    Fix: raise Tier 3 target to 1.5%, remove partial (same lesson as
+    Tier 2 in V11/V12 — wrong trigger ratio kills payout).
 
-── V15 CHANGES FROM V14 ──────────────────────────────────────────────────────
-  [V15-1] Restore Tier 3 (4-day setups): MIN_CONSEC_DOWN = 4
-      Tier 3 is the missing ingredient. V7 ran 4-day setups at 1% target,
-      4-day window. Restored here with 1% target, 8-day window (the V7
-      mechanism that accidentally gave everything 8 days and drove 69.72%
-      WR). 4-day setups are fast bouncers — they need the short window.
+  Problem 2 — 2020 COVID crash: –$44,534 in March alone:
+    SPY dropped 34% in 23 days. The 20d crash trigger (–8%) fired but
+    too slowly. Tier 3 setups were firing heavily into the crash for
+    several days before the position limit kicked in. March 2020 had
+    multiple consecutive 5%+ single-day SPY drops — a signal to pause
+    entirely that the current crash limit doesn't capture.
 
-  [V15-2] Hold windows back to 8 days (all tiers)
-      Extended windows (V14: 11-12d) hurt 2018/2021 by holding through
-      crashes. Avg win barely improved (+0.02%). Back to 8 days for all.
-      The 8-day window was V7's key insight — keep it.
+── V16 CHANGES (2 only) ──────────────────────────────────────────────────────
+  [V16-1] Tier 3 target raised 1% → 1.5%, partial removed
+      Tier 3 was exiting at +0.5% partial then time-stopping on remainder.
+      Net per-trade P&L was near-zero on ~50% of Tier 3 trades. With 1.5%
+      target and no partial, the full position runs to 1.5% or 8-day stop.
+      Expected: avg win recovers from 2.56% → ~2.9-3.1% on Tier 3,
+      overall avg win from 2.61% → ~3.0-3.2%, CAGR toward 7-8%.
+      Risk: Tier 3 win rate may dip from 75.8% — acceptable if PF holds.
 
-  [V15-3] Remove SPY 50d SMA entry guard
-      Destroyed 2009 recovery trades. The 200d guard is sufficient.
-      50d is too reactive — blocks entries at exactly the wrong time
-      (post-crash recovery phase when mean reversion edge is highest).
+  [V16-2] Velocity crash pause: SPY 5d return < -12% → pause 5 trading days
+      If SPY drops more than 12% in 5 days, halt all new entries for 5
+      trading days. This fires only for extreme velocity crashes (March 2020,
+      Oct 2008-style events). Normal corrections (5-8% over 20 days) don't
+      trigger it. Not a circuit breaker — it's a short tactical pause.
+      5-day lookback catches the crash before the 20d trigger.
+      12% threshold: 2020 crash had 5d drops of 14-18% in peak week.
+      Normal market: 5d drops rarely exceed 8%. This threshold is safe.
 
-  [V15-4] Tier 3 target: 1% (matching V7 mechanism)
-      4-day setups are lower quality. 1% target maximises their win rate.
-      Partial exit at +0.5% (50% of position, proportional to Tier 1's
-      1% partial on 2% target ratio).
-
-── KEPT FROM V10–V14 (proven to help) ────────────────────────────────────────
-  [KEEP] ROC filter disabled (V14-3) — don't re-add it
-  [KEEP] Tier 2 bull regime block (V13-1) — improved bull WR 56%→63%
-  [KEEP] Bull regime thresholds 18%/25%, 3% cap (V11 FIX2)
-  [KEEP] Regime-aware sizing: sweet spot 7.5%, co-oversold 6% (V10)
-  [KEEP] Crash position limit: SPY 20d < -8% → max 5 positions (V12)
-  [KEEP] SPY regime break 4d hold shortcut on 200d break only
-  [KEEP] RSI exit at 85 (V11 FIX3)
-  [KEEP] Tier 2: no partial exit, 1.5% target, 8d, blocked in bull (V12/V13)
-  [KEEP] Tier 1: 2% target, 8d, partial at +1%
+── UNCHANGED FROM V15 ────────────────────────────────────────────────────────
+  - Tier 3 restored (4-day setups, 1.5% target [V16-1], 8d window)
+  - Tier 2: 1.5% target, 8d, no partial, blocked in bull regime
+  - Tier 1: 2% target, 8d, partial at +1%, all regimes
+  - ROC filter disabled, SPY 50d guard removed
+  - Regime sizing: sweet spot 7.5%, co-oversold 6%, bull cap 3%
+  - Tier 2+3 bull regime block (Tier 1 only in bull)
+  - Crash position limit: SPY 20d < –8% → max 5 positions (kept)
+  - RSI overbought exit at 85, all filters, optimization report
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
   V7  (best): CAGR 9.05% | WR 69.72% | PF 1.14 | Sharpe 0.74 | 872/yr
-  V10:        CAGR 1.05% | WR 63.11% | PF 1.07 | Sharpe 0.20 | 283/yr
-  V14:        CAGR 1.65% | WR 63.74% | PF 1.10 | Sharpe 0.30 | 273/yr
-  V15 target: CAGR >6%   | WR >67%   | PF >1.12 | Sharpe >0.60 | 600+/yr
+  V15:        CAGR 5.69% | WR 73.34% | PF 1.15 | Sharpe 0.61 | 834/yr
+  V16 target: CAGR >7%   | WR >70%   | PF >1.15 | Sharpe >0.65 | 750+/yr
 """
 
 import io
@@ -108,11 +106,11 @@ TIER2_PARTIAL_TRIGGER  = 0.0
 
 # [V15-1] Tier 3 restored — 4-day setups, fast-bounce, 1% target
 TIER3_MIN_DOWN         = 4
-TIER3_TARGET           = 0.010         # [V15-4] 1% — achievable for fast-bounce 4-day setups
+TIER3_TARGET           = 0.015         # [V16-1] raised 1% → 1.5% (1% partial was killing avg win)
 TIER3_HOLD_DAYS        = 8
-TIER3_PARTIAL          = True          # 50% partial at +0.5% (same ratio as Tier1: trigger=50% of target)
-TIER3_PARTIAL_FRAC     = 0.50
-TIER3_PARTIAL_TRIGGER  = 0.005         # +0.5% trigger
+TIER3_PARTIAL          = False         # [V16-1] removed — wrong ratio (0.5% trigger on 1.5% target)
+TIER3_PARTIAL_FRAC     = 0.0
+TIER3_PARTIAL_TRIGGER  = 0.0
 
 MIN_CONSEC_DOWN        = TIER3_MIN_DOWN  # [V15-1] back to 4 (was 5 since V10)
 
@@ -143,6 +141,13 @@ POSITION_SIZE_CO_OVERSOLD = 0.06
 # crash amplified losses dramatically.
 CRASH_SPY_20D_THRESHOLD = -0.08        # SPY down 8%+ over 20 days = crash mode
 CRASH_MAX_POSITIONS     = 5            # max open positions during crash
+
+# ── [V16-2] Velocity crash pause ──────────────────────────────────────────────
+# If SPY drops > 12% in 5 trading days, pause ALL new entries for 5 days.
+# Targets extreme velocity crashes only (March 2020, Oct 2008).
+# Normal corrections (5-8% over 20 days) don't reach this threshold.
+VELOCITY_CRASH_5D_THRESHOLD = -0.12   # SPY 5d return below -12% triggers pause
+VELOCITY_CRASH_PAUSE_DAYS   = 5       # trading days to pause new entries
 
 # ── SPY regime break: shorten hold for open positions (from V11) ──────────────
 SPY_BREAK_HOLD_DAYS      = 4
@@ -342,7 +347,8 @@ def download_reference_data() -> tuple:
     spy["spy_ma50"]         = close.rolling(50).mean()                   # [V14-2] fast bear guard
     spy["spy_ok_50"]        = (close > spy["spy_ma50"].squeeze()).values  # [V14-2] True when above 50d SMA
     spy["spy_12m_ret"]      = close.pct_change(252)
-    spy["spy_20d_ret"]      = close.pct_change(20)                   # [FIX C] crash detection
+    spy["spy_20d_ret"]      = close.pct_change(20)                   # crash detection
+    spy["spy_5d_ret"]       = close.pct_change(5)                    # [V16-2] velocity crash detection
     spy["spy_pct_above_ma"] = (close / spy["spy_ma200"].squeeze()) - 1
     spy["spy_ma20w"]        = close.rolling(100).mean()
     spy["spy_52w_high"]     = close.rolling(252).max()
@@ -558,7 +564,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V15 simulation ...")
+    print("\n[Backtest] Running V16 simulation ...")
     spy_regime    = spy_df["spy_ok"].to_dict()
     spy_regime_50 = spy_df["spy_ok_50"].to_dict()   # [V14-2] 50d SMA fast bear guard
 
@@ -580,11 +586,26 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     trades:          list[dict]      = []
     cooldown_map:    dict            = {}
     last_vix_spike   = None
+    last_velocity_crash = None       # [V16-2] tracks last velocity crash trigger date
 
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok    = spy_regime.get(today, True)
         spy_ok_50 = spy_regime_50.get(today, True)   # [V14-2] False when SPY below 50d SMA
         paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
+
+        # [V16-2] Velocity crash pause — fires on extreme 5-day SPY drops only
+        velocity_paused = False
+        try:
+            if today in spy_df.index:
+                spy_5d = float(spy_df.loc[today, "spy_5d_ret"])
+                if not np.isnan(spy_5d) and spy_5d < VELOCITY_CRASH_5D_THRESHOLD:
+                    last_velocity_crash = today
+            if last_velocity_crash is not None:
+                days_since_crash = (pd.Timestamp(today) - pd.Timestamp(last_velocity_crash)).days
+                if days_since_crash <= VELOCITY_CRASH_PAUSE_DAYS:
+                    velocity_paused = True
+        except Exception:
+            pass
 
         if portfolio_peak is None:
             if portfolio_value != INITIAL_CAPITAL:
@@ -695,7 +716,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        if not spy_ok or paused:   # [V15-3] 50d guard removed — hurts post-crash recovery
+        if not spy_ok or paused or velocity_paused:   # [V16-2] velocity crash pause added
             continue
 
         # [FIX C] Crash mode: cap max positions when SPY is down hard over 20 days
@@ -898,7 +919,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V15",
+        "version":              "V16",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -923,11 +944,11 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity":         round(equity, 2),
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version":                   "V15",
+            "version":                   "V16",
             "min_consec_down":           MIN_CONSEC_DOWN,
             "tier1_6plus_days":          f"2% target, {TIER1_HOLD_DAYS}d, partial at +1% — all regimes [V15-2]",
             "tier2_5_days":              f"1.5% target, {TIER2_HOLD_DAYS}d, no partial — blocked in bull regime",
-            "tier3_4_days":              f"1.0% target, {TIER3_HOLD_DAYS}d, partial at +0.5% — RESTORED [V15-1], blocked in bull regime",
+            "tier3_4_days":              f"1.5% target [V16-1], {TIER3_HOLD_DAYS}d, no partial [V16-1] — blocked in bull regime",
             "roc_filter":                "DISABLED — fast-bounce shallow setups restored [V14-3]",
             "spy_50d_guard":             "REMOVED [V15-3] — was blocking post-crash recovery trades",
             "spy_200d_guard":            "No entries when SPY below 200-day SMA (existing)",
@@ -937,6 +958,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "rsi_exit_overbought":       f"{RSI_EXIT_OVERBOUGHT}",
             "spy_break_hold_days":       f"{SPY_BREAK_HOLD_DAYS}d max hold when SPY below 200d SMA",
             "crash_limit":               f"SPY 20d ret <{CRASH_SPY_20D_THRESHOLD*100:.0f}% → max {CRASH_MAX_POSITIONS} positions",
+            "velocity_crash_pause":      f"SPY 5d ret <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS} days [V16-2]",
             "sweet_spot_size":           f"{SWEET_SPOT_SIZE*100:.1f}% (SPY above 20wk + below ATH {SWEET_SPOT_BELOW_ATH_MIN*100:.0f}%+)",
             "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → {POSITION_SIZE_CO_OVERSOLD*100:.0f}% + priority",
             "dist_ma50":                 "secondary ranking (not hard filter)",
@@ -973,7 +995,7 @@ def save_outputs(trades_df, metrics, eq_df):
 
     opt_report = {
         "run_date":         datetime.date.today().isoformat(),
-        "version":          "V15",
+        "version":          "V16",
         "summary":          {k: metrics[k] for k in [
             "cagr_pct","win_rate_pct","profit_factor","sharpe_ratio",
             "max_drawdown_pct","avg_win_pct","avg_loss_pct",
@@ -989,7 +1011,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(opt_report, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V15")
+    print("  NAIVE MR BACKTEST — V16")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
