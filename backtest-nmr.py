@@ -1,57 +1,50 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V12
+Enhanced Naive Mean Reversion (MR) Backtest — V13
 ==================================================
-Three targeted fixes based on V11 data. V11 produced the highest win rate
-ever (71.81%) but lowest CAGR (0.65%) — a paradox explained by partial exits
-destroying the payout ratio.
+Grounded entirely in V12 regime breakdown data.
 
-── V11 DIAGNOSIS ─────────────────────────────────────────────────────────────
-  V11 paradox: 71.81% win rate + 0.65% CAGR + 1.04 profit factor.
-  Root cause: 3,830 partial exits (37% of all exits) at +0.75% on Tier 2.
-  Sequence: partial exit books +0.75% on 50% → remainder time-stops near
-  breakeven → net per-trade P&L near zero despite "winning." Avg win fell
-  to 2.83% while avg loss stayed at -3.44%, creating a -1.21x payout ratio
-  that required 55%+ WR just to break even. The partial exit ratio was wrong:
-  0.75% trigger on 1.5% target = banking half at half the target, leaving the
-  remainder with barely any edge. Compare Tier 1: 1% trigger on 2% target
-  (50/50 ratio) works because the remainder still has meaningful upside.
+── V12 DIAGNOSIS ─────────────────────────────────────────────────────────────
+  V12 confirmed that Tier 2 (5-day setups) has a structural 59-60% win rate
+  ceiling that no target, partial, or hold-window adjustment can fix. This has
+  been consistent across V10 (59.9%), V11 (72.8% artificially, real ~60%),
+  V12 (59.4%). The problem is signal quality, not parameters.
 
-── V12 CHANGES (3 only) ──────────────────────────────────────────────────────
-  [FIX A] Tier 2 partial exit removed entirely
-      TIER2_PARTIAL = False. Tier 2 now holds full position to 1.5% target
-      or 8-day time stop. No partial. Tier 1 keeps its partial at +1%
-      (correct ratio: 1% trigger on 2% target).
+  However, regime breakdown reveals the solution. V12 bull regime win rate
+  collapsed to 56.4% — negative expected value at any position size. The
+  other regimes remain viable (sweet spot ~67%, co-oversold ~64%, neutral
+  ~62-63%). Blocking Tier 2 in bull regime removes the worst 21% of trades
+  while preserving ~230-260 trades/year (well above 115/yr Tier-1-only).
 
-  [FIX B] Tier 2 target raised: 1.5% → 1.75%
-      With partial exits removed, avg win should recover. 1.75% is the midpoint
-      between 1.5% (V11, too easy but low avg win) and 2% (V7, harder but right
-      payout). If Tier 2 win rate stays above 67%, this is the right target.
-      If it drops below 64%, revert to 1.5%.
+── V13 CHANGES (2 only) ──────────────────────────────────────────────────────
+  [V13-1] Tier 2 entries blocked in bull regime
+      When spy_bull_regime is True, Tier 2 (5-day) entries are skipped.
+      Tier 1 (6+ day) entries still allowed in bull regime — 68.3% WR is
+      positive edge even there. This removes ~21% of trades (the worst ones)
+      while preserving ~79% of volume. Expected: trade count 342 → ~270/yr,
+      overall win rate lifts from 62% toward 65%+, bull regime win rate
+      improves because only high-quality Tier 1 setups remain there.
 
-  [FIX C] Severe crash position limit added
-      If SPY 20-day return < -8%, cap MAX open positions at 5 (not 30).
-      Still trades for recovery — does not halt entirely (circuit breaker
-      lesson). Addresses 2011 (-$21k on 421 trades) and 2022 (38% WR on
-      107 trades): both were crash/bear periods where 30-position exposure
-      amplified losses. At 5 positions during crashes, max drawdown from a
-      single bad period is bounded. SPY 20-day return computed daily, no
-      lookahead.
+  [V13-2] Tier 2 target lowered back: 1.75% → 1.5%
+      V12 Tier 2 had 59.4% WR at 1.75% target and 52.6% time-stop rate.
+      The 1.75% target is too ambitious for 5-day setups — too many are
+      timing out before reaching it. Back to 1.5% for Tier 2 (the target
+      that maximizes win rate on these weaker setups), now that bull regime
+      trades are blocked (which were dragging the 1.5% trades down in V11).
 
-── UNCHANGED FROM V11 ────────────────────────────────────────────────────────
-  - All V10/V11 fixes (ROC -2.5%, bull regime 18%/25% thresholds, RSI exit 85,
-    SPY regime break 4-day hold shortcut)
-  - Min 5 consecutive down days (Tier 3 eliminated)
-  - Tier 1: 2% target, 8d, partial at +1% (unchanged — works correctly)
-  - Distance from 50-day SMA as secondary ranking factor
-  - Sweet-spot aggressive sizing (Connor TPS)
-  - SPY co-oversold boost (Larry Connors TPS)
-  - Drawdown scaling, all filters, regime + year + tier optimization report
+── UNCHANGED FROM V12 ────────────────────────────────────────────────────────
+  - ROC filter -2.5%, bull regime thresholds 18%/25%, RSI exit 85
+  - SPY regime break 4-day hold shortcut (NEW6 from V11)
+  - Crash position limit: SPY 20d ret < -8% → max 5 positions
+  - Tier 2: no partial exit (FIX-A from V12)
+  - Tier 1: 2% target, 8d, partial at +1% (unchanged throughout)
+  - All filters, regime + year + tier optimization report
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
   V7  (best): CAGR 9.05% | WR 69.72% | PF 1.14 | DD -28.94% | Sharpe 0.74
-  V10 (regr): CAGR 1.05% | WR 63.11% | PF 1.07 | DD -18.27% | Sharpe 0.20
-  V11 (paradox): CAGR 0.65% | WR 71.81% | PF 1.04 | DD -24.34% | Sharpe 0.13
-  V12 target: CAGR >7% | WR >68% | PF >1.12 | DD <-26% | Sharpe >0.65
+  V10:        CAGR 1.05% | WR 63.11% | PF 1.07 | DD -18.27% | Sharpe 0.20
+  V11:        CAGR 0.65% | WR 71.81% | PF 1.04 | DD -24.34% | Sharpe 0.13
+  V12:        CAGR 0.72% | WR 62.13% | PF 1.05 | DD -21.81% | Sharpe 0.15
+  V13 target: CAGR >5%   | WR >65%   | PF >1.10 | DD <-24%  | Sharpe >0.55
 """
 
 import io
@@ -98,9 +91,9 @@ TIER1_PARTIAL_FRAC     = 0.50
 TIER1_PARTIAL_TRIGGER  = 0.010         # 50% out at +1%
 
 TIER2_MIN_DOWN         = 5
-TIER2_TARGET           = 0.0175        # [FIX B] raised from 1.5% → 1.75%
+TIER2_TARGET           = 0.015         # [V13-2] back to 1.5% (1.75% had 52.6% time-stop rate)
 TIER2_HOLD_DAYS        = 8
-TIER2_PARTIAL          = False         # [FIX A] removed — 0.75% trigger on 1.5% was destroying payout ratio
+TIER2_PARTIAL          = False         # no partial — established in V12
 TIER2_PARTIAL_FRAC     = 0.0
 TIER2_PARTIAL_TRIGGER  = 0.0
 
@@ -537,7 +530,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V12 simulation ...")
+    print("\n[Backtest] Running V13 simulation ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -715,6 +708,17 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             rsi_val    = float(row["rsi2"])
             consec_val = int(row["consec_down"])
             dist_ma50  = float(row["dist_ma50"]) if not np.isnan(float(row["dist_ma50"])) else 0.0
+
+            # [V13-1] Block Tier 2 (5-day) entries in bull regime — 56.4% WR is negative EV
+            # Tier 1 (6+ day) still allowed in bull regime (68.3% WR has edge everywhere)
+            tier_would_be = 2 if consec_val < TIER1_MIN_DOWN else 1
+            try:
+                in_bull = bool(spy_df.loc[today, "spy_bull_regime"]) if today in spy_df.index else False
+            except Exception:
+                in_bull = False
+            if tier_would_be == 2 and in_bull:
+                continue
+
             priority   = 0 if spy_co_oversold else 1
             candidates.append((priority, rsi_val, -dist_ma50, tkr, consec_val))
 
@@ -864,7 +868,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V12",
+        "version":              "V13",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -889,16 +893,17 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity":         round(equity, 2),
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version":                   "V12",
+            "version":                   "V13",
             "min_consec_down":           MIN_CONSEC_DOWN,
-            "tier1_6plus_days":          "2% target, 8d, partial at +1%",
-            "tier2_5_days":              "1.75% target [FIX-B], 8d, no partial [FIX-A]",
+            "tier1_6plus_days":          "2% target, 8d, partial at +1% — allowed in ALL regimes",
+            "tier2_5_days":              "1.5% target [V13-2], 8d, no partial — BLOCKED in bull regime [V13-1]",
+            "tier2_bull_regime_block":   "Tier 2 entries skipped when spy_bull_regime=True [V13-1]",
             "roc_min_drop":              f"{ROC_MIN_DROP*100:.1f}% from streak start",
-            "bull_regime_12m":           f">{BULL_REGIME_12M_RETURN*100:.0f}% SPY 12m → {POSITION_SIZE_BULL_CAP*100:.0f}% cap",
-            "bull_regime_above_ma200":   f">{BULL_REGIME_ABOVE_MA200*100:.0f}% above 200d → {POSITION_SIZE_BULL_CAP*100:.0f}% cap",
+            "bull_regime_12m":           f">{BULL_REGIME_12M_RETURN*100:.0f}% SPY 12m → {POSITION_SIZE_BULL_CAP*100:.0f}% cap (Tier1 only)",
+            "bull_regime_above_ma200":   f">{BULL_REGIME_ABOVE_MA200*100:.0f}% above 200d → {POSITION_SIZE_BULL_CAP*100:.0f}% cap (Tier1 only)",
             "rsi_exit_overbought":       f"{RSI_EXIT_OVERBOUGHT}",
             "spy_break_hold_days":       f"{SPY_BREAK_HOLD_DAYS}d max hold when SPY below 200d",
-            "crash_limit":               f"SPY 20d ret <{CRASH_SPY_20D_THRESHOLD*100:.0f}% → max {CRASH_MAX_POSITIONS} positions [FIX-C]",
+            "crash_limit":               f"SPY 20d ret <{CRASH_SPY_20D_THRESHOLD*100:.0f}% → max {CRASH_MAX_POSITIONS} positions",
             "sweet_spot_size":           f"{SWEET_SPOT_SIZE*100:.1f}% (SPY above 20wk + below ATH {SWEET_SPOT_BELOW_ATH_MIN*100:.0f}%+)",
             "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → {POSITION_SIZE_CO_OVERSOLD*100:.0f}% + priority",
             "dist_ma50":                 "secondary ranking (not hard filter)",
@@ -935,7 +940,7 @@ def save_outputs(trades_df, metrics, eq_df):
 
     opt_report = {
         "run_date":         datetime.date.today().isoformat(),
-        "version":          "V12",
+        "version":          "V13",
         "summary":          {k: metrics[k] for k in [
             "cagr_pct","win_rate_pct","profit_factor","sharpe_ratio",
             "max_drawdown_pct","avg_win_pct","avg_loss_pct",
@@ -951,7 +956,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(opt_report, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V12")
+    print("  NAIVE MR BACKTEST — V13")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
