@@ -1,57 +1,55 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V16
+Enhanced Naive Mean Reversion (MR) Backtest — V17
 ==================================================
-Two targeted changes based on V15 data. V15 was the breakthrough:
-5.69% CAGR, 73.34% WR, 1.15 PF, 834 trades/yr. Two problems remain.
+Two targeted changes based on V15/V16 comparison data.
 
-── V15 DIAGNOSIS ─────────────────────────────────────────────────────────────
-  Problem 1 — Avg win 2.61% vs V7's 3.34% (entire CAGR gap lives here):
-    Tier 3 avg win is only 2.56%. The 1% target + 0.5% partial is causing
-    4-day setups to exit at the partial and time-stop on the remainder.
-    Net: small partial gain, break-even remainder = low avg win despite
-    75.8% win rate. V7's uniform 2% target let all setups run further.
-    Fix: raise Tier 3 target to 1.5%, remove partial (same lesson as
-    Tier 2 in V11/V12 — wrong trigger ratio kills payout).
+── V15 vs V16 COMPARISON ────────────────────────────────────────────────────
+  Tier 3 target comparison:
+    V15: 1.0% target → 75.8% WR, 14,099 trades, avg win 2.56%, CAGR 5.69%
+    V16: 1.5% target → 62.2% WR,  8,686 trades, avg win 2.65%, CAGR 6.31%
 
-  Problem 2 — 2020 COVID crash: –$44,534 in March alone:
-    SPY dropped 34% in 23 days. The 20d crash trigger (–8%) fired but
-    too slowly. Tier 3 setups were firing heavily into the crash for
-    several days before the position limit kicked in. March 2020 had
-    multiple consecutive 5%+ single-day SPY drops — a signal to pause
-    entirely that the current crash limit doesn't capture.
+  V16 has higher CAGR despite lower win rate and fewer trades — meaning the
+  higher per-win payout more than compensates for the win rate drop. But the
+  sweet spot is likely between 1% and 1.5%. At 1.25%, expected outcome:
+    - Trade count: ~700-750/yr (between 585 and 834)
+    - Tier 3 win rate: ~68-70% (between 62% and 76%)
+    - Avg win: ~2.6-2.7% range
+    - CAGR: target >7%
 
-── V16 CHANGES (2 only) ──────────────────────────────────────────────────────
-  [V16-1] Tier 3 target raised 1% → 1.5%, partial removed
-      Tier 3 was exiting at +0.5% partial then time-stopping on remainder.
-      Net per-trade P&L was near-zero on ~50% of Tier 3 trades. With 1.5%
-      target and no partial, the full position runs to 1.5% or 8-day stop.
-      Expected: avg win recovers from 2.56% → ~2.9-3.1% on Tier 3,
-      overall avg win from 2.61% → ~3.0-3.2%, CAGR toward 7-8%.
-      Risk: Tier 3 win rate may dip from 75.8% — acceptable if PF holds.
+  2022 problem: persists across all versions. Root cause is slow-grind bear
+  market that 200d filter doesn't block fast enough. A lighter touch than
+  the crash limit (which requires –8% over 20 days) is needed: block new
+  Tier 3 entries when SPY's 20-day return is below –5%. Tier 1 and Tier 2
+  still allowed — they have stronger signals and fewer trades. This catches
+  the grinding bear without blocking normal corrections.
 
-  [V16-2] Velocity crash pause: SPY 5d return < -12% → pause 5 trading days
-      If SPY drops more than 12% in 5 days, halt all new entries for 5
-      trading days. This fires only for extreme velocity crashes (March 2020,
-      Oct 2008-style events). Normal corrections (5-8% over 20 days) don't
-      trigger it. Not a circuit breaker — it's a short tactical pause.
-      5-day lookback catches the crash before the 20d trigger.
-      12% threshold: 2020 crash had 5d drops of 14-18% in peak week.
-      Normal market: 5d drops rarely exceed 8%. This threshold is safe.
+── V17 CHANGES (2 only) ──────────────────────────────────────────────────────
+  [V17-1] Tier 3 target: 1.5% → 1.25%
+      Splitting the difference between V15 (1%) and V16 (1.5%). Expected:
+      trade count ~700-750/yr, win rate ~68-70%, CAGR toward 7%+.
+      No partial exit (same as V16 — removed because wrong ratio).
 
-── UNCHANGED FROM V15 ────────────────────────────────────────────────────────
-  - Tier 3 restored (4-day setups, 1.5% target [V16-1], 8d window)
-  - Tier 2: 1.5% target, 8d, no partial, blocked in bull regime
+  [V17-2] Tier 3 blocked when SPY 20d return < -5%
+      Lighter bear filter than the crash limit (which is –8% and caps at
+      5 positions for all tiers). This one only blocks Tier 3 entries — the
+      weakest signal in grinding bear conditions. Tier 1 and Tier 2 still
+      enter normally. Targets 2022-style slow grinds specifically.
+      Threshold –5%: normal pullbacks rarely exceed this on 20d basis.
+      Bear markets (2022, 2018 Q4) consistently breach –5% on 20d.
+
+── UNCHANGED FROM V16 ────────────────────────────────────────────────────────
   - Tier 1: 2% target, 8d, partial at +1%, all regimes
-  - ROC filter disabled, SPY 50d guard removed
-  - Regime sizing: sweet spot 7.5%, co-oversold 6%, bull cap 3%
-  - Tier 2+3 bull regime block (Tier 1 only in bull)
-  - Crash position limit: SPY 20d < –8% → max 5 positions (kept)
-  - RSI overbought exit at 85, all filters, optimization report
+  - Tier 2: 1.5% target, 8d, no partial, blocked in bull regime
+  - Velocity crash pause: SPY 5d < –12% → pause 5 days (from V16)
+  - Crash position limit: SPY 20d < –8% → max 5 positions
+  - SPY 200d regime filter, regime-aware sizing, all other filters
+  - Tier 2+3 bull regime block, RSI exit at 85
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
-  V7  (best): CAGR 9.05% | WR 69.72% | PF 1.14 | Sharpe 0.74 | 872/yr
-  V15:        CAGR 5.69% | WR 73.34% | PF 1.15 | Sharpe 0.61 | 834/yr
-  V16 target: CAGR >7%   | WR >70%   | PF >1.15 | Sharpe >0.65 | 750+/yr
+  V7:   CAGR 9.05% | WR 69.72% | PF 1.14 | Sharpe 0.74 | DD –28.9%
+  V15:  CAGR 5.69% | WR 73.34% | PF 1.15 | Sharpe 0.61 | DD –26.0%
+  V16:  CAGR 6.31% | WR 62.86% | PF 1.14 | Sharpe 0.63 | DD –16.9%
+  V17 target: CAGR >7% | WR >67% | PF >1.14 | Sharpe >0.65 | DD <–20%
 """
 
 import io
@@ -106,7 +104,7 @@ TIER2_PARTIAL_TRIGGER  = 0.0
 
 # [V15-1] Tier 3 restored — 4-day setups, fast-bounce, 1% target
 TIER3_MIN_DOWN         = 4
-TIER3_TARGET           = 0.015         # [V16-1] raised 1% → 1.5% (1% partial was killing avg win)
+TIER3_TARGET           = 0.0125        # [V17-1] 1.25% — midpoint between V15(1%) and V16(1.5%)
 TIER3_HOLD_DAYS        = 8
 TIER3_PARTIAL          = False         # [V16-1] removed — wrong ratio (0.5% trigger on 1.5% target)
 TIER3_PARTIAL_FRAC     = 0.0
@@ -141,6 +139,12 @@ POSITION_SIZE_CO_OVERSOLD = 0.06
 # crash amplified losses dramatically.
 CRASH_SPY_20D_THRESHOLD = -0.08        # SPY down 8%+ over 20 days = crash mode
 CRASH_MAX_POSITIONS     = 5            # max open positions during crash
+
+# ── [V17-2] Tier 3 bear filter ────────────────────────────────────────────────
+# Block NEW Tier 3 (4-day) entries when SPY is in a grinding bear.
+# Tier 1 and Tier 2 still allowed — stronger signals, fewer trades.
+# –5% threshold: catches 2022/2018 slow grinds without blocking pullbacks.
+TIER3_BEAR_20D_THRESHOLD = -0.05       # block Tier 3 when SPY 20d return < -5%
 
 # ── [V16-2] Velocity crash pause ──────────────────────────────────────────────
 # If SPY drops > 12% in 5 trading days, pause ALL new entries for 5 days.
@@ -564,7 +568,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V16 simulation ...")
+    print("\n[Backtest] Running V17 simulation ...")
     spy_regime    = spy_df["spy_ok"].to_dict()
     spy_regime_50 = spy_df["spy_ok_50"].to_dict()   # [V14-2] 50d SMA fast bear guard
 
@@ -770,6 +774,16 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             if tier_would_be in (2, 3) and in_bull:
                 continue
 
+            # [V17-2] Block Tier 3 entries in grinding bear (SPY 20d return < -5%)
+            # Tier 1 and Tier 2 still allowed — stronger signals hold up in slow bears
+            if tier_would_be == 3:
+                try:
+                    spy_20d_now = float(spy_df.loc[today, "spy_20d_ret"]) if today in spy_df.index else 0.0
+                    if not np.isnan(spy_20d_now) and spy_20d_now < TIER3_BEAR_20D_THRESHOLD:
+                        continue
+                except Exception:
+                    pass
+
             priority   = 0 if spy_co_oversold else 1
             candidates.append((priority, rsi_val, -dist_ma50, tkr, consec_val))
 
@@ -919,7 +933,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V16",
+        "version":              "V17",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -944,11 +958,11 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity":         round(equity, 2),
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version":                   "V16",
+            "version":                   "V17",
             "min_consec_down":           MIN_CONSEC_DOWN,
             "tier1_6plus_days":          f"2% target, {TIER1_HOLD_DAYS}d, partial at +1% — all regimes [V15-2]",
             "tier2_5_days":              f"1.5% target, {TIER2_HOLD_DAYS}d, no partial — blocked in bull regime",
-            "tier3_4_days":              f"1.5% target [V16-1], {TIER3_HOLD_DAYS}d, no partial [V16-1] — blocked in bull regime",
+            "tier3_4_days":              f"1.25% target [V17-1], {TIER3_HOLD_DAYS}d, no partial — blocked in bull + grinding bear [V17-2]",
             "roc_filter":                "DISABLED — fast-bounce shallow setups restored [V14-3]",
             "spy_50d_guard":             "REMOVED [V15-3] — was blocking post-crash recovery trades",
             "spy_200d_guard":            "No entries when SPY below 200-day SMA (existing)",
@@ -958,6 +972,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "rsi_exit_overbought":       f"{RSI_EXIT_OVERBOUGHT}",
             "spy_break_hold_days":       f"{SPY_BREAK_HOLD_DAYS}d max hold when SPY below 200d SMA",
             "crash_limit":               f"SPY 20d ret <{CRASH_SPY_20D_THRESHOLD*100:.0f}% → max {CRASH_MAX_POSITIONS} positions",
+            "tier3_bear_filter":         f"Tier 3 blocked when SPY 20d ret <{TIER3_BEAR_20D_THRESHOLD*100:.0f}% [V17-2]",
             "velocity_crash_pause":      f"SPY 5d ret <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS} days [V16-2]",
             "sweet_spot_size":           f"{SWEET_SPOT_SIZE*100:.1f}% (SPY above 20wk + below ATH {SWEET_SPOT_BELOW_ATH_MIN*100:.0f}%+)",
             "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → {POSITION_SIZE_CO_OVERSOLD*100:.0f}% + priority",
@@ -995,7 +1010,7 @@ def save_outputs(trades_df, metrics, eq_df):
 
     opt_report = {
         "run_date":         datetime.date.today().isoformat(),
-        "version":          "V16",
+        "version":          "V17",
         "summary":          {k: metrics[k] for k in [
             "cagr_pct","win_rate_pct","profit_factor","sharpe_ratio",
             "max_drawdown_pct","avg_win_pct","avg_loss_pct",
@@ -1011,7 +1026,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(opt_report, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V16")
+    print("  NAIVE MR BACKTEST — V17")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
