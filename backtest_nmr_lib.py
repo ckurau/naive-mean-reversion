@@ -188,27 +188,39 @@ def _fetch_wiki(url: str) -> list:
     return pd.read_html(io.StringIO(resp.text), header=0)
 
 
+def _extract_tickers_from_table(table: pd.DataFrame) -> list[str]:
+    """Try known column names first, then fall back to regex sniffing any column."""
+    for col in ["Symbol", "Ticker symbol", "Ticker", "Ticker Symbol"]:
+        if col in table.columns:
+            return table[col].dropna().astype(str).tolist()
+    # Fallback: find any column whose values look like ticker symbols
+    for col in table.columns:
+        cs = table[col].dropna().astype(str)
+        if cs.str.match(r"^[A-Z]{1,5}(-[A-Z])?$").mean() > 0.3:
+            return cs.tolist()
+    return []
+
+
 def get_universe() -> list[str]:
     tickers: set[str] = set()
 
     for url, label in [
         ("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", "S&P 500"),
         ("https://en.wikipedia.org/wiki/List_of_S%26P_400_companies", "S&P 400"),
-        ("https://en.wikipedia.org/wiki/List_of_S%26P_600_companies", "S&P 600"),  # Added
+        ("https://en.wikipedia.org/wiki/List_of_S%26P_600_companies", "S&P 600"),
     ]:
         try:
             tables = _fetch_wiki(url)
-            for col in ["Symbol", "Ticker symbol", "Ticker"]:
-                if col in tables[0].columns:
-                    syms = tables[0][col].tolist()
+            found = False
+            for table in tables:
+                syms = _extract_tickers_from_table(table)
+                if syms:
                     tickers.update([s.replace(".", "-") for s in syms])
                     print(f"[Universe] {label}: {len(syms)} symbols")
+                    found = True
                     break
-            if "500" in label and len(tables) > 1:
-                for col in tables[1].columns:
-                    cs = tables[1][col].dropna().astype(str)
-                    if cs.str.match(r"^[A-Z]{1,5}(-[A-Z])?$").mean() > 0.3:
-                        tickers.update([s.replace(".", "-") for s in cs])
+            if not found:
+                print(f"[Universe] {label}: WARNING — no ticker column found, columns were: {list(tables[0].columns)}")
         except Exception as e:
             print(f"[Universe] {label} failed: {e}")
 
