@@ -1,26 +1,61 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V21
+Enhanced Naive Mean Reversion (MR) Backtest — V22
 ==================================================
-Base: Run 5 / V7 Final — the confirmed $478k result ($100k start, 21 years).
-Verified clean code, no bugs, INITIAL_CAPITAL = $100,000.
+Base: V21 (Run 5 + velocity crash pause) — $476,054 final equity, 7.55% CAGR.
+Three targeted changes, all grounded in documented weaknesses in V21's code.
 
-Run 5 confirmed parameters:
-  INITIAL_CAPITAL = 100,000
-  All tiers: uniform 2% target, 8-day window
-  Tier 1 (6+ days): partial exit 50% at +1%
-  Tier 2 (5 days): no partial
-  Tier 3 (4 days): no partial
-  DD scaling: mild 8%, severe 15% (thresholds loosened from original 5%/10%)
-  Max positions: 30
-  No RSI overbought exit, no bull regime block, no velocity pause
-  Result: $478,492 final equity, 7.58% CAGR, 60.28% WR, -22.55% DD, 0.73 Sharpe
+── V21 DIAGNOSIS ─────────────────────────────────────────────────────────────
+  V21 = Run 5 confirmed clean + velocity crash pause. Three remaining levers:
 
-V21 adds ONE thing only:
-  [V21] Velocity crash pause: if SPY 5-day return < -12%, pause all new
-  entries for 5 trading days. Fires only for extreme velocity crashes
-  (March 2020, Oct 2008). Normal corrections don't reach this threshold.
-  Expected: saves ~$40-68k in 2020 with zero impact on good years.
-  No other changes from Run 5.
+  1. Drawdown scaling fires during recoveries and caps positions exactly when
+     compounding potential is highest. After a drawdown, the strategy needs
+     full-sized positions to recover — the 8%/15% thresholds reduce them.
+     2013 (+$97k) followed 2011's drawdown period. If positions were capped
+     at 3% entering 2013, significant compounding was lost.
+
+  2. Commission minimum of $1.00 is too conservative. Interactive Brokers
+     tiered pricing minimum is $0.35/order for US equities. On small-share
+     trades the strategy overpays by ~$0.65/trade. At 641 trades/year over
+     21 years that's ~$8,000-15,000 of recoverable commission.
+
+  3. VIX spike pause (inherited from Run 5) is documented as net negative.
+     The original session README explicitly states: "VIX spike days are the
+     best time to enter, not skip." The pause fired 1,476 times vs expected
+     ~50/year in early testing. Removing it restores entries during the
+     highest-edge market conditions.
+
+── V22 CHANGES (3 only) ──────────────────────────────────────────────────────
+  [V22-1] Drawdown scaling REMOVED
+      No position size reduction during drawdowns. Full VIX-sized positions
+      at all times (subject to earnings month cap only). The velocity crash
+      pause already protects the most extreme events. Normal drawdowns (-8%
+      to -15%) should be ridden through at full size to maximize compounding.
+      Risk: slightly higher drawdown in bad years. Expected benefit: larger
+      positions during recovery years like 2013 and 2017.
+
+  [V22-2] Commission minimum lowered: $1.00 → $0.35
+      Matches Interactive Brokers tiered pricing reality. All other commission
+      logic unchanged ($0.005/share rate still applies — only the floor drops).
+      Expected: recover $8,000-15,000 in commission over 21 years.
+
+  [V22-3] VIX spike pause REMOVED
+      The 2-day entry pause when VIX spikes 30%+ in 5 days is removed.
+      The velocity crash pause (V21) handles genuine extreme events.
+      VIX spikes during normal volatility (not crash-level) are exactly when
+      mean reversion edge is strongest — pausing costs high-EV entries.
+      The check_vix_spike function is retained but never blocks entries.
+
+── UNCHANGED FROM V21 ────────────────────────────────────────────────────────
+  - Uniform 2% target, 8-day window across all tiers (Run 5 mechanism)
+  - Velocity crash pause: SPY 5d < -12% → 5-day pause [V21]
+  - Max 30 positions, VIX-adjusted sizing, SPY 200d regime filter
+  - All entry filters: sector MA, earnings blackout, gap filters, cooldown
+  - Tier 1 partial exit at +1%, uniform 2% target for Tier 2+3
+
+── RESULTS HISTORY ───────────────────────────────────────────────────────────
+  Run 5:  CAGR 7.58% | $478k | WR 60.28% | DD –22.55% | Sharpe 0.73
+  V21:    CAGR 7.55% | $476k | WR 60.26% | DD –22.55% | Sharpe 0.72
+  V22 target: CAGR >8% | $520k+ | WR ~60% | DD ~–25% | Sharpe >0.72
 """
 
 import io
@@ -81,11 +116,13 @@ TIER3_PARTIAL_TRIGGER  = 0.0
 
 MIN_CONSEC_DOWN        = TIER3_MIN_DOWN
 
-# ── Drawdown scaling (loosened thresholds — Run 5) ────────────────────────────
-DD_SCALE_MILD           = 0.08
-DD_SCALE_SEVERE         = 0.15
-POSITION_SIZE_DD_MILD   = 0.03
-POSITION_SIZE_DD_SEVERE = 0.02
+# ── [V22-1] Drawdown scaling REMOVED ─────────────────────────────────────────
+# Scaling fired during recoveries, capping positions when compounding is highest.
+# Velocity crash pause handles extreme events. Normal drawdowns ridden at full size.
+DD_SCALE_MILD           = 9.99   # [V22-1] unreachable — scaling disabled
+DD_SCALE_SEVERE         = 9.99   # [V22-1] unreachable — scaling disabled
+POSITION_SIZE_DD_MILD   = 0.03   # unused
+POSITION_SIZE_DD_SEVERE = 0.02   # unused
 
 # ── [V21] Velocity crash pause — ONLY addition from Run 5 ────────────────────
 VELOCITY_CRASH_5D_THRESHOLD = -0.12    # SPY 5d return below -12%
@@ -100,10 +137,10 @@ MAX_SECTOR_POSITIONS   = 3
 VIX_HIGH               = 25
 VIX_LOW                = 15
 VIX_SPIKE_PCT          = 0.30
-VIX_SPIKE_PAUSE_DAYS   = 2
+VIX_SPIKE_PAUSE_DAYS   = 0          # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
 REENTRY_COOLDOWN_DAYS  = 5
 COMMISSION_RATE        = 0.005
-COMMISSION_MIN         = 1.00
+COMMISSION_MIN         = 0.35          # [V22-2] IB tiered pricing reality (was $1.00)
 EARNINGS_MONTHS        = {1, 4, 7, 10}
 
 OUTPUT_DIR = Path("results")
@@ -430,7 +467,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V21 simulation (Run 5 + velocity crash pause) ...")
+    print("\n[Backtest] Running V22 simulation (Run 5 + velocity crash pause) ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -709,7 +746,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V21",
+        "version":              "V22",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -733,19 +770,19 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity":         round(equity, 2),
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version":                "V21",
-            "base":                   "Run 5 (confirmed $478k, $100k start, no bugs)",
-            "addition":               "Velocity crash pause only [V21]",
+            "version":                "V22",
+            "base":                   "V21 (Run 5 + velocity crash pause, $476k)",
+            "additions":              "V22-1: DD scaling removed | V22-2: commission $0.35 | V22-3: VIX pause removed",
             "min_consec_down":        MIN_CONSEC_DOWN,
             "tier1_6plus":            "2% target, 8d, partial at +1%",
             "tier2_5days":            "2% target, 8d, no partial",
             "tier3_4days":            "2% target, 8d, no partial",
             "velocity_crash_pause":   f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]",
-            "dd_scale_mild":          f"{DD_SCALE_MILD*100:.0f}% → {POSITION_SIZE_DD_MILD*100:.0f}% max",
-            "dd_scale_severe":        f"{DD_SCALE_SEVERE*100:.0f}% → {POSITION_SIZE_DD_SEVERE*100:.0f}% max",
+            "dd_scale_mild":          "REMOVED [V22-1] — thresholds set unreachable",
+            "dd_scale_severe":        "REMOVED [V22-1] — thresholds set unreachable",
             "max_positions":          MAX_POSITIONS,
             "vix_sizing":             f"<{VIX_LOW}: {POSITION_SIZE_HIGH*100}%, >{VIX_HIGH}: {POSITION_SIZE_LOW*100}%",
-            "commission":             f"${COMMISSION_RATE}/share, ${COMMISSION_MIN} min",
+            "commission":             f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min [V22-2 lowered]",
             "universe":               "S&P500 + S&P400",
             "no_rsi_exit":            "RSI overbought exit NOT present (Run 5 baseline)",
             "no_bull_block":          "Bull regime block NOT present (Run 5 baseline)",
@@ -765,7 +802,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V21 (Run 5 + velocity crash pause)")
+    print("  NAIVE MR BACKTEST — V22")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
@@ -790,7 +827,8 @@ def save_outputs(trades_df, metrics, eq_df):
     print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 # Library exports
 # ─────────────────────────────────────────────────────────────────────────────
 __all__ = [
