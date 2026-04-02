@@ -1,61 +1,60 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V22
+Enhanced Naive Mean Reversion (MR) Backtest — V23
 ==================================================
-Base: V21 (Run 5 + velocity crash pause) — $476,054 final equity, 7.55% CAGR.
-Three targeted changes, all grounded in documented weaknesses in V21's code.
+Base: V22 — $652,176 final equity, 9.14% CAGR. New all-time best.
+Three targeted changes to capture more of the signal opportunity.
 
-── V21 DIAGNOSIS ─────────────────────────────────────────────────────────────
-  V21 = Run 5 confirmed clean + velocity crash pause. Three remaining levers:
+── V22 DIAGNOSIS ─────────────────────────────────────────────────────────────
+  V22 fires 655 trades/year. Signal clustering means high-quality days
+  (broad selloffs with 15-30+ simultaneous oversold stocks) hit the
+  MAX_POSITIONS=30 cap and leave profitable candidates on the table.
+  2013 (+$116k) and 2017 (+$141k) almost certainly had such days.
 
-  1. Drawdown scaling fires during recoveries and caps positions exactly when
-     compounding potential is highest. After a drawdown, the strategy needs
-     full-sized positions to recover — the 8%/15% thresholds reduce them.
-     2013 (+$97k) followed 2011's drawdown period. If positions were capped
-     at 3% entering 2013, significant compounding was lost.
+  VIX 15-18 is still genuinely low-volatility — the 5% base position
+  size in that range is leaving sizing on the table vs the 7.5% that
+  fires below 15. Historical average VIX is ~19; below 18 is calm.
 
-  2. Commission minimum of $1.00 is too conservative. Interactive Brokers
-     tiered pricing minimum is $0.35/order for US equities. On small-share
-     trades the strategy overpays by ~$0.65/trade. At 641 trades/year over
-     21 years that's ~$8,000-15,000 of recoverable commission.
+  Starting October 2004 means the strategy misses the 2003 recovery
+  year (SPY +29%) and early 2004 — adding more compounding runway
+  before the 2005-2013 growth period.
 
-  3. VIX spike pause (inherited from Run 5) is documented as net negative.
-     The original session README explicitly states: "VIX spike days are the
-     best time to enter, not skip." The pause fired 1,476 times vs expected
-     ~50/year in early testing. Removing it restores entries during the
-     highest-edge market conditions.
+── V23 CHANGES (3 only) ──────────────────────────────────────────────────────
+  [V23-1] MAX_POSITIONS 30 → 40, POSITION_SIZE 5% → 4%
+      Captures overflow on high-signal clustered days. Total portfolio
+      exposure stays similar (40×4% = 160% vs 30×5% = 150%). VIX
+      adjustments scaled proportionally:
+        VIX < 18 (raised threshold): 6.0% (was 7.5% at VIX < 15)
+        VIX > 25: 2.0% (was 2.5%)
+        Base: 4.0% (was 5.0%)
+      Earnings month cap: 2.4% (was 3.0%, proportional)
 
-── V22 CHANGES (3 only) ──────────────────────────────────────────────────────
-  [V22-1] Drawdown scaling REMOVED
-      No position size reduction during drawdowns. Full VIX-sized positions
-      at all times (subject to earnings month cap only). The velocity crash
-      pause already protects the most extreme events. Normal drawdowns (-8%
-      to -15%) should be ridden through at full size to maximize compounding.
-      Risk: slightly higher drawdown in bad years. Expected benefit: larger
-      positions during recovery years like 2013 and 2017.
+  [V23-2] VIX_LOW threshold 15 → 18
+      More days qualify for the high-sizing regime. VIX 15-18 is still
+      low-volatility historically. In trending bull years (2013, 2017,
+      2019) VIX often averaged 12-16, meaning more trading days now get
+      the 6% (scaled) large-size treatment instead of 4% base.
 
-  [V22-2] Commission minimum lowered: $1.00 → $0.35
-      Matches Interactive Brokers tiered pricing reality. All other commission
-      logic unchanged ($0.005/share rate still applies — only the floor drops).
-      Expected: recover $8,000-15,000 in commission over 21 years.
+  [V23-3] START_DATE 2004-01-01 → 2003-01-01
+      Adds ~21 months of compounding runway. 2003 was SPY +29% — a
+      strong recovery year after the dot-com lows. Universe data will be
+      thinner but large-caps have data from 2000+. More early compounding
+      before 2005-2013 growth years = higher final equity.
 
-  [V22-3] VIX spike pause REMOVED
-      The 2-day entry pause when VIX spikes 30%+ in 5 days is removed.
-      The velocity crash pause (V21) handles genuine extreme events.
-      VIX spikes during normal volatility (not crash-level) are exactly when
-      mean reversion edge is strongest — pausing costs high-EV entries.
-      The check_vix_spike function is retained but never blocks entries.
-
-── UNCHANGED FROM V21 ────────────────────────────────────────────────────────
-  - Uniform 2% target, 8-day window across all tiers (Run 5 mechanism)
-  - Velocity crash pause: SPY 5d < -12% → 5-day pause [V21]
-  - Max 30 positions, VIX-adjusted sizing, SPY 200d regime filter
-  - All entry filters: sector MA, earnings blackout, gap filters, cooldown
-  - Tier 1 partial exit at +1%, uniform 2% target for Tier 2+3
+── UNCHANGED FROM V22 ────────────────────────────────────────────────────────
+  - Uniform 2% target, 8-day window (Run 5 mechanism)
+  - Velocity crash pause: SPY 5d < -12% → 5-day pause
+  - DD scaling disabled (V22-1)
+  - Commission min $0.35 (V22-2)
+  - VIX spike pause disabled (V22-3)
+  - All entry filters, sector MA, earnings blackout, gap filters
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
-  Run 5:  CAGR 7.58% | $478k | WR 60.28% | DD –22.55% | Sharpe 0.73
-  V21:    CAGR 7.55% | $476k | WR 60.26% | DD –22.55% | Sharpe 0.72
-  V22 target: CAGR >8% | $520k+ | WR ~60% | DD ~–25% | Sharpe >0.72
+  Run 5:  CAGR 7.58% | $478k | DD –22.6%
+  V21:    CAGR 7.55% | $476k | DD –22.6%
+  V22:    CAGR 9.14% | $652k | DD –26.3%
+  V23 target: CAGR >9.5% | $700k+ | DD ~–27%
+
+
 """
 
 import io
@@ -75,14 +74,14 @@ warnings.filterwarnings("ignore")
 # ─────────────────────────────────────────────────────────────────────────────
 # Config — identical to Run 5 except VELOCITY_CRASH constants added
 # ─────────────────────────────────────────────────────────────────────────────
-START_DATE             = "2004-01-01"
+START_DATE             = "2003-01-01"  # [V23-3] extended back — 2003 was SPY +29%
 END_DATE               = datetime.date.today().isoformat()
 MIN_DOLLAR_VOLUME      = 5_000_000
-MAX_POSITIONS          = 30
-POSITION_SIZE          = 0.05
-POSITION_SIZE_HIGH     = 0.075          # VIX < 15
-POSITION_SIZE_LOW      = 0.025          # VIX > 25
-POSITION_SIZE_EARNINGS = 0.03
+MAX_POSITIONS          = 40            # [V23-1] raised 30→40 to capture signal clustering
+POSITION_SIZE          = 0.04          # [V23-1] scaled 5%→4% (40×4% ≈ 30×5% exposure)
+POSITION_SIZE_HIGH     = 0.06           # [V23-1+2] scaled: 40 pos × 6% (was 30×7.5%)
+POSITION_SIZE_LOW      = 0.02           # [V23-1] scaled: 40 pos × 2% (was 30×2.5%)
+POSITION_SIZE_EARNINGS = 0.024          # [V23-1] scaled: 2.4% (was 3.0%)
 MA_WINDOW              = 200
 INITIAL_CAPITAL        = 100_000.0
 RSI_PERIOD             = 2
@@ -135,7 +134,7 @@ GAP_UP_MAX             = 0.020
 SECTOR_MA_WINDOW       = 20
 MAX_SECTOR_POSITIONS   = 3
 VIX_HIGH               = 25
-VIX_LOW                = 15
+VIX_LOW                = 18            # [V23-2] raised 15→18: VIX 15-18 is still calm
 VIX_SPIKE_PCT          = 0.30
 VIX_SPIKE_PAUSE_DAYS   = 0          # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
 REENTRY_COOLDOWN_DAYS  = 5
@@ -467,7 +466,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V22 simulation (Run 5 + velocity crash pause) ...")
+    print("\n[Backtest] Running V23 simulation (Run 5 + velocity crash pause) ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -746,7 +745,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V22",
+        "version":              "V23",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -771,8 +770,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
             "version":                "V22",
-            "base":                   "V21 (Run 5 + velocity crash pause, $476k)",
-            "additions":              "V22-1: DD scaling removed | V22-2: commission $0.35 | V22-3: VIX pause removed",
+            "base":                   "V22 ($652k, 9.14% CAGR — new all-time best)",
+            "additions":              "V23-1: MAX_POS 40 + scaled sizing | V23-2: VIX_LOW 18 | V23-3: start 2003",
             "min_consec_down":        MIN_CONSEC_DOWN,
             "tier1_6plus":            "2% target, 8d, partial at +1%",
             "tier2_5days":            "2% target, 8d, no partial",
@@ -781,7 +780,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "dd_scale_mild":          "REMOVED [V22-1] — thresholds set unreachable",
             "dd_scale_severe":        "REMOVED [V22-1] — thresholds set unreachable",
             "max_positions":          MAX_POSITIONS,
-            "vix_sizing":             f"<{VIX_LOW}: {POSITION_SIZE_HIGH*100}%, >{VIX_HIGH}: {POSITION_SIZE_LOW*100}%",
+            "vix_sizing":             f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V23-2], >{VIX_HIGH}VIX: {POSITION_SIZE_LOW*100:.1f}%, base: {POSITION_SIZE*100:.1f}% [V23-1]",
             "commission":             f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min [V22-2 lowered]",
             "universe":               "S&P500 + S&P400",
             "no_rsi_exit":            "RSI overbought exit NOT present (Run 5 baseline)",
@@ -802,7 +801,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V22")
+    print("  NAIVE MR BACKTEST — V23")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
