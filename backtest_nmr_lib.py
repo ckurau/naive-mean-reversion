@@ -1,45 +1,37 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V27
+Enhanced Naive Mean Reversion (MR) Backtest — V28
 ==================================================
-Base: V26 — $989,796 final equity, 11.28% CAGR. Current all-time best.
-One targeted change: VIX_LOW raised 18 → 20.
+Base: V27 — $1,018,787 final equity, 11.43% CAGR.
+One change: VIX_LOW raised 20 → 25. Tests whether the diminishing
+returns curve on the VIX_LOW lever still has meaningful juice.
 
-V26 STATE:
-  VIX sizing: VIX < 18 → 7.5%, everything else → 5%. No high-VIX penalty.
-  Final equity $989,796 — $204 short of $1M.
-  The remaining lever: more days qualify for the 7.5% large-size regime.
-  VIX 18-20 is still calm by historical standards (long-run VIX avg ~19).
-  Raising the threshold from 18 to 20 means more trading days in the
-  three biggest profit years (2013 avg VIX ~14, 2017 avg ~11, 2019 avg ~15)
-  were already below 18 — so some years see minimal benefit. But years
-  with moderate calm periods (2005-2007, 2014, 2015, 2021) have VIX
-  frequently sitting 18-20, and those days now get 7.5% instead of 5%.
-  Compounding effect amplifies through the portfolio growth trajectory.
+V27 diminishing returns on VIX_LOW:
+  V24: 15→18 (large gain)
+  V26: penalty removed (+$64k)
+  V25: 25→30 (+$51k)
+  V27: 18→20 (+$29k)
+  V28: 20→25 (expected: +$10-20k, possibly less)
 
-V27 CHANGES (1 only):
-  [V27-1] VIX_LOW raised 18 → 20
-      More days qualify for 7.5% position size.
-      VIX 18-20 is still "calm" territory — the long-run average VIX
-      is ~19, so this threshold now captures average-VIX days.
-      No other changes. One lever, isolated test.
+At VIX_LOW=25, virtually every non-panic day gets 7.5% sizing.
+Historical VIX averages ~19 — above 25 is genuinely elevated.
+If V28 adds less than $15k over V27, the lever is exhausted and
+further VIX_LOW increases are not worth pursuing.
 
-UNCHANGED FROM V26:
-  - VIX high-side penalty REMOVED (V26-1)
-  - MAX_POSITIONS = 40, POSITION_SIZE = 5% (V24)
-  - Velocity crash pause: SPY 5d < -12% → 5-day pause (V21)
-  - DD scaling disabled (V22-1)
-  - Commission min $0.35 (V22-2)
-  - VIX spike pause disabled (V22-3)
-  - REENTRY_COOLDOWN_DAYS = 5
+V28 CHANGE (1 only):
+  [V28-1] VIX_LOW raised 20 → 25
+      VIX < 25 → 7.5% large size (was < 20)
+      VIX ≥ 25 → 5% base
+      No high-VIX penalty (V26-1)
+
+UNCHANGED FROM V27: everything else identical.
 
 RESULTS HISTORY:
-  Run 5:  CAGR 7.58%  | $478k  | DD –22.6%
-  V22:    CAGR 9.14%  | $652k  | DD –26.3%
-  V24:    CAGR 10.64% | $875k  | DD –32.5%
-  V25:    CAGR 10.94% | $926k  | DD –34.5%
-  V26:    CAGR 11.28% | $990k  | DD –32.3%  ← current best
-  V27 target: CAGR >11.5% | $1M+ | DD ~–33%
+  V26:  CAGR 11.28% | $990k  | DD –32.3%
+  V27:  CAGR 11.43% | $1.02M | DD –33.9%  ← current best
+  V28 target: CAGR ~11.5% | $1.03-1.04M | diminishing returns expected
 """
+
+
 
 
 
@@ -122,7 +114,7 @@ GAP_UP_MAX             = 0.020
 SECTOR_MA_WINDOW       = 20
 MAX_SECTOR_POSITIONS   = 3
 VIX_HIGH               = 999           # [V26-1] effectively disabled — penalty branch removed
-VIX_LOW                = 20            # [V27-1] raised 18→20: captures more calm-VIX days at 7.5%
+VIX_LOW                = 25            # [V28-1] raised 20→25: ~85% of days get 7.5% sizing
 VIX_SPIKE_PCT          = 0.30
 VIX_SPIKE_PAUSE_DAYS   = 0          # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
 REENTRY_COOLDOWN_DAYS  = 5             # [V26-2] reverted 2→5 (V25 showed 2d was neutral, +3 trades/yr)
@@ -455,7 +447,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V27 simulation (Run 5 + velocity crash pause) ...")
+    print("\n[Backtest] Running V28 simulation (Run 5 + velocity crash pause) ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -734,7 +726,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V27",
+        "version":              "V28",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -759,8 +751,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
             "version":                "V22",
-            "base":                   "V26 ($990k, 11.28% CAGR)",
-            "additions":              "V27-1: VIX_LOW raised 18→20 (more days at 7.5% size)",
+            "base":                   "V27 ($1.02M, 11.43% CAGR)",
+            "additions":              "V28-1: VIX_LOW raised 20→25 (ceiling test of VIX_LOW lever)",
             "min_consec_down":        MIN_CONSEC_DOWN,
             "tier1_6plus":            "2% target, 8d, partial at +1%",
             "tier2_5days":            "2% target, 8d, no partial",
@@ -769,7 +761,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "dd_scale_mild":          "REMOVED [V22-1] — thresholds set unreachable",
             "dd_scale_severe":        "REMOVED [V22-1] — thresholds set unreachable",
             "max_positions":          MAX_POSITIONS,
-            "vix_sizing":             f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V27-1 raised], base: {POSITION_SIZE*100:.1f}% — no high-VIX penalty",
+            "vix_sizing":             f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V28-1 raised], base: {POSITION_SIZE*100:.1f}% — no high-VIX penalty",
             "commission":             f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min [V22-2 lowered]",
             "universe":               "S&P500 + S&P400",
             "no_rsi_exit":            "RSI overbought exit NOT present (Run 5 baseline)",
@@ -790,7 +782,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V27")
+    print("  NAIVE MR BACKTEST — V28")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
