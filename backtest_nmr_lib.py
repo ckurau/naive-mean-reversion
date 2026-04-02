@@ -1,61 +1,51 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V23
+Enhanced Naive Mean Reversion (MR) Backtest — V24
 ==================================================
-Base: V22 — $652,176 final equity, 9.14% CAGR. New all-time best.
-Three targeted changes to capture more of the signal opportunity.
+Base: V22 — $652,176 final equity, 9.14% CAGR. Current all-time best.
 
-── V22 DIAGNOSIS ─────────────────────────────────────────────────────────────
-  V22 fires 655 trades/year. Signal clustering means high-quality days
-  (broad selloffs with 15-30+ simultaneous oversold stocks) hit the
-  MAX_POSITIONS=30 cap and leave profitable candidates on the table.
-  2013 (+$116k) and 2017 (+$141k) almost certainly had such days.
+V23 LESSON — why it regressed ($592k vs $652k):
+  Scaling positions 5%→4% to "maintain exposure" at 40 positions cost
+  $41k in 2013+2017 alone. Per-trade profit fell 20% on all existing trades.
+  The extra 10 slots only recovered ~$20k in volume. Net: –$60k.
+  Correct approach: add positions WITHOUT reducing size. Let total exposure
+  expand — average simultaneous open positions is 8-15, not 30 or 40.
+  The strategy is naturally diversified; "total exposure" is misleading.
 
-  VIX 15-18 is still genuinely low-volatility — the 5% base position
-  size in that range is leaving sizing on the table vs the 7.5% that
-  fires below 15. Historical average VIX is ~19; below 18 is calm.
+V23 also proved START_DATE 2003 does nothing — period still starts 2004-10-19
+  due to universe data availability. Not retested.
 
-  Starting October 2004 means the strategy misses the 2003 recovery
-  year (SPY +29%) and early 2004 — adding more compounding runway
-  before the 2005-2013 growth period.
+── V24 CHANGES (2 only, from V22 base) ──────────────────────────────────────
+  [V24-1] MAX_POSITIONS 30 → 40, POSITION_SIZE unchanged at 5%
+      Captures overflow on high-signal clustered days WITHOUT reducing
+      per-trade profit. Total exposure expands only when >30 signals fire
+      simultaneously. In normal conditions (8-15 open positions), zero
+      impact. In peak signal days (2013, 2017 bull runs), captures
+      trades 31-40 at full 5% sizing. No sizing change anywhere.
 
-── V23 CHANGES (3 only) ──────────────────────────────────────────────────────
-  [V23-1] MAX_POSITIONS 30 → 40, POSITION_SIZE 5% → 4%
-      Captures overflow on high-signal clustered days. Total portfolio
-      exposure stays similar (40×4% = 160% vs 30×5% = 150%). VIX
-      adjustments scaled proportionally:
-        VIX < 18 (raised threshold): 6.0% (was 7.5% at VIX < 15)
-        VIX > 25: 2.0% (was 2.5%)
-        Base: 4.0% (was 5.0%)
-      Earnings month cap: 2.4% (was 3.0%, proportional)
-
-  [V23-2] VIX_LOW threshold 15 → 18
-      More days qualify for the high-sizing regime. VIX 15-18 is still
-      low-volatility historically. In trending bull years (2013, 2017,
-      2019) VIX often averaged 12-16, meaning more trading days now get
-      the 6% (scaled) large-size treatment instead of 4% base.
-
-  [V23-3] START_DATE 2004-01-01 → 2003-01-01
-      Adds ~21 months of compounding runway. 2003 was SPY +29% — a
-      strong recovery year after the dot-com lows. Universe data will be
-      thinner but large-caps have data from 2000+. More early compounding
-      before 2005-2013 growth years = higher final equity.
+  [V24-2] VIX_LOW threshold 15 → 18
+      More days qualify for 7.5% large-size position. VIX 15-18 is still
+      genuinely low-volatility — historically the mean is ~19. In the three
+      biggest profit years (2013, 2017, 2019) VIX often sat 12-16, meaning
+      many days were getting 5% base instead of 7.5%. Raising to 18 lets
+      those days compound at the higher size. V23 proved this change is
+      low-risk (2022/2018 didn't worsen meaningfully from it).
 
 ── UNCHANGED FROM V22 ────────────────────────────────────────────────────────
+  - POSITION_SIZE = 5% (NOT scaled down — V23 proved this is critical)
   - Uniform 2% target, 8-day window (Run 5 mechanism)
   - Velocity crash pause: SPY 5d < -12% → 5-day pause
   - DD scaling disabled (V22-1)
   - Commission min $0.35 (V22-2)
   - VIX spike pause disabled (V22-3)
-  - All entry filters, sector MA, earnings blackout, gap filters
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
   Run 5:  CAGR 7.58% | $478k | DD –22.6%
   V21:    CAGR 7.55% | $476k | DD –22.6%
-  V22:    CAGR 9.14% | $652k | DD –26.3%
-  V23 target: CAGR >9.5% | $700k+ | DD ~–27%
-
-
+  V22:    CAGR 9.14% | $652k | DD –26.3%  ← current best
+  V23:    CAGR 8.65% | $592k | DD –26.7%  ← regression (wrong approach)
+  V24 target: CAGR >9.5% | $700k+ | DD ~–27%
 """
+
 
 import io
 import warnings
@@ -74,14 +64,14 @@ warnings.filterwarnings("ignore")
 # ─────────────────────────────────────────────────────────────────────────────
 # Config — identical to Run 5 except VELOCITY_CRASH constants added
 # ─────────────────────────────────────────────────────────────────────────────
-START_DATE             = "2003-01-01"  # [V23-3] extended back — 2003 was SPY +29%
+START_DATE             = "2004-01-01"
 END_DATE               = datetime.date.today().isoformat()
 MIN_DOLLAR_VOLUME      = 5_000_000
-MAX_POSITIONS          = 40            # [V23-1] raised 30→40 to capture signal clustering
-POSITION_SIZE          = 0.04          # [V23-1] scaled 5%→4% (40×4% ≈ 30×5% exposure)
-POSITION_SIZE_HIGH     = 0.06           # [V23-1+2] scaled: 40 pos × 6% (was 30×7.5%)
-POSITION_SIZE_LOW      = 0.02           # [V23-1] scaled: 40 pos × 2% (was 30×2.5%)
-POSITION_SIZE_EARNINGS = 0.024          # [V23-1] scaled: 2.4% (was 3.0%)
+MAX_POSITIONS          = 40            # [V24-1] raised 30→40, size UNCHANGED at 5%
+POSITION_SIZE          = 0.05
+POSITION_SIZE_HIGH     = 0.075          # VIX < 15
+POSITION_SIZE_LOW      = 0.025          # VIX > 25
+POSITION_SIZE_EARNINGS = 0.03
 MA_WINDOW              = 200
 INITIAL_CAPITAL        = 100_000.0
 RSI_PERIOD             = 2
@@ -134,7 +124,7 @@ GAP_UP_MAX             = 0.020
 SECTOR_MA_WINDOW       = 20
 MAX_SECTOR_POSITIONS   = 3
 VIX_HIGH               = 25
-VIX_LOW                = 18            # [V23-2] raised 15→18: VIX 15-18 is still calm
+VIX_LOW                = 18            # [V24-2] raised 15→18: VIX 15-18 still calm
 VIX_SPIKE_PCT          = 0.30
 VIX_SPIKE_PAUSE_DAYS   = 0          # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
 REENTRY_COOLDOWN_DAYS  = 5
@@ -466,7 +456,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V23 simulation (Run 5 + velocity crash pause) ...")
+    print("\n[Backtest] Running V24 simulation (Run 5 + velocity crash pause) ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -745,7 +735,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V23",
+        "version":              "V24",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -770,8 +760,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
             "version":                "V22",
-            "base":                   "V22 ($652k, 9.14% CAGR — new all-time best)",
-            "additions":              "V23-1: MAX_POS 40 + scaled sizing | V23-2: VIX_LOW 18 | V23-3: start 2003",
+            "base":                   "V22 ($652k, 9.14% CAGR)",
+            "additions":              "V24-1: MAX_POS 40 (size unchanged 5%) | V24-2: VIX_LOW 18",
             "min_consec_down":        MIN_CONSEC_DOWN,
             "tier1_6plus":            "2% target, 8d, partial at +1%",
             "tier2_5days":            "2% target, 8d, no partial",
@@ -780,7 +770,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "dd_scale_mild":          "REMOVED [V22-1] — thresholds set unreachable",
             "dd_scale_severe":        "REMOVED [V22-1] — thresholds set unreachable",
             "max_positions":          MAX_POSITIONS,
-            "vix_sizing":             f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V23-2], >{VIX_HIGH}VIX: {POSITION_SIZE_LOW*100:.1f}%, base: {POSITION_SIZE*100:.1f}% [V23-1]",
+            "vix_sizing":             f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V24-2 raised], >{VIX_HIGH}VIX: {POSITION_SIZE_LOW*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
             "commission":             f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min [V22-2 lowered]",
             "universe":               "S&P500 + S&P400",
             "no_rsi_exit":            "RSI overbought exit NOT present (Run 5 baseline)",
@@ -801,7 +791,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V23")
+    print("  NAIVE MR BACKTEST — V24")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
