@@ -1036,7 +1036,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "sector_rsi_t3":             f"Skip Tier3 if sector ETF RSI(2) >{SECTOR_RSI_T3_MAX} [V18-6]",
             "velocity_crash_pause":      f"SPY 5d ret <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS} days [V16-2]",
             "sweet_spot_size":           f"{SWEET_SPOT_SIZE*100:.1f}% (SPY above 20wk + below ATH {SWEET_SPOT_BELOW_ATH_MIN*100:.0f}%+)",
-            "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → {POSITION_SIZE_CO_OVERSOLD*100:.0f}% + priority",
+            "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → priority sort only, no size boost [V18-3]",
             "dist_ma50":                 "secondary ranking (not hard filter)",
             "max_positions":             MAX_POSITIONS,
             "crash_max_positions":       CRASH_MAX_POSITIONS,
