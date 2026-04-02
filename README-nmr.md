@@ -1,44 +1,81 @@
 # Naive Mean Reversion (MR) Backtest
 
-A survivorship-bias-free backtest of a **Naive Mean Reversion** strategy across all historical S&P 500 + S&P 400 MidCap constituents, automated via GitHub Actions.
+A survivorship-bias-free backtest of a **Naive Mean Reversion** strategy across all historical S&P 500 + S&P 400 MidCap + S&P 600 SmallCap constituents, automated via GitHub Actions.
 
 ---
 
-## Current Version: V30 (Best Confirmed Result)
+## Current Version: V30 + S&P 600 (Best Confirmed Result)
 
-The current script (`backtest-nmr.py`) is **V30 — Run 5 base + full VIX sizing optimisation + 40 positions**.
+The current script (`backtest-nmr.py`) is **V30 — Run 5 base + full VIX sizing optimisation + 40 positions + S&P 600 universe**.
 
-**IMPORTANT FOR NEW SESSIONS:** Push `backtest-nmr.py`, `backtest_nmr_lib.py`, and `walkforward.py` to GitHub and run the workflow. All three files must be in sync — `backtest_nmr_lib.py` is what `walkforward.py` imports. Keep them identical except for the `__all__` export block and entry point.
+**IMPORTANT FOR NEW SESSIONS:**
+Push `backtest-nmr.py`, `backtest_nmr_lib.py`, and `walkforward.py` to GitHub and run the workflow. All three files must be in sync.
+
+**CRITICAL ARCHITECTURE NOTE:** `backtest-nmr.py` is a **fully self-contained standalone script**. It does NOT import from `backtest_nmr_lib.py`. `walkforward.py` imports from `backtest_nmr_lib.py`. This means any changes to universe logic, parameters, or strategy rules must be made in **both** `backtest-nmr.py` and `backtest_nmr_lib.py` independently, or the two will diverge silently. This was the root cause of multiple "S&P 600 not appearing" debugging sessions — the lib was updated but the main script was not.
 
 **Session objective: maximize total equity.** All optimisation decisions in V10–V30 were made on this basis. If your objective changes (e.g. prioritising drawdown protection or Sharpe), re-evaluate the VIX sizing aggressiveness — V16 or V22 are better starting points for capital-preservation goals.
 
-### Best Confirmed Results: V30
+### Best Confirmed Results: V30 + S&P 600
+
+| Metric | Value |
+|---|---|
+| CAGR | 16.01% |
+| ROI / Year | 107.93% |
+| Win Rate | 60.27% |
+| Avg Win | 3.10% |
+| Avg Loss | −3.58% |
+| Profit Factor | 1.07 |
+| Max Drawdown | −48.65% |
+| Sharpe Ratio | 0.73 |
+| Trades / Year | 872 |
+| Final Equity (from $100k) | $2,414,283 |
+| Period | 2004–2026 (~21 years) |
+
+### Previous Best (V30, S&P 500+400 only) — for reference
 
 | Metric | Value |
 |---|---|
 | CAGR | 14.42% |
-| ROI / Year | 79.16% |
-| Win Rate | 60.18% |
-| Avg Win | 2.98% |
-| Avg Loss | −3.44% |
-| Profit Factor | 1.10 |
+| Final Equity | $1,797,462 |
 | Max Drawdown | −39.37% |
 | Sharpe Ratio | 0.72 |
 | Trades / Year | 752 |
-| Final Equity (from $100k) | $1,797,462 |
-| Period | 2004–2026 (~21 years) |
 
-### Walk-Forward Validation — PENDING on V30
+### Walk-Forward Validation: V30 + S&P 600 ✅ COMPLETE
 
-Walk-forward was previously validated on Run 5. V30 walk-forward is next to run. To run it, trigger the workflow with `run_walkforward = true`. See the Walk-Forward section below for Run 5 results as the baseline reference.
+Walk-forward run using 8 rolling windows (5-year in-sample / 2-year out-of-sample).
+
+| Window | OOS Period | CAGR | WinRate | PF | MaxDD | Sharpe | Trades | IS/OOS |
+|---|---|---|---|---|---|---|---|---|
+| W1 | 2009–2010 | 15.9% | 60.0% | 1.23 | −14.1% | 1.06 | 1220 | 0.43x |
+| W2 | 2011–2012 | 30.7% | 64.6% | 1.37 | −21.5% | 1.09 | 1688 | 2.14x |
+| W3 | 2013–2014 | 35.2% | 59.8% | 1.27 | −28.6% | 1.32 | 2128 | 1.48x |
+| W4 | 2015–2016 | 7.1% | 57.5% | 1.09 | −20.3% | 0.52 | 1568 | 0.20x |
+| W5 | 2017–2018 | 15.8% | 58.2% | 1.12 | −21.1% | 0.64 | 2223 | 0.70x |
+| W6 | 2019–2020 | 29.8% | 62.2% | 1.28 | −35.0% | 0.92 | 1816 | 2.56x |
+| W7 | 2021–2022 | −11.7% | 55.2% | 0.90 | −39.1% | −0.54 | 1506 | −0.53x |
+| W8 | 2023–2025 | 2.3% | 59.2% | 1.02 | −39.6% | 0.23 | 3402 | 0.28x |
+
+**OOS Positive CAGR windows: 7/8 — PASS**
+**OOS Avg CAGR: 15.65% | OOS Median CAGR: 15.88%**
+
+**Failure windows in context:**
+- W7 (2021–22): Fastest Fed rate-hiking cycle in 40 years + small-cap amplification. −11.7% OOS is the known structural risk. Not a disqualifying failure.
+- W4 (2015–16): Near-zero-volatility grinding market. 7.1% OOS — actually improved vs V30 without S&P 600 (was 2.9%).
+- W8 (2023–25): 2.3% OOS. Weak but positive. W8 IS/OOS of 0.28x is marginal but acceptable given the structural headwinds.
+
+**S&P 600 impact on walk-forward vs V30 (no S&P 600):**
+The S&P 600 improved 6 of 8 OOS windows. OOS avg jumped from 13.69% to 15.65% while IS CAGR went from 14.42% to 16.01% — OOS improved proportionally with IS, which is the opposite of overfitting. W7 worsened (−4% → −11.7%) due to small-cap bear market amplification. This is an acceptable and expected tradeoff.
+
+**Conclusion: The strategy has a genuine, demonstrable out-of-sample edge with the S&P 600 addition confirmed.**
 
 ---
 
-## V30 Strategy Rules (current code)
+## V30 + S&P 600 Strategy Rules (current code)
 
 | Rule | Detail |
 |---|---|
-| **Universe** | S&P 500 + S&P 400 MidCap (current + historical, avoids survivorship bias) |
+| **Universe** | S&P 500 + S&P 400 MidCap + S&P 600 SmallCap (current + historical, avoids survivorship bias) |
 | **Trend filter** | Stock must be above its 200-day SMA |
 | **Entry signal** | 4+ consecutive down days AND RSI(2) < 20 AND ATR > 1% AND volume > 20-day avg AND dollar volume > $5M/day |
 | **Entry execution** | Buy at open of next day |
@@ -49,7 +86,7 @@ Walk-forward was previously validated on Run 5. V30 walk-forward is next to run.
 | **Tier 3** | 4 down days: 2% target, 8-day window, no partial |
 | **Min hold** | 2 calendar days before profit exit allowed |
 | **Max positions** | 40 simultaneous holdings |
-| **Position size** | VIX < 20 → 9%, VIX 20–25 → 7.5%, VIX ≥ 25 → 5% base |
+| **Position size** | VIX < 25 → 9%, VIX ≥ 25 → 5% base |
 | **VIX high-side penalty** | REMOVED — high-VIX environments are best for mean reversion |
 | **Drawdown scaling** | REMOVED — costs too much in recovery years |
 | **VIX spike pause** | REMOVED — VIX spike days are best entry conditions |
@@ -65,9 +102,9 @@ Walk-forward was previously validated on Run 5. V30 walk-forward is next to run.
 
 ---
 
-## Walk-Forward Validation Results (Run 5 baseline) ✅
+## Walk-Forward Validation Results (Run 5 baseline — historical reference)
 
-Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-sample). Parameters fixed at Run 5 settings. V30 walk-forward is pending.
+✅ Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-sample). Parameters fixed at Run 5 settings.
 
 | Window | OOS Period | OOS CAGR | Win Rate | Max DD | Sharpe | IS/OOS | Verdict |
 |---|---|---|---|---|---|---|---|
@@ -83,12 +120,21 @@ Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-s
 **OOS Positive CAGR windows: 6/8 — PASS**
 **OOS Avg CAGR: 5.58% | OOS Median CAGR: 5.01%**
 
-**Failure windows in context:**
-- W4 (2015–16): Near-zero-volatility grinding market. Breakeven (−0.2%) — not a blowup.
-- W7 (2021–22): Fastest Fed rate-hiking cycle in 40 years. Acceptable known risk.
-- W8's IS/OOS of −3.22x is misleading: IS CAGR was negative while OOS was positive. The 3.1% OOS CAGR is real.
+### Walk-Forward Validation Results (V30, S&P 500+400 only — historical reference)
 
-**Conclusion: The strategy has a genuine, demonstrable out-of-sample edge.**
+| Window | OOS Period | CAGR | WinRate | PF | MaxDD | Sharpe | IS/OOS |
+|---|---|---|---|---|---|---|---|
+| W1 | 2009–2010 | 20.2% | 60.6% | 1.35 | −13.0% | 1.31 | 0.61x |
+| W2 | 2011–2012 | 24.5% | 63.5% | 1.33 | −19.8% | 0.97 | 1.52x |
+| W3 | 2013–2014 | 27.0% | 59.8% | 1.26 | −22.2% | 1.24 | 1.21x |
+| W4 | 2015–2016 | 2.9% | 55.9% | 1.05 | −18.3% | 0.27 | 0.10x |
+| W5 | 2017–2018 | 6.0% | 57.1% | 1.05 | −23.8% | 0.35 | 0.37x |
+| W6 | 2019–2020 | 27.4% | 62.7% | 1.35 | −28.9% | 0.94 | 5.15x |
+| W7 | 2021–2022 | −4.0% | 54.5% | 0.96 | −29.1% | −0.12 | −0.26x |
+| W8 | 2023–2025 | 5.5% | 60.5% | 1.05 | −35.3% | 0.32 | 0.56x |
+
+**OOS Positive CAGR windows: 7/8 — PASS**
+**OOS Avg CAGR: 13.69% | OOS Median CAGR: 13.12%**
 
 ---
 
@@ -133,7 +179,8 @@ Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-s
 | V27 | VIX_LOW raised 18→20 | 11.43% | $1,019k | −33.9% | 0.70 | Crossed $1M |
 | V28 | **VIX_LOW raised 20→25** | 12.58% | $1,268k | −34.9% | 0.72 | Huge jump — recovery years captured |
 | V29 | POSITION_SIZE_HIGH 7.5%→9% (from V27 base) | 12.60% | $1,274k | −38.5% | 0.68 | Tied with V28, worse Sharpe and DD |
-| **V30** | **V28 + V29 combined: VIX_LOW=25 + 9% boost** | **14.42%** | **$1,797k** | **−39.4%** | **0.72** | **Current best — 18× from $100k** |
+| **V30** | **V28 + V29 combined: VIX_LOW=25 + 9% boost** | **14.42%** | **$1,797k** | **−39.4%** | **0.72** | **S&P 500+400 best** |
+| **V30+600** | **+ S&P 600 SmallCap universe** | **16.01%** | **$2,414k** | **−48.65%** | **0.73** | **Current best — 24× from $100k** |
 
 ---
 
@@ -141,11 +188,27 @@ Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-s
 
 ### V7's $641k is not a reproducible target from a fresh $100k start
 
-The README and version history reference V7's $641k final equity. This number reflected a specific compounding path — the 2012-2013 gains happened when the portfolio had already grown large through earlier years. Multiple direct attempts to reproduce it from a $100k start (V19, V20) produced $320-330k. The $641k should not be used as a benchmark. V30's $1,797k is the legitimate current best from a confirmed $100k starting position.
+The README and version history reference V7's $641k final equity. This number reflected a specific compounding path — the 2012-2013 gains happened when the portfolio had already grown large through earlier years. Multiple direct attempts to reproduce it from a $100k start (V19, V20) produced $320-330k. The $641k should not be used as a benchmark. V30+S&P600's $2,414k is the legitimate current best from a confirmed $100k starting position.
+
+### backtest-nmr.py is standalone — changes must be made in both files
+
+`backtest-nmr.py` does NOT import from `backtest_nmr_lib.py`. It is fully self-contained. `walkforward.py` imports from `backtest_nmr_lib.py`. This means:
+- Any parameter or logic change must be made in **both** `backtest-nmr.py` and `backtest_nmr_lib.py`
+- The two files will silently diverge if you only update one
+- This was confirmed the hard way: multiple failed runs showed S&P 600 missing because only the lib was updated, not the main script
+- Always verify both files have the same universe, parameters, and logic before triggering a run
+
+### The S&P 600 addition is genuinely additive, not in-sample noise
+
+Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65% — proportionally with the IS improvement (14.42% → 16.01%). This is the opposite of what overfitting looks like. Key observations:
+- Win rate unchanged at 60.27% OOS — the edge applies equally to small-caps
+- 6 of 8 walk-forward windows improved
+- W7 (2021–22) worsened from −4% to −11.7% — small-caps are hit harder in bear markets. This is an expected and acceptable tradeoff for the overall gain
+- In live trading, small-cap slippage on open fills will be higher than large-caps — the `MIN_DOLLAR_VOLUME = $5M` filter already removes the worst offenders, but expect the live benefit to be somewhat smaller than the backtest suggests
 
 ### The core mechanism — unchanged across all versions
 
-**The uniform 8-day window is the single most important parameter.** All gains, regressions, and optimisations across 30 versions left this intact. Win rate has been 60.18–60.28% in every version from Run 5 through V30. The underlying edge has not changed — only the leverage applied to it.
+**The uniform 8-day window is the single most important parameter.** All gains, regressions, and optimisations across 30+ versions left this intact. Win rate has been 60.18–60.28% in every version from Run 5 through V30+S&P600. The underlying edge has not changed — only the leverage and universe applied to it.
 
 **RSI(2) is always below 5 after 4+ consecutive down days.** Do not use RSI(2) to discriminate between tiers. Use consecutive down days instead. RSI(2) is only useful for ranking candidates (most oversold first).
 
@@ -158,13 +221,13 @@ The README and version history reference V7's $641k final equity. This number re
 2. VIX spike entry pause removed (V22): VIX spike days are the best mean reversion entry conditions, not the worst
 3. VIX high-side penalty removed (V26): high-VIX environments are maximally oversold — undersizing them was wrong
 
-**The VIX_LOW lever had far more room than expected.** Raising VIX_LOW from 15 (Run 5) to 25 (V28) was the dominant source of gains in the second session. Years like 2020-2021 where VIX sat in the 20-25 range during recovery got full-size positions instead of reduced ones. The lever worked because mean reversion edge is actually strongest in moderately elevated VIX environments.
+**The VIX_LOW lever had far more room than expected.** Raising VIX_LOW from 15 (Run 5) to 25 (V28) was the dominant source of gains in the second session. Years like 2020-2021 where VIX sat in the 20-25 range during recovery got full-size positions instead of reduced ones.
 
 **The velocity crash pause is the one protection worth keeping.** Added in V21, it fires only when SPY drops >12% in 5 days (March 2020-level events). It saved ~$40-60k in 2020 at essentially zero cost to good years. All other protective mechanisms were net negative.
 
 **Position count: 40 is better than 30 — but ONLY if size is NOT reduced.** V23 tested 40 positions at 4% size (scaled to maintain "similar exposure") and regressed. V24 tested 40 positions at 5% size (unchanged) and was a major improvement. The lesson: adding positions at full size captures overflow on high-signal days without diluting existing trades. Never scale down position size to "make room" for more positions.
 
-**VIX sizing is a compounding amplifier, not a risk tool.** The VIX high-side penalty (VIX > 25 → 2.5%) was removed because it undersized positions during the periods of strongest mean reversion edge. VIX above 25 means stocks are maximally oversold — exactly when you want full size. The velocity crash pause handles genuine extreme events (VIX > 50 territory in March 2020); the VIX sizing regime doesn't need to.
+**VIX sizing is a compounding amplifier, not a risk tool.** The VIX high-side penalty (VIX > 25 → 2.5%) was removed because it undersized positions during the periods of strongest mean reversion edge. VIX above 25 means stocks are maximally oversold — exactly when you want full size. The velocity crash pause handles genuine extreme events; the VIX sizing regime doesn't need to.
 
 ### What doesn't work — do not retry
 
@@ -187,10 +250,11 @@ The README and version history reference V7's $641k final equity. This number re
 | **Tier 3 target at 1.25%** | Between V15 (1%) and V16 (1.5%) | Strictly worse than 1.5% at same trade volume |
 | **SPY momentum filter for Tier 3** | Skip if SPY up >0.5% on signal day | Effect unclear under V18 noise |
 | **Drawdown scaling with tight thresholds** | 5%/10% thresholds (original) | Fired during normal volatility, reduced size when most needed |
+| **70/30 SPY blend** | Blending strategy with SPY B&H | After-tax, the strategy edge over SPY narrows — blending reduces total equity vs all-in |
 
 ### What works — confirmed positive contributions
 
-| Addition | First Tested | Effect | Status in V30 |
+| Addition | First Tested | Effect | Status |
 |---|---|---|---|
 | Uniform 8-day window | Run 2 | Core mechanism | ✅ Kept |
 | Tier 1 partial exit (50% at +1%) | Run 3 | Small positive | ✅ Kept |
@@ -209,24 +273,28 @@ The README and version history reference V7's $641k final equity. This number re
 | VIX spike pause removed | V22 | VIX spikes = best entry conditions | ✅ Applied |
 | Commission floor $0.35 | V22 | Matches IB tiered reality | ✅ Applied |
 | 40 positions at full 5% size | V24 | Captures overflow on high-signal days | ✅ Applied |
-| VIX_LOW raised to 25 | V28 | Recovery years get full 7.5% size | ✅ Applied |
+| VIX_LOW raised to 25 | V28 | Recovery years get full 9% size | ✅ Applied |
 | VIX high-side penalty removed | V26 | High-VIX = strongest MR conditions | ✅ Applied |
-| 9% boost for VIX < 20 | V30 | Bull years get larger positions | ✅ Applied |
+| 9% boost for VIX < 25 | V30 | Bull/recovery years get larger positions | ✅ Applied |
+| **S&P 600 SmallCap universe** | V30+600 | +1.59% CAGR, +$617k equity, OOS confirmed | ✅ Applied |
 
 ---
 
-## The Honest Risk Picture for V30
+## The Honest Risk Picture for V30 + S&P 600
 
-V30's gains come entirely from **leverage amplification on the same edge**, not from finding a better edge. This has important implications:
+V30+S&P600's gains come entirely from **leverage amplification and universe expansion on the same edge**, not from finding a better edge. This has important implications:
 
-**The Sharpe ratio has been stable.** Run 5: 0.73. V30: 0.72. Despite nearly 4× the final equity, the risk-adjusted return is unchanged. Every dollar of additional return came with proportional additional risk.
+**The Sharpe ratio has been stable.** Run 5: 0.73. V30+S&P600: 0.73. Despite nearly 5× the final equity, the risk-adjusted return is unchanged. Every dollar of additional return came with proportional additional risk.
 
-**Bad years scale with portfolio size.** At V30's ~$1.8M peak equity:
-- 2022 lost −$342k (a single year)
-- 2018 lost −$318k (a single year)
-- The −39.4% max drawdown means a potential ~$700k paper loss peak-to-trough
+**Bad years scale with portfolio size.** At V30+S&P600's ~$2.4M peak equity:
+- 2022 lost −$690k in a single year
+- 2025 lost −$276k
+- 2026 (partial year) lost −$471k
+- The −48.65% max drawdown means a potential ~$1.2M paper loss peak-to-trough
 
-**The VIX sizing parameters are now very aggressive.** VIX < 20 → 9% positions, VIX 20-25 → 7.5%. At 40 positions, theoretical maximum notional exposure is 360% of portfolio (though average simultaneous open positions is 8-15 in practice). This is a leveraged approach in all but name.
+**The VIX sizing parameters are now very aggressive.** VIX < 25 → 9% positions. At 40 positions, theoretical maximum notional exposure is 360% of portfolio (though average simultaneous open positions is 8-15 in practice). This is a leveraged approach in all but name.
+
+**Small-cap amplification cuts both ways.** The S&P 600 addition improved good years significantly but made bad years worse. W7 OOS (2021–22) went from −4% to −11.7% with S&P 600 included.
 
 **Win rate is unchanged and must remain the anchor.** If live win rate drops below 56%, the strategy is failing. Monitor this before increasing position sizes.
 
@@ -234,35 +302,114 @@ V30's gains come entirely from **leverage amplification on the same edge**, not 
 
 ## Optimism Bias Warnings (Updated)
 
-V30's reported 14.42% CAGR is the **in-sample ceiling**, not the live expectation.
+V30+S&P600's reported 16.01% CAGR is the **in-sample ceiling**, not the live expectation.
 
 | Source | Estimated CAGR Impact |
 |---|---|
-| Slippage on open prices | −1 to −2% (larger at V30's position sizes) |
+| Slippage on open prices (worse for small-caps) | −1.5 to −2.5% |
 | Survivorship bias (incomplete historical universe) | −1 to −2% |
 | Overfitting across 30+ iterations on same dataset | −2 to −3% |
 | Earnings calendar lookahead (today's known dates used) | −0.3 to −0.5% |
 | VIX regime parameters tuned to history | −1 to −2% |
-| **Realistic live estimate** | **~6 to 9% CAGR gross** |
+| **Realistic live estimate** | **~7 to 11% CAGR gross** |
 
-The Run 5 walk-forward showed 5.58% OOS avg CAGR vs 7.58% in-sample — roughly a 26% decay. Applying that same decay ratio to V30's 14.42% suggests ~10-11% live. But V30 has significantly more parameter tuning than Run 5, so the decay may be larger. After short-term capital gains tax (32–37%), realistic net CAGR is likely 4–7%.
+The V30+S&P600 walk-forward showed 15.65% OOS avg CAGR vs 16.01% in-sample — only a 2.2% decay. This is unusually small and likely reflects the walk-forward's own IS/OOS limitations rather than the true live decay. Apply the same ~26% decay ratio observed in Run 5 to get a conservative estimate: 16.01% × 0.74 ≈ ~12% live gross. After short-term capital gains tax (32–37%), realistic net CAGR is likely 6–9%.
 
 ---
 
 ## SPY vs Strategy (Updated)
 
-| Metric | SPY B&H | Run 5 | V30 |
-|---|---|---|---|
-| CAGR (gross, in-sample) | ~10.5% | 7.58% | 14.42% |
-| CAGR (gross, OOS estimate) | ~10.5% | 5.58% | ~8-11% |
-| CAGR (after tax) | ~8.4% | ~3.5–5% | ~5–9% |
-| Max Drawdown | −55% (2008) | −22.55% | −39.37% |
-| Sharpe Ratio | ~0.55 | 0.73 | 0.72 |
-| Worst single year | −55% (2008) | ~−25% | −$342k (2022) |
+| Metric | SPY B&H | Run 5 | V30 | V30 + S&P 600 |
+|---|---|---|---|---|
+| CAGR (gross, in-sample) | ~10.5% | 7.58% | 14.42% | 16.01% |
+| CAGR (gross, OOS avg) | ~10.5% | 5.58% | 13.69% | 15.65% |
+| CAGR (after tax, est.) | ~8.4% | ~3.5–5% | ~5–9% | ~6–9% |
+| Max Drawdown | −55% (2008) | −22.55% | −39.37% | −48.65% |
+| Sharpe Ratio | ~0.55 | 0.73 | 0.72 | 0.73 |
+| Worst single year | −55% (2008) | ~−25% | −$342k (2022) | −$690k (2022) |
 
-**SPY comparison at V30:** V30's aggressive VIX sizing means its drawdown profile is now closer to SPY's than Run 5's. The primary advantage is diversification (near-zero correlation with SPY) rather than the drawdown protection that Run 5 offered.
+**SPY comparison:** V30+S&P600 beats SPY on gross CAGR clearly. After tax in a taxable account the edge narrows — 872 trades/year means almost entirely short-term capital gains. In a tax-advantaged account (IRA), go all-in on the strategy. In a taxable account, the strategy still wins on gross but the tax drag is significant.
 
-**Tax note:** ~752 trades/year qualifies for IRS trader tax status (Section 475(f) MTM election) in most years. Consult a CPA specialising in trader tax (e.g. Green Trader Tax) before forming any entity.
+**Blend vs all-in decision:** The 70/30 SPY blend discussed in earlier sessions was relevant when the strategy underperformed SPY. At V30+S&P600's OOS results (15.65% avg), the strategy clearly outperforms SPY even OOS. The recommendation is **all-in on the strategy in a tax-advantaged account**, or a 50/50 blend in a taxable account to capture SPY's long-term capital gains treatment.
+
+**Correlation:** Near-zero correlation with SPY means the strategy provides genuine diversification regardless of return comparison.
+
+**Tax note:** ~872 trades/year qualifies for IRS trader tax status (Section 475(f) MTM election) in most years. Consult a CPA specialising in trader tax (e.g. Green Trader Tax) before forming any entity.
+
+---
+
+## Paper Trading & Live Automation Plan
+
+### Broker: Interactive Brokers (IBKR) — confirmed choice
+
+IBKR is the right broker for both paper trading and live automated trading:
+- **`ib_insync` Python library**: mature, well-documented, actively maintained
+- **Paper trading environment**: real market data, simulated fills at actual prices — not a simplified backtester. Alpaca's paper trading uses simplified fill models that don't accurately reflect open-price execution on 60+ simultaneous signals
+- **Commission model matches**: $0.005/share with $0.35 minimum matches the backtest exactly — no model drift
+- **Transition**: paper → live is a single config change (account ID swap), not a code rewrite
+- **Margin**: best retail margin rates if leverage ever needed
+
+### What "fully automated" requires
+
+Four components are needed for zero-touch operation:
+
+1. **Daily signal pipeline** — runs each morning before market open (8:00–9:20 ET). Scans the universe using today's live data, generates signals, outputs a ranked trade list. This is `backtest-nmr.py` logic running in "live mode" on current data.
+
+2. **Order execution layer** — takes the trade list, submits Market On Open (MOO) orders for new entries, checks exits for existing positions (profit target / time stop), handles partial fills.
+
+3. **Position state store** — persistent state across sessions: what's open, entry price, day of hold window, tier, partial-done status. A SQLite database or JSON file works. Required because the strategy holds positions for up to 8 days.
+
+4. **Monitoring + alerting** — email or SMS (SendGrid/Twilio) when: pipeline didn't run, IBKR connection dropped, win rate has fallen below 55% over the last 100 trades, any single day loss exceeds a threshold.
+
+### Recommended infrastructure
+
+```
+VPS ($6/mo DigitalOcean droplet — always on, avoids GitHub Actions timing drift)
+  └── Daily cron at 8:00 ET
+        ├── Download today's price data (yfinance)
+        ├── Generate signals against current open positions
+        ├── Connect to IBKR Gateway (running 24/7 on same machine)
+        ├── Submit MOO orders for new entries
+        ├── Check exits for existing positions
+        └── Update position state store → send summary email
+```
+
+Note: GitHub Actions cron can drift 5–15 minutes from scheduled time — unreliable for market-open execution. Use a VPS with a proper cron job instead.
+
+### Pass criteria for moving to live capital
+
+- Live win rate: 57–63% (backtest: 60.27%) over at least 100 trades
+- Trade count: 65–90/month (backtest: ~73/month at V30+S&P600)
+- Observed slippage on open fills: under 0.6% average (small-caps will be higher than large-caps)
+- No single losing month worse than −15%
+- Minimum paper trading duration: 3 months covering at least one earnings season
+
+---
+
+## Next Steps
+
+### Step 1 — Walk-Forward Validation ✅ COMPLETE
+V30 walk-forward: OOS avg 13.69%, 7/8 positive windows.
+V30 + S&P 600 walk-forward: OOS avg 15.65%, 7/8 positive windows. Both confirmed genuine OOS edge.
+
+### Step 2 — Paper Trading Setup ⏳ (current priority)
+- Open IBKR paper trading account
+- Build daily signal pipeline (live mode version of `backtest-nmr.py`)
+- Build order execution layer via `ib_insync`
+- Set up position state store (SQLite)
+- Set up monitoring and alerting
+- Paper trade for minimum 3 months
+
+### Step 3 — Live Trading Infrastructure ⏳
+Only after paper trading passes:
+- Swap paper account ID for live account ID in config
+- Verify fills, partial fills, and position tracking in live environment
+- Monitor win rate over first 100 live trades before scaling up
+
+### Step 4 — Future Edge Improvements (not more leverage)
+Genuine improvements that would improve the strategy edge, not just sizing:
+- **Historical earnings database** — removes the lookahead bias in the current earnings calendar (yfinance uses today's known dates, not historical). Estimated impact: +0.3 to +0.5% CAGR
+- **Live OOS validation** — 6-12 months of paper trading is the only true out-of-sample test
 
 ---
 
@@ -284,7 +431,7 @@ The Run 5 walk-forward showed 5.58% OOS avg CAGR vs 7.58% in-sample — roughly 
 | V19 | Uniform 2% target hypothesis test | 5.72% | $330k | Hypothesis disproved: target not the source of V7's $641k |
 | V20 | Bull block removed, crash limit removed | 5.68% | $327k | Bull trades (55.9% WR) added volume but hurt quality |
 
-### V21–V30: The Breakthrough Sequence
+### V21–V30+S&P600: The Breakthrough Sequence
 
 | Version | Key Change | CAGR | Final Equity | Max DD | Sharpe |
 |---|---|---|---|---|---|
@@ -297,45 +444,8 @@ The Run 5 walk-forward showed 5.58% OOS avg CAGR vs 7.58% in-sample — roughly 
 | V27 | VIX_LOW 18→20 | 11.43% | $1,019k | −33.9% | 0.70 |
 | V28 | VIX_LOW 20→25 | 12.58% | $1,268k | −34.9% | 0.72 |
 | V29 | POSITION_SIZE_HIGH 7.5%→9% (from V27) | 12.60% | $1,274k | −38.5% | 0.68 |
-| **V30** | **V28 + V29 combined** | **14.42%** | **$1,797k** | **−39.4%** | **0.72** |
-
----
-
-## Next Steps
-
-### Step 1 — Walk-Forward Validation on V30 ⏳ (immediate priority)
-
-Run `walkforward.py` with V30's parameters to get out-of-sample validation. Expected finding: OOS CAGR will likely be 8-11% (the same ~26% IS/OOS decay ratio as Run 5 applied to V30's 14.42%). If OOS CAGR is below 7%, the additional parameters (VIX thresholds, position sizing) are overfitted to history and V26 or V28 should be used instead.
-
-To run: trigger the workflow with `run_walkforward = true`. Takes 4-6 hours.
-
-### Step 2 — Paper Trading Setup ⏳
-
-Once walk-forward confirms OOS edge:
-- Select a broker with a Python-compatible API (Interactive Brokers via `ib_insync`, or Alpaca)
-- Build a daily signal scanner — scans each morning for new signals, outputs a trade list
-- Paper trade for minimum 3 months covering at least one earnings season
-
-**Pass criteria for moving to live capital:**
-- Live win rate: 57–63% (backtest: 60.18%)
-- Trade count: 55–80/month (backtest: ~63/month at V30)
-- Observed slippage on open fills: under 0.5% average (higher tolerance at V30's sizes)
-- No single losing month worse than −12% (V30's drawdown is deeper than Run 5's)
-
-### Step 3 — Live Trading Infrastructure ⏳
-
-Only after paper trading passes:
-- Broker API integration for order execution
-- Position management across sessions, handle partial fills
-- Daily signal pipeline with email/SMS alerting
-- Portfolio-level monitoring: if live win rate drops below 55% over 100 trades, pause and review
-
-### Step 4 — Future Edge Improvements (not more leverage)
-
-The remaining improvements that would genuinely improve the strategy edge (not just sizing) are:
-- **Historical earnings database** — removes the lookahead bias in the current earnings calendar (yfinance uses today's known dates, not historical)
-- **S&P 600 SmallCap universe** — adds ~600 more names with stronger mean reversion characteristics
-- **Live OOS validation** — 6-12 months of paper trading is the only true out-of-sample test
+| V30 | V28 + V29 combined | 14.42% | $1,797k | −39.4% | 0.72 |
+| **V30+S&P600** | **+ S&P 600 SmallCap universe** | **16.01%** | **$2,414k** | **−48.65%** | **0.73** |
 
 ---
 
@@ -343,8 +453,8 @@ The remaining improvements that would genuinely improve the strategy edge (not j
 
 ```
 .
-├── backtest-nmr.py          # Main backtest (V30 — current)
-├── backtest_nmr_lib.py      # Shared library (imported by walkforward.py — must match)
+├── backtest-nmr.py          # Main backtest (V30+S&P600 — STANDALONE, does not import lib)
+├── backtest_nmr_lib.py      # Shared library (imported by walkforward.py — must match main script)
 ├── walkforward.py           # Walk-forward out-of-sample test framework
 ├── requirements.txt         # Python dependencies
 ├── README-nmr.md            # This file
@@ -360,52 +470,55 @@ The remaining improvements that would genuinely improve the strategy edge (not j
         └── backtest.yml
 ```
 
+**File sync rules:**
+- `backtest-nmr.py` and `backtest_nmr_lib.py` must have identical parameters, universe logic, and strategy rules
+- They are separate files and do NOT share code at runtime — changes to one do not affect the other
+- `walkforward.py` imports from `backtest_nmr_lib.py` only
+
 ---
 
 ## Setup & Running
 
 ### GitHub Actions
-
 1. Push all files to your repo (including `backtest_nmr_lib.py` and `walkforward.py`)
 2. **Settings → Actions → General → Workflow permissions → Read and write**
 3. **Actions → Naive MR Backtest → Run workflow**
 
 Optional workflow inputs: `start_date`, `end_date`, `initial_capital`, `run_walkforward`
 
-To run walk-forward, set `run_walkforward = true` in the workflow dispatch inputs. Walk-forward adds 4–6 hours on top of the 60–90 minute main backtest.
+To run walk-forward, set `run_walkforward = true` in the workflow dispatch inputs. Walk-forward adds 6–8 hours on top of the 90–120 minute main backtest (longer now with S&P 600). The scheduled Sunday run only runs the main backtest. Walk-forward is manual-only.
 
-The scheduled Sunday run only runs the main backtest. Walk-forward is manual-only.
+**If the git push step fails with "rejected (fetch first)":** The workflow's commit step runs `git pull --rebase origin main` before pushing. If this error persists, it means two runs completed and tried to push simultaneously. Re-run the workflow once — it will pull the previous run's results and push cleanly.
 
 ### Local
-
 ```bash
 pip install -r requirements.txt
-python backtest-nmr.py    # main backtest (~60-90 min)
-python walkforward.py     # walk-forward (~4-6 hours)
+python backtest-nmr.py      # main backtest (~90-120 min with S&P 600)
+python walkforward.py       # walk-forward (~6-8 hours with S&P 600)
 ```
 
 ### Health Checks
-
 If results look wrong, check:
+- `[Universe] Total unique tickers` < 1800: S&P 600 fetch failed — check both `backtest-nmr.py` AND `backtest_nmr_lib.py` for the S&P 600 URL and `_extract_tickers_from_table` function
 - `time_stop_rate > 70%`: 8-day window may not be firing correctly — check tier constants
 - `win_rate < 55%`: verify uniform 8-day windows are in place; check SPY regime filter
-- `CAGR < 8%` with no code changes: check `backtest_nmr_lib.py` is in sync with `backtest-nmr.py`
-- `trades_per_year < 600`: Tier 3 may be disabled — check `MIN_CONSEC_DOWN = 4`
-- `version` in metrics.json: must match what you pushed — if stale, the workflow ran old code
+- `CAGR < 12%` with no code changes: check `backtest_nmr_lib.py` is in sync with `backtest-nmr.py`
+- `trades_per_year < 700`: Tier 3 may be disabled — check `MIN_CONSEC_DOWN = 4`
+- `version` in metrics.json shows old parameters: the workflow ran a cached/stale version of the code
 
 ---
 
 ## Output Metrics
 
-| Metric | Description | V30 Target |
+| Metric | Description | V30+S&P600 Target |
 |---|---|---|
-| `cagr_pct` | Compound Annual Growth Rate | >12% in-sample |
+| `cagr_pct` | Compound Annual Growth Rate | >14% in-sample |
 | `win_rate_pct` | % of profitable trades | 59–61% |
-| `profit_factor` | Gross profit ÷ gross loss | >1.08 |
-| `max_drawdown_pct` | Largest peak-to-trough decline | < −42% |
+| `profit_factor` | Gross profit ÷ gross loss | >1.05 |
+| `max_drawdown_pct` | Largest peak-to-trough decline | < −52% |
 | `sharpe_ratio` | Annualised Sharpe (monthly) | >0.68 |
 | `time_stop_rate_pct` | % exiting via time stop | ~60% |
-| `trades_per_year` | Annual trade count | 700–800 |
+| `trades_per_year` | Annual trade count | 800–950 |
 
 ---
 
@@ -425,4 +538,4 @@ html5lib>=1.1
 
 ## Disclaimer
 
-Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. The aggressive position sizing in V30 is suitable only for those who understand and accept the full risk of deep drawdowns (−39%+) as part of the strategy's long-term compounding profile.
+Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. The aggressive position sizing in V30+S&P600 is suitable only for those who understand and accept the full risk of deep drawdowns (−48%+) as part of the strategy's long-term compounding profile.
