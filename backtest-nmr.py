@@ -18,14 +18,13 @@ Two targeted changes, both pure sizing/frequency amplifiers on the same edge.
        valid re-entries while still preventing same-day re-chasing.
 
 ── V25 CHANGES (2 only) ──────────────────────────────────────────────────────
-  [V25-1] VIX_HIGH threshold 25 → 20
-      Position size drops to 2.5% only when VIX > 20 (was > 25).
-      VIX 20-25 is elevated but not crisis territory — mean reversion edge
-      is strong here. Fewer days penalised with the 2.5% minimum.
-      In practice: in 2018, 2022, early 2020, VIX often sat 18-25.
-      These are exactly the periods where the strategy has its best win
-      rate — and V24 was undersizing on those days.
-      Risk: slightly more exposure during moderate-VIX stress periods.
+  [V25-1] VIX_HIGH threshold 25 → 30
+      Position size drops to 2.5% only when VIX > 30 (was > 25).
+      VIX 25-30 is elevated but not full-panic — mean reversion edge
+      is actually strongest in this range (stocks maximally oversold).
+      Previously those days got 2.5% sizing; now they get the 5% base.
+      In 2018 and early 2020, VIX regularly sat 20-30 — these were
+      the best mean reversion entry conditions and they were undersized.
 
   [V25-2] REENTRY_COOLDOWN_DAYS 5 → 2
       A stock that time-stopped and then sets up again within 2-3 days
@@ -127,7 +126,7 @@ GAP_DOWN_MAX           = -0.015
 GAP_UP_MAX             = 0.020
 SECTOR_MA_WINDOW       = 20
 MAX_SECTOR_POSITIONS   = 3
-VIX_HIGH               = 20            # [V25-1] lowered 25→20: VIX 20-25 still strong MR setup
+VIX_HIGH               = 30            # [V25-1] raised 25→30: VIX 25-30 stays at 5% base (was 2.5%)
 VIX_LOW                = 18            # [V24-2] raised 15→18: VIX 15-18 still calm
 VIX_SPIKE_PCT          = 0.30
 VIX_SPIKE_PAUSE_DAYS   = 0          # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
