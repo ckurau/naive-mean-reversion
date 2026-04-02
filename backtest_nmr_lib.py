@@ -1,36 +1,37 @@
 """
 Enhanced Naive Mean Reversion (MR) Backtest — V28
 ==================================================
-Base: V27 — $1,018,787 final equity, 11.43% CAGR.
-One change: VIX_LOW raised 20 → 25. Tests whether the diminishing
-returns curve on the VIX_LOW lever still has meaningful juice.
+Base: V27 — $1,018,787 final equity, 11.43% CAGR. Current all-time best.
+One change: VIX_LOW raised further from 20 → 25.
 
-V27 diminishing returns on VIX_LOW:
-  V24: 15→18 (large gain)
-  V26: penalty removed (+$64k)
-  V25: 25→30 (+$51k)
-  V27: 18→20 (+$29k)
-  V28: 20→25 (expected: +$10-20k, possibly less)
+V27 LESSON: VIX_LOW lever showing diminishing returns.
+  V24 (15→18): large gain
+  V26 (penalty removed): +$64k
+  V25 (25→30): +$51k
+  V27 (18→20): +$29k
+  V28 (20→25): test — expected +$10-20k as curve flattens
 
-At VIX_LOW=25, virtually every non-panic day gets 7.5% sizing.
-Historical VIX averages ~19 — above 25 is genuinely elevated.
-If V28 adds less than $15k over V27, the lever is exhausted and
-further VIX_LOW increases are not worth pursuing.
+At VIX_LOW=25, almost every normal trading day qualifies for 7.5% sizing.
+Only days with VIX above 25 (elevated panic territory) stay at 5% base.
+This is essentially testing whether the 7.5% should be the universal size
+rather than the boost size.
 
-V28 CHANGE (1 only):
+V28 CHANGES (1 only):
   [V28-1] VIX_LOW raised 20 → 25
       VIX < 25 → 7.5% large size (was < 20)
-      VIX ≥ 25 → 5% base
-      No high-VIX penalty (V26-1)
+      VIX ≥ 25 → 5% base (unchanged)
+      At VIX=25, we're at the historical 85th percentile — only genuine
+      stress periods stay at 5%. Everything else gets 7.5%.
 
-UNCHANGED FROM V27: everything else identical.
+UNCHANGED FROM V27: all V22-V27 changes preserved.
 
 RESULTS HISTORY:
-  V26:  CAGR 11.28% | $990k  | DD –32.3%
-  V27:  CAGR 11.43% | $1.02M | DD –33.9%  ← current best
-  V28 target: CAGR ~11.5% | $1.03-1.04M | diminishing returns expected
+  V22:  CAGR 9.14%  | $652k
+  V24:  CAGR 10.64% | $875k
+  V26:  CAGR 11.28% | $990k
+  V27:  CAGR 11.43% | $1,019k  ← current best
+  V28 target: CAGR ~11.5-12% | $1,030-1,050k
 """
-
 
 
 
@@ -114,7 +115,7 @@ GAP_UP_MAX             = 0.020
 SECTOR_MA_WINDOW       = 20
 MAX_SECTOR_POSITIONS   = 3
 VIX_HIGH               = 999           # [V26-1] effectively disabled — penalty branch removed
-VIX_LOW                = 25            # [V28-1] raised 20→25: ~85% of days get 7.5% sizing
+VIX_LOW                = 25            # [V28-1] raised 20→25: near-universal 7.5% except panic days
 VIX_SPIKE_PCT          = 0.30
 VIX_SPIKE_PAUSE_DAYS   = 0          # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
 REENTRY_COOLDOWN_DAYS  = 5             # [V26-2] reverted 2→5 (V25 showed 2d was neutral, +3 trades/yr)
@@ -751,8 +752,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
             "version":                "V22",
-            "base":                   "V27 ($1.02M, 11.43% CAGR)",
-            "additions":              "V28-1: VIX_LOW raised 20→25 (ceiling test of VIX_LOW lever)",
+            "base":                   "V27 ($1,019k, 11.43% CAGR)",
+            "additions":              "V28-1: VIX_LOW raised 20→25 (near-universal 7.5% size)",
             "min_consec_down":        MIN_CONSEC_DOWN,
             "tier1_6plus":            "2% target, 8d, partial at +1%",
             "tier2_5days":            "2% target, 8d, no partial",
@@ -761,7 +762,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "dd_scale_mild":          "REMOVED [V22-1] — thresholds set unreachable",
             "dd_scale_severe":        "REMOVED [V22-1] — thresholds set unreachable",
             "max_positions":          MAX_POSITIONS,
-            "vix_sizing":             f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V28-1 raised], base: {POSITION_SIZE*100:.1f}% — no high-VIX penalty",
+            "vix_sizing":             f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V27-1 raised], base: {POSITION_SIZE*100:.1f}% — no high-VIX penalty",
             "commission":             f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min [V22-2 lowered]",
             "universe":               "S&P500 + S&P400",
             "no_rsi_exit":            "RSI overbought exit NOT present (Run 5 baseline)",
