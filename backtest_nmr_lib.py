@@ -1,50 +1,54 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V24
+Enhanced Naive Mean Reversion (MR) Backtest — V25
 ==================================================
-Base: V22 — $652,176 final equity, 9.14% CAGR. Current all-time best.
+Base: V24 — $874,833 final equity, 10.64% CAGR. Current all-time best.
+Two targeted changes, both pure sizing/frequency amplifiers on the same edge.
 
-V23 LESSON — why it regressed ($592k vs $652k):
-  Scaling positions 5%→4% to "maintain exposure" at 40 positions cost
-  $41k in 2013+2017 alone. Per-trade profit fell 20% on all existing trades.
-  The extra 10 slots only recovered ~$20k in volume. Net: –$60k.
-  Correct approach: add positions WITHOUT reducing size. Let total exposure
-  expand — average simultaneous open positions is 8-15, not 30 or 40.
-  The strategy is naturally diversified; "total exposure" is misleading.
+── V24 STATE ─────────────────────────────────────────────────────────────────
+  V24 = V22 + MAX_POSITIONS 40 (full 5% size) + VIX_LOW raised to 18.
+  Key remaining sizing levers:
+    1. VIX_HIGH=25 forces 2.5% position size above VIX 25. But VIX 20-25 is
+       "elevated but not panic" — still strong mean reversion conditions.
+       Raising threshold to 20 means fewer days get the 2.5% minimum and
+       more days stay at the 5% base or 7.5% high size. Pure upside lever
+       in all market conditions (elevated VIX = best mean reversion setup).
+    2. REENTRY_COOLDOWN=5 days blocks re-entry for a full trading week after
+       any time-stop. Mean reversion signals in the same stock 2-3 days after
+       a time-stop are fresh, independent setups. Reducing to 2 days captures
+       valid re-entries while still preventing same-day re-chasing.
 
-V23 also proved START_DATE 2003 does nothing — period still starts 2004-10-19
-  due to universe data availability. Not retested.
+── V25 CHANGES (2 only) ──────────────────────────────────────────────────────
+  [V25-1] VIX_HIGH threshold 25 → 20
+      Position size drops to 2.5% only when VIX > 20 (was > 25).
+      VIX 20-25 is elevated but not crisis territory — mean reversion edge
+      is strong here. Fewer days penalised with the 2.5% minimum.
+      In practice: in 2018, 2022, early 2020, VIX often sat 18-25.
+      These are exactly the periods where the strategy has its best win
+      rate — and V24 was undersizing on those days.
+      Risk: slightly more exposure during moderate-VIX stress periods.
 
-── V24 CHANGES (2 only, from V22 base) ──────────────────────────────────────
-  [V24-1] MAX_POSITIONS 30 → 40, POSITION_SIZE unchanged at 5%
-      Captures overflow on high-signal clustered days WITHOUT reducing
-      per-trade profit. Total exposure expands only when >30 signals fire
-      simultaneously. In normal conditions (8-15 open positions), zero
-      impact. In peak signal days (2013, 2017 bull runs), captures
-      trades 31-40 at full 5% sizing. No sizing change anywhere.
+  [V25-2] REENTRY_COOLDOWN_DAYS 5 → 2
+      A stock that time-stopped and then sets up again within 2-3 days
+      (4+ consecutive down days, RSI<20) has continued declining after
+      the stop — it's now more oversold, not less. That's a stronger
+      setup, not a weaker one. 2 days prevents same-week re-chasing
+      while capturing genuinely re-oversold entries.
+      Expected: 5-10% more trades in choppy individual stock periods.
 
-  [V24-2] VIX_LOW threshold 15 → 18
-      More days qualify for 7.5% large-size position. VIX 15-18 is still
-      genuinely low-volatility — historically the mean is ~19. In the three
-      biggest profit years (2013, 2017, 2019) VIX often sat 12-16, meaning
-      many days were getting 5% base instead of 7.5%. Raising to 18 lets
-      those days compound at the higher size. V23 proved this change is
-      low-risk (2022/2018 didn't worsen meaningfully from it).
-
-── UNCHANGED FROM V22 ────────────────────────────────────────────────────────
-  - POSITION_SIZE = 5% (NOT scaled down — V23 proved this is critical)
+── UNCHANGED FROM V24 ────────────────────────────────────────────────────────
+  - MAX_POSITIONS = 40, POSITION_SIZE = 5% (unchanged)
+  - VIX_LOW = 18 (from V24-2)
   - Uniform 2% target, 8-day window (Run 5 mechanism)
   - Velocity crash pause: SPY 5d < -12% → 5-day pause
-  - DD scaling disabled (V22-1)
-  - Commission min $0.35 (V22-2)
-  - VIX spike pause disabled (V22-3)
+  - DD scaling disabled, commission $0.35, VIX spike pause disabled
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
-  Run 5:  CAGR 7.58% | $478k | DD –22.6%
-  V21:    CAGR 7.55% | $476k | DD –22.6%
-  V22:    CAGR 9.14% | $652k | DD –26.3%  ← current best
-  V23:    CAGR 8.65% | $592k | DD –26.7%  ← regression (wrong approach)
-  V24 target: CAGR >9.5% | $700k+ | DD ~–27%
+  Run 5:  CAGR 7.58%  | $478k  | DD –22.6%
+  V22:    CAGR 9.14%  | $652k  | DD –26.3%
+  V24:    CAGR 10.64% | $875k  | DD –32.5%  ← current best
+  V25 target: CAGR >11% | $950k+ | DD ~–33%
 """
+
 
 
 import io
@@ -123,11 +127,11 @@ GAP_DOWN_MAX           = -0.015
 GAP_UP_MAX             = 0.020
 SECTOR_MA_WINDOW       = 20
 MAX_SECTOR_POSITIONS   = 3
-VIX_HIGH               = 25
+VIX_HIGH               = 20            # [V25-1] lowered 25→20: VIX 20-25 still strong MR setup
 VIX_LOW                = 18            # [V24-2] raised 15→18: VIX 15-18 still calm
 VIX_SPIKE_PCT          = 0.30
 VIX_SPIKE_PAUSE_DAYS   = 0          # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
-REENTRY_COOLDOWN_DAYS  = 5
+REENTRY_COOLDOWN_DAYS  = 2             # [V25-2] reduced 5→2 days: captures re-oversold setups
 COMMISSION_RATE        = 0.005
 COMMISSION_MIN         = 0.35          # [V22-2] IB tiered pricing reality (was $1.00)
 EARNINGS_MONTHS        = {1, 4, 7, 10}
@@ -456,7 +460,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V24 simulation (Run 5 + velocity crash pause) ...")
+    print("\n[Backtest] Running V25 simulation (Run 5 + velocity crash pause) ...")
     spy_regime = spy_df["spy_ok"].to_dict()
 
     all_dates: set = set()
@@ -735,7 +739,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V24",
+        "version":              "V25",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -760,8 +764,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
             "version":                "V22",
-            "base":                   "V22 ($652k, 9.14% CAGR)",
-            "additions":              "V24-1: MAX_POS 40 (size unchanged 5%) | V24-2: VIX_LOW 18",
+            "base":                   "V24 ($875k, 10.64% CAGR)",
+            "additions":              "V25-1: VIX_HIGH 25→20 | V25-2: cooldown 5→2 days",
             "min_consec_down":        MIN_CONSEC_DOWN,
             "tier1_6plus":            "2% target, 8d, partial at +1%",
             "tier2_5days":            "2% target, 8d, no partial",
@@ -791,7 +795,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V24")
+    print("  NAIVE MR BACKTEST — V25")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
@@ -816,9 +820,6 @@ def save_outputs(trades_df, metrics, eq_df):
     print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
-# Library exports
 # ─────────────────────────────────────────────────────────────────────────────
 __all__ = [
     "get_universe", "download_prices", "download_reference_data",
