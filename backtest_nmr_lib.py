@@ -212,15 +212,19 @@ def get_universe() -> list[str]:
         try:
             tables = _fetch_wiki(url)
             found = False
-            for table in tables:
+            for i, table in enumerate(tables):
                 syms = _extract_tickers_from_table(table)
-                if syms:
+                # Require at least 100 symbols — rejects small ETF/fund header tables
+                if len(syms) >= 100:
                     tickers.update([s.replace(".", "-") for s in syms])
-                    print(f"[Universe] {label}: {len(syms)} symbols")
+                    print(f"[Universe] {label}: {len(syms)} symbols (table {i})")
                     found = True
                     break
             if not found:
-                print(f"[Universe] {label}: WARNING — no ticker column found, columns were: {list(tables[0].columns)}")
+                # Print all table shapes and columns to diagnose the failure
+                print(f"[Universe] {label}: WARNING — no valid ticker table found")
+                for i, table in enumerate(tables):
+                    print(f"  table[{i}] shape={table.shape} cols={list(table.columns)}")
         except Exception as e:
             print(f"[Universe] {label} failed: {e}")
 
