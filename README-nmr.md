@@ -10,6 +10,8 @@ The current script (`backtest-nmr.py`) is **V30 — Run 5 base + full VIX sizing
 
 **IMPORTANT FOR NEW SESSIONS:** Push `backtest-nmr.py`, `backtest_nmr_lib.py`, and `walkforward.py` to GitHub and run the workflow. All three files must be in sync — `backtest_nmr_lib.py` is what `walkforward.py` imports. Keep them identical except for the `__all__` export block and entry point.
 
+**Session objective: maximize total equity.** All optimisation decisions in V10–V30 were made on this basis. If your objective changes (e.g. prioritising drawdown protection or Sharpe), re-evaluate the VIX sizing aggressiveness — V16 or V22 are better starting points for capital-preservation goals.
+
 ### Best Confirmed Results: V30
 
 | Metric | Value |
@@ -136,6 +138,10 @@ Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-s
 ---
 
 ## Key Insights (Updated)
+
+### V7's $641k is not a reproducible target from a fresh $100k start
+
+The README and version history reference V7's $641k final equity. This number reflected a specific compounding path — the 2012-2013 gains happened when the portfolio had already grown large through earlier years. Multiple direct attempts to reproduce it from a $100k start (V19, V20) produced $320-330k. The $641k should not be used as a benchmark. V30's $1,797k is the legitimate current best from a confirmed $100k starting position.
 
 ### The core mechanism — unchanged across all versions
 
