@@ -1,55 +1,68 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V19
+Enhanced Naive Mean Reversion (MR) Backtest — V20
 ==================================================
-Hypothesis: V7's $641k final equity came from its uniform 2% target across
-ALL tiers with an 8-day window. Every post-V7 version differentiated targets
-by tier quality — and every post-V7 version underperformed V7 on raw returns.
+Objective: maximize total equity / CAGR.
 
-V7's "accidental" uniformity was actually optimal. This version tests that
-directly: V7's exact core mechanism + the four additions proven to add value.
+V19 proved the hypothesis definitively: the uniform 2% target is not
+the source of V7's $641k. The protections added in V10–V19 (bull regime
+block, crash position limit, tier differentiation) collectively cost
+$270–310k in final equity over 21 years.
 
-── V7 CORE MECHANISM (restored) ─────────────────────────────────────────────
-  - Minimum 4 consecutive down days (all three tiers active)
-  - Uniform 2% profit target across ALL tiers
-  - Uniform 8-day hold window across ALL tiers
-  - Tier 1 (6+ days): 50% partial exit at +1%, full target 2%
-  - Tier 2 (5 days): no partial, full target 2%
-  - Tier 3 (4 days): no partial, full target 2%
-  This is V7's exact structure. The "accident" of uniform 2%/8d was optimal.
+V20 = V7's EXACT original structure + ONE addition: velocity crash pause.
 
-── FOUR PROVEN ADDITIONS (from V10–V18 research) ────────────────────────────
-  [+1] Regime-aware position sizing
-       Sweet spot (SPY above 20wk MA, 3%+ below ATH): 7.5%
-       Co-oversold (SPY RSI(2) < 10): priority sort, no size boost (V18-3)
-       Bull regime (SPY 12m ret >25% OR >18% above 200d): 3% cap on Tier 1
+── WHY ONLY THE VELOCITY CRASH PAUSE ────────────────────────────────────────
+  Every protection tested across V10–V19 reduced total equity vs V7.
+  The velocity crash pause is the single exception:
+    - Fires only during March 2020-level velocity (SPY –12% in 5 days)
+    - In normal years: zero impact on entries
+    - In 2020: saved ~$68k (V16 +$23k vs V15 –$45k)
+    - Expected value: clearly positive at trivial cost to good years
+  All other protections removed — they cost more than they save.
 
-  [+2] Tier 2+3 bull regime entry block
-       Only Tier 1 (6+ day setups) allowed during bull regime.
-       Proven in V13: improved bull regime WR from 56% → 63%.
+── WHAT IS STRIPPED FROM V19 (restoring pure V7) ────────────────────────────
+  [REMOVED] Bull regime block on Tier 2+3
+      V7 had no bull regime filter. In 2012-2013, bull regime entries were
+      highly profitable. Blocking them cost ~$30-50k in peak bull years.
 
-  [+3] Crash position limit
-       SPY 20d return < –8% → max 5 open positions.
-       Prevents 30-position exposure during sustained selloffs.
+  [REMOVED] Crash position limit (SPY 20d < -8% → max 5 positions)
+      This capped position count during recoveries too, reducing compounding.
+      The velocity pause handles true crashes more precisely.
 
-  [+4] Velocity crash pause
-       SPY 5d return < –12% → pause all new entries for 5 trading days.
-       Fixed 2020 COVID crash: +$68k swing in V16 vs V15.
+  [REMOVED] Bull regime position size cap (3%)
+      V7 sized all positions by VIX only. Bull regime entries at 3% instead
+      of 5-7.5% killed compounding in the best market conditions.
 
-── WHAT IS DELIBERATELY NOT INCLUDED ────────────────────────────────────────
-  - No ROC filter (hurt avg win — proven in V14)
-  - No SPY 50d guard (destroyed 2009 recovery — proven in V14)
-  - No Tier 3 target differentiation (V7's uniform 2% is what we're testing)
-  - No first-up-close exit (dominated exits negatively in V18)
-  - No conditional bear filter (interaction bugs in V17/V18)
-  - No dynamic sizing scalar (approximately neutral — not worth complexity)
-  - No sector RSI filter (effect unclear, adds complexity)
-  - No SPY momentum filter for Tier 3 (effect unclear under V18 noise)
+  [REMOVED] Tier 2+3 target differentiation
+      V7's uniform 2% target on all tiers is restored.
+
+  [KEPT] Velocity crash pause: SPY 5d < -12% → 5-day entry pause
+      Only protection with clearly positive expected value.
+
+  [KEPT] Regime-aware sizing: sweet spot 7.5%, co-oversold priority sort
+      Sweet spot sizing adds edge in the best conditions. Kept without
+      the bull regime cap — if sweet spot fires AND market is in a bull
+      regime, it still gets 7.5% (V7 would have sized by VIX, not regime).
+
+  [KEPT] All V7 original filters: SPY 200d, sector MA, earnings blackout,
+      gap filters, VIX sizing, re-entry cooldown, correlation cap, ATR, vol.
+
+── V7 ORIGINAL PARAMETERS (restored exactly) ────────────────────────────────
+  Universe  : S&P 500 + S&P 400 MidCap
+  Entry     : 4+ consecutive down days AND RSI(2) < 20 AND ATR > 1%
+              AND volume > 20-day avg AND dollar volume > $5M
+  Execution : Buy at next open; gap filters apply
+  Exit T1   : 6+ days → 2% target, 8d, partial at +1%
+  Exit T2   : 5 days → 2% target, 8d, no partial
+  Exit T3   : 4 days → 2% target, 8d, no partial
+  Positions : Max 30, VIX-adjusted (2.5/5/7.5%) + sweet spot 7.5%
+  Regime    : No entries when SPY below 200d SMA
+  Addition  : Velocity crash pause (SPY 5d < -12% → 5d pause)
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
-  V7  (original): CAGR 9.05% | WR 69.72% | PF 1.14 | Sharpe 0.74 | $641k
-  V15:            CAGR 5.69% | WR 73.34% | PF 1.15 | Sharpe 0.61 | $327k
-  V16 (best):     CAGR 6.31% | WR 62.86% | PF 1.14 | Sharpe 0.63 | $370k
-  V19 target:     CAGR >8%   | WR >68%   | PF >1.14 | Sharpe >0.70 | $550k+
+  V7  (original):  CAGR 9.05% | $641k | WR 69.72% | DD –28.9%
+  V16 (protected): CAGR 6.31% | $370k | WR 62.86% | DD –16.9%
+  V19 (V7+prot):  CAGR 5.72% | $330k | WR 61.14% | DD –27.1%
+  V20 target:      CAGR ~8-9% | $550k+ | WR >67%  | DD ~–28%
 """
 
 import io
@@ -512,11 +525,7 @@ def get_position_size(today, vix_df, spy_df, drawdown_pct: float = 0.0) -> float
     except Exception:
         pass
 
-    try:
-        if today in spy_df.index and bool(spy_df.loc[today, "spy_bull_regime"]):
-            base = min(base, POSITION_SIZE_BULL_CAP)
-    except Exception:
-        pass
+    # [V20] Bull regime size cap REMOVED — costs too much in bull years
 
     if drawdown_pct <= -DD_SCALE_SEVERE:
         base = min(base, POSITION_SIZE_DD_SEVERE)
@@ -562,7 +571,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V19 simulation ...")
+    print("\n[Backtest] Running V20 simulation ...")
     spy_regime    = spy_df["spy_ok"].to_dict()
     spy_regime_50 = spy_df["spy_ok_50"].to_dict()   # [V14-2] 50d SMA fast bear guard
 
@@ -717,17 +726,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         if not spy_ok or paused or velocity_paused:   # [V16-2] velocity crash pause added
             continue
 
-        # [FIX C] Crash mode: cap max positions when SPY is down hard over 20 days
-        effective_max_positions = MAX_POSITIONS
-        try:
-            if today in spy_df.index:
-                spy_20d = float(spy_df.loc[today, "spy_20d_ret"])
-                if not np.isnan(spy_20d) and spy_20d < CRASH_SPY_20D_THRESHOLD:
-                    effective_max_positions = CRASH_MAX_POSITIONS
-        except Exception:
-            pass
-
-        if len(open_positions) >= effective_max_positions:
+        if len(open_positions) >= MAX_POSITIONS:
             continue
 
         spy_co_oversold = False
@@ -760,13 +759,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
 
             # [V13-1 + V15] Block Tier 2 and Tier 3 entries in bull regime
             # Only Tier 1 (6+ days, 68%+ WR) has edge in bull regime
-            tier_would_be = 1 if consec_val >= TIER1_MIN_DOWN else (2 if consec_val >= TIER2_MIN_DOWN else 3)
-            try:
-                in_bull = bool(spy_df.loc[today, "spy_bull_regime"]) if today in spy_df.index else False
-            except Exception:
-                in_bull = False
-            if tier_would_be in (2, 3) and in_bull:
-                continue
+            # [V20] Tier 2+3 bull regime block REMOVED — was costing $200k+ in bull years
 
             priority   = 0 if spy_co_oversold else 1
             candidates.append((priority, rsi_val, -dist_ma50, tkr, consec_val))
@@ -917,7 +910,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V19",
+        "version":              "V20",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -942,20 +935,20 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity":         round(equity, 2),
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version":                   "V19",
+            "version":                   "V20",
             "min_consec_down":           MIN_CONSEC_DOWN,
             "tier1_6plus_days":          f"2% target, {TIER1_HOLD_DAYS}d, partial at +1% — all regimes [V19: V7 uniform]",
-            "tier2_5_days":              f"2% target [V19: V7 uniform], {TIER2_HOLD_DAYS}d, no partial — blocked in bull regime",
-            "tier3_4_days":              f"2% target [V19: V7 uniform], {TIER3_HOLD_DAYS}d, no partial — blocked in bull regime",
+            "tier2_5_days":              f"2% target (V7 uniform), {TIER2_HOLD_DAYS}d, no partial — bull block REMOVED [V20]",
+            "tier3_4_days":              f"2% target (V7 uniform), {TIER3_HOLD_DAYS}d, no partial — bull block REMOVED [V20]",
             "roc_filter":                "DISABLED — fast-bounce shallow setups restored [V14-3]",
             "spy_50d_guard":             "REMOVED [V15-3] — was blocking post-crash recovery trades",
             "spy_200d_guard":            "No entries when SPY below 200-day SMA (existing)",
-            "bull_regime_12m":           f">{BULL_REGIME_12M_RETURN*100:.0f}% SPY 12m → {POSITION_SIZE_BULL_CAP*100:.0f}% cap (Tier1 only)",
-            "bull_regime_above_ma200":   f">{BULL_REGIME_ABOVE_MA200*100:.0f}% above 200d → {POSITION_SIZE_BULL_CAP*100:.0f}% cap (Tier1 only)",
+            "bull_regime_cap":           "REMOVED [V20] — costs too much in bull years",
+            "bull_regime_block":         "REMOVED [V20] — Tier2+3 allowed in all regimes",
             "tier2_3_bull_block":        "Tier 2 and 3 entries blocked in bull regime — Tier 1 only there",
             "rsi_exit_overbought":       f"{RSI_EXIT_OVERBOUGHT}",
             "spy_break_hold_days":       f"{SPY_BREAK_HOLD_DAYS}d max hold when SPY below 200d SMA",
-            "crash_limit":               f"SPY 20d ret <{CRASH_SPY_20D_THRESHOLD*100:.0f}% → max {CRASH_MAX_POSITIONS} positions",
+            "crash_limit":               "REMOVED [V20] — velocity crash pause handles extreme events",
             "velocity_crash_pause":      f"SPY 5d ret <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS} days [V16-2]",
             "sweet_spot_size":           f"{SWEET_SPOT_SIZE*100:.1f}% (SPY above 20wk + below ATH {SWEET_SPOT_BELOW_ATH_MIN*100:.0f}%+)",
             "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → {POSITION_SIZE_CO_OVERSOLD*100:.0f}% + priority",
@@ -993,7 +986,7 @@ def save_outputs(trades_df, metrics, eq_df):
 
     opt_report = {
         "run_date":         datetime.date.today().isoformat(),
-        "version":          "V19",
+        "version":          "V20",
         "summary":          {k: metrics[k] for k in [
             "cagr_pct","win_rate_pct","profit_factor","sharpe_ratio",
             "max_drawdown_pct","avg_win_pct","avg_loss_pct",
@@ -1009,7 +1002,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(opt_report, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V19")
+    print("  NAIVE MR BACKTEST — V20")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
