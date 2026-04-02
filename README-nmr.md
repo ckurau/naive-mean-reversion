@@ -338,51 +338,149 @@ The V30+S&P600 walk-forward showed 15.65% OOS avg CAGR vs 16.01% in-sample — o
 
 ---
 
-## Paper Trading & Live Automation Plan
+## Paper Trading & Live Automation
+
+### Status: ✅ LIVE (paper trading active as of April 2026)
+
+The automated paper trading system is fully operational. Setup is complete:
+
+- **Broker:** Interactive Brokers (IBKR) paper account, starting equity $100,000
+- **Script:** `C:\nmr-trader\trade.py` — runs automatically every weekday
+- **Scheduler:** Windows Task Scheduler fires at **6:25 AM PT** (before 6:30 AM PT market open)
+- **Orders:** Market On Open (MOO) submitted before the 6:28 AM PT auction cutoff
+- **Database:** `C:\nmr-trader\positions.db` — SQLite, tracks all open positions and trade history
+- **Alerts:** Daily summary email via SendGrid after each run
+- **Library:** `ib_async` (actively maintained successor to `ib_insync`, supports Python 3.10–3.14)
 
 ### Broker: Interactive Brokers (IBKR) — confirmed choice
 
-IBKR is the right broker for both paper trading and live automated trading:
-- **`ib_insync` Python library**: mature, well-documented, actively maintained
-- **Paper trading environment**: real market data, simulated fills at actual prices — not a simplified backtester. Alpaca's paper trading uses simplified fill models that don't accurately reflect open-price execution on 60+ simultaneous signals
-- **Commission model matches**: $0.005/share with $0.35 minimum matches the backtest exactly — no model drift
-- **Transition**: paper → live is a single config change (account ID swap), not a code rewrite
-- **Margin**: best retail margin rates if leverage ever needed
+- **`ib_async`**: the actively maintained successor to `ib_insync` after the original author passed away in 2024. Import as `from ib_async import IB, Stock, Order` — identical API
+- **Paper trading environment**: real market data, simulated fills at actual open prices — not a toy simulator
+- **Commission model matches**: $0.005/share with $0.35 minimum matches the backtest exactly
+- **Transition**: paper → live is a single config line change, not a code rewrite
+- **Port:** 4002 for paper trading, 4001 for live
 
-### What "fully automated" requires
-
-Four components are needed for zero-touch operation:
-
-1. **Daily signal pipeline** — runs each morning before market open (8:00–9:20 ET). Scans the universe using today's live data, generates signals, outputs a ranked trade list. This is `backtest-nmr.py` logic running in "live mode" on current data.
-
-2. **Order execution layer** — takes the trade list, submits Market On Open (MOO) orders for new entries, checks exits for existing positions (profit target / time stop), handles partial fills.
-
-3. **Position state store** — persistent state across sessions: what's open, entry price, day of hold window, tier, partial-done status. A SQLite database or JSON file works. Required because the strategy holds positions for up to 8 days.
-
-4. **Monitoring + alerting** — email or SMS (SendGrid/Twilio) when: pipeline didn't run, IBKR connection dropped, win rate has fallen below 55% over the last 100 trades, any single day loss exceeds a threshold.
-
-### Recommended infrastructure
+### How the automation works
 
 ```
-VPS ($6/mo DigitalOcean droplet — always on, avoids GitHub Actions timing drift)
-  └── Daily cron at 8:00 ET
-        ├── Download today's price data (yfinance)
-        ├── Generate signals against current open positions
-        ├── Connect to IBKR Gateway (running 24/7 on same machine)
-        ├── Submit MOO orders for new entries
-        ├── Check exits for existing positions
-        └── Update position state store → send summary email
+Every weekday 6:25 AM PT (Windows Task Scheduler):
+  trade.py runs automatically
+    ├── Connects to IBKR Gateway (must be open and logged in)
+    ├── Reads portfolio value from IBKR account
+    ├── Downloads VIX + SPY regime data
+    ├── Checks velocity crash pause and SPY 200d MA filter
+    ├── Downloads ~300 days of price data for full universe (~1800 tickers)
+    ├── Processes exits for open positions (time stop / profit target / partial)
+    ├── Generates entry signals (RSI, consecutive down days, all filters)
+    ├── Submits MOO orders to IBKR
+    ├── Waits 5 minutes for fills at 6:30 AM PT market open
+    ├── Updates entry prices in positions.db from actual fills
+    └── Sends daily summary email
 ```
 
-Note: GitHub Actions cron can drift 5–15 minutes from scheduled time — unreliable for market-open execution. Use a VPS with a proper cron job instead.
+### Daily operations — what to expect
+
+**You don't need to do anything daily.** The system is fully automated. Each morning you will receive an email showing portfolio value, VIX level, position size being used, what exited and why, and what entered.
+
+**Days with no trades are completely normal.** When SPY is below its 200-day MA the strategy blocks all entries. This is the bear market filter working correctly — not a malfunction.
+
+**IBKR Gateway must be open and logged in before 6:25 AM PT.** It is set to auto-start at Windows login. After any reboot, log into Gateway manually before the market opens.
+
+### Local commands — checking progress
+
+Open Command Prompt and activate the virtual environment first:
+
+```bat
+cd C:\nmr-trader
+venv\Scripts\activate
+```
+
+**Check win rate and total P&L:**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); trades = pd.read_sql(\"SELECT * FROM trade_log WHERE exit_reason != 'partial_exit'\", conn); conn.close(); total = len(trades); wr = len(trades[trades['pnl_usd']>0])/total*100 if total else 0; pnl = trades['pnl_usd'].sum() if total else 0; print(f'Completed trades: {total}'); print(f'Win rate: {wr:.1f}%  (target: 57-63%)'); print(f'Total P&L: ${pnl:,.2f}'); print('WARNING: win rate below 55%' if total >= 30 and wr < 55 else 'CAUTION: below 57%' if total >= 30 and wr < 57 else 'Win rate OK' if total >= 30 else f'({total}/30 trades before win rate is meaningful)')"
+```
+
+**Check current open positions:**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); pos = pd.read_sql('SELECT * FROM open_positions', conn); conn.close(); print(f'Open positions: {len(pos)} / 40'); [print(f\"  {r['ticker']}: entered {r['entry_date']} | tier {r['tier']} | {r['shares_remaining']:.0f}sh @ ${r['entry_price']:.2f}\") for _, r in pos.iterrows()] if not pos.empty else print('  None')"
+```
+
+**Check portfolio value (requires IBKR Gateway to be running):**
+```bat
+python -c "from ib_async import IB; ib = IB(); ib.connect('127.0.0.1', 4002, clientId=2); [print(f'Portfolio: ${float(av.value):,.2f}') for av in ib.accountValues() if av.tag == 'NetLiquidation' and av.currency == 'USD']; ib.disconnect()"
+```
+
+**View today's log:**
+```bat
+type C:\nmr-trader\trade.log
+```
+
+**Watch the log live (while the script is running at 6:25 AM):**
+```bat
+powershell -command "Get-Content C:\nmr-trader\trade.log -Wait"
+```
+
+**Run the script manually for testing:**
+```bat
+python C:\nmr-trader\trade.py
+```
+
+Or right-click **NMR Trader** in Windows Task Scheduler → **Run**.
+
+### What the log output means
+
+```
+=== NMR Trading Run: 2026-04-02 ===          ← script started
+Connected to IBKR Gateway                     ← IBKR connection OK
+Portfolio value: $100,000.00                  ← current account value
+VIX: 23.9 | SPY 5d: 1.7% | SPY>200d: False  ← market regime data
+Entries blocked: SPY below 200d MA            ← bear market filter active, no entries today
+Disconnected from IBKR                        ← clean exit
+NMR Daily Summary — 2026-04-02               ← summary email content follows
+```
+
+**Normal messages that are NOT errors:**
+- `possibly delisted; no price data found` — historical tickers (LEH, BSC etc.) that no longer trade. Expected, harmless.
+- `Entries blocked: SPY below 200d MA` — bear market filter. No trades is the correct behaviour.
+- `Velocity crash pause active` — SPY dropped >12% in 5 days. Entries paused. Correct behaviour.
 
 ### Pass criteria for moving to live capital
 
-- Live win rate: 57–63% (backtest: 60.27%) over at least 100 trades
-- Trade count: 65–90/month (backtest: ~73/month at V30+S&P600)
-- Observed slippage on open fills: under 0.6% average (small-caps will be higher than large-caps)
-- No single losing month worse than −15%
-- Minimum paper trading duration: 3 months covering at least one earnings season
+After at least 3 months of paper trading:
+
+| Check | Target | Action if failing |
+|---|---|---|
+| Win rate | 57–63% over 100+ trades | Stop — review signal logic vs backtest parameters |
+| Trades per month | 65–90 | Check universe fetch and signal parameters |
+| Worst single month | Better than −15% | Acceptable if isolated; review if repeated |
+| Script ran every trading day | 100% | Fix Gateway startup or Task Scheduler issue |
+| Slippage vs prior close | Under 0.6% avg | Higher for small-caps is expected |
+
+### Going live — two changes only
+
+When paper trading passes all criteria:
+
+**Change 1 — in `C:\nmr-trader\trade.py`:**
+```python
+IBKR_PORT = 4001   # was 4002 (paper)
+```
+
+**Change 2 — in IBKR Gateway settings:**
+Switch login from Paper Trading to Live account. Restart Gateway.
+
+No other code changes required.
+
+### Troubleshooting the automated system
+
+| Problem | Likely cause | Fix |
+|---|---|---|
+| "IBKR connection failed" | Gateway not running | Open Gateway and log in before 6:25 AM PT |
+| "IBKR connection failed" | Wrong port | Verify `IBKR_PORT=4002` in trade.py |
+| Script didn't run at 6:25 AM | PC was asleep | Power & Sleep → Sleep → Never |
+| Script didn't run at 6:25 AM | Task Scheduler issue | Right-click NMR Trader → Run to test manually |
+| 0 entry candidates every day | SPY below 200d MA | Normal in bear market — not a bug |
+| Win rate < 55% after 50 trades | Signal logic drift | Verify trade.py constants match backtest-nmr.py exactly |
+| No summary email | SendGrid misconfigured | Check SENDGRID_API_KEY in trade.py |
 
 ---
 
@@ -392,24 +490,23 @@ Note: GitHub Actions cron can drift 5–15 minutes from scheduled time — unrel
 V30 walk-forward: OOS avg 13.69%, 7/8 positive windows.
 V30 + S&P 600 walk-forward: OOS avg 15.65%, 7/8 positive windows. Both confirmed genuine OOS edge.
 
-### Step 2 — Paper Trading Setup ⏳ (current priority)
-- Open IBKR paper trading account
-- Build daily signal pipeline (live mode version of `backtest-nmr.py`)
-- Build order execution layer via `ib_insync`
-- Set up position state store (SQLite)
-- Set up monitoring and alerting
-- Paper trade for minimum 3 months
+### Step 2 — Paper Trading ✅ COMPLETE (active since April 2026)
+- IBKR paper account open, starting equity $100,000
+- `trade.py` running automatically every weekday at 6:25 AM PT via Windows Task Scheduler
+- SQLite position database tracking all open positions and trade history
+- Daily summary email via SendGrid
+- Pass criteria: 3 months, win rate 57–63% over 100+ trades, no month worse than −15%
 
-### Step 3 — Live Trading Infrastructure ⏳
-Only after paper trading passes:
-- Swap paper account ID for live account ID in config
-- Verify fills, partial fills, and position tracking in live environment
-- Monitor win rate over first 100 live trades before scaling up
+### Step 3 — Go Live ⏳
+Only after paper trading passes all criteria:
+- Change `IBKR_PORT = 4002` to `4001` in `trade.py`
+- Switch Gateway from paper to live account
+- Monitor win rate over first 100 live trades before considering any sizing changes
 
 ### Step 4 — Future Edge Improvements (not more leverage)
 Genuine improvements that would improve the strategy edge, not just sizing:
 - **Historical earnings database** — removes the lookahead bias in the current earnings calendar (yfinance uses today's known dates, not historical). Estimated impact: +0.3 to +0.5% CAGR
-- **Live OOS validation** — 6-12 months of paper trading is the only true out-of-sample test
+- **Live OOS validation** — 6–12 months of paper trading is the only true out-of-sample test
 
 ---
 
