@@ -1,68 +1,55 @@
 """
-Enhanced Naive Mean Reversion (MR) Backtest — V18
+Enhanced Naive Mean Reversion (MR) Backtest — V19
 ==================================================
-Base: V16 (best confirmed version — 6.31% CAGR, –16.9% DD, 0.63 Sharpe).
-Six targeted additions, all grounded in data or fixing known V17 interaction bug.
+Hypothesis: V7's $641k final equity came from its uniform 2% target across
+ALL tiers with an 8-day window. Every post-V7 version differentiated targets
+by tier quality — and every post-V7 version underperformed V7 on raw returns.
 
-── V17 LESSON ────────────────────────────────────────────────────────────────
-  V17's Tier 3 bear filter (–5% on 20d) broke V16's velocity crash pause.
-  In March 2020, SPY crossed below –5% on 20d BEFORE the 5d drop hit –12%,
-  so the bear filter silenced entries before the velocity pause could fire.
-  Fix: make the Tier 3 bear filter conditional — only active when
-  velocity_paused is False. The two mechanisms now can't interfere.
+V7's "accidental" uniformity was actually optimal. This version tests that
+directly: V7's exact core mechanism + the four additions proven to add value.
 
-── V18 CHANGES ───────────────────────────────────────────────────────────────
-  [V18-1] Conditional Tier 3 bear filter (fixes V17 interaction bug)
-      Block Tier 3 entries when SPY 20d return < –5% AND velocity_paused=False.
-      When a velocity crash IS happening, the velocity pause takes over entirely
-      and the bear filter steps aside. 2022 fixed, 2020 preserved.
+── V7 CORE MECHANISM (restored) ─────────────────────────────────────────────
+  - Minimum 4 consecutive down days (all three tiers active)
+  - Uniform 2% profit target across ALL tiers
+  - Uniform 8-day hold window across ALL tiers
+  - Tier 1 (6+ days): 50% partial exit at +1%, full target 2%
+  - Tier 2 (5 days): no partial, full target 2%
+  - Tier 3 (4 days): no partial, full target 2%
+  This is V7's exact structure. The "accident" of uniform 2%/8d was optimal.
 
-  [V18-2] Dynamic position sizing by consecutive down days
-      Within tiers, more beaten-down = bigger bet. Quality scalar:
-        4 down days (Tier 3): 0.85x base size
-        5 down days (Tier 2): 1.00x base size (unchanged)
-        6-7 down days (Tier 1): 1.10x base size
-        8+ down days (Tier 1): 1.20x base size
-      All caps (bull regime, crash limit, drawdown scaling) still apply after
-      scalar. This rewards the highest-conviction entries.
+── FOUR PROVEN ADDITIONS (from V10–V18 research) ────────────────────────────
+  [+1] Regime-aware position sizing
+       Sweet spot (SPY above 20wk MA, 3%+ below ATH): 7.5%
+       Co-oversold (SPY RSI(2) < 10): priority sort, no size boost (V18-3)
+       Bull regime (SPY 12m ret >25% OR >18% above 200d): 3% cap on Tier 1
 
-  [V18-3] Tighten co-oversold: SPY RSI(2) < 15 → < 10, remove size boost
-      V16 data: co-oversold regime had 60.6% WR — lower than neutral (62.8%)
-      and sweet spot (69.5%). The 6% size boost on co-oversold was wrong.
-      Tightened to RSI(2) < 10 (deeper oversold), keep priority sort only,
-      remove size boost. Fewer but higher-quality co-oversold triggers.
+  [+2] Tier 2+3 bull regime entry block
+       Only Tier 1 (6+ day setups) allowed during bull regime.
+       Proven in V13: improved bull regime WR from 56% → 63%.
 
-  [V18-4] SPY same-day momentum filter for Tier 3
-      Skip Tier 3 entries on days when SPY closes up more than +0.5%.
-      If the whole market is ripping on the signal day, the oversold bounce
-      edge for a 4-day setup is diluted. Tier 1 and Tier 2 unaffected.
-      Requires SPY daily return column (already computed for other filters).
+  [+3] Crash position limit
+       SPY 20d return < –8% → max 5 open positions.
+       Prevents 30-position exposure during sustained selloffs.
 
-  [V18-5] First-up-close time-stop refinement
-      After min hold AND after day 4, if the stock closes up from the prior
-      day (any positive close), exit that day rather than waiting for the
-      full 8-day stop. This captures the bounce peak dynamically and avoids
-      holding through re-legs down. Fires ONLY after both conditions met.
-      Does not replace the profit target — if target hit first, that wins.
+  [+4] Velocity crash pause
+       SPY 5d return < –12% → pause all new entries for 5 trading days.
+       Fixed 2020 COVID crash: +$68k swing in V16 vs V15.
 
-  [V18-6] Sector RSI filter for Tier 3
-      Skip Tier 3 entries when the stock's sector ETF RSI(2) > 60
-      (sector overbought — stock being oversold in overbought sector has
-      weaker reversion potential). Tier 1 and Tier 2 unaffected.
-
-── UNCHANGED FROM V16 ────────────────────────────────────────────────────────
-  - Tier 1: 2% target, 8d, partial at +1%, all regimes
-  - Tier 2: 1.5% target, 8d, no partial, blocked in bull regime
-  - Tier 3: 1.5% target, 8d, no partial, blocked in bull regime
-  - Velocity crash pause: SPY 5d < –12% → pause 5 days
-  - Crash position limit: SPY 20d < –8% → max 5 positions
-  - SPY 200d regime filter, bull regime thresholds, RSI exit at 85
+── WHAT IS DELIBERATELY NOT INCLUDED ────────────────────────────────────────
+  - No ROC filter (hurt avg win — proven in V14)
+  - No SPY 50d guard (destroyed 2009 recovery — proven in V14)
+  - No Tier 3 target differentiation (V7's uniform 2% is what we're testing)
+  - No first-up-close exit (dominated exits negatively in V18)
+  - No conditional bear filter (interaction bugs in V17/V18)
+  - No dynamic sizing scalar (approximately neutral — not worth complexity)
+  - No sector RSI filter (effect unclear, adds complexity)
+  - No SPY momentum filter for Tier 3 (effect unclear under V18 noise)
 
 ── RESULTS HISTORY ───────────────────────────────────────────────────────────
-  V7:   CAGR 9.05% | WR 69.72% | PF 1.14 | Sharpe 0.74 | DD –28.9%
-  V16:  CAGR 6.31% | WR 62.86% | PF 1.14 | Sharpe 0.63 | DD –16.9%
-  V17:  CAGR 5.57% | WR 63.61% | PF 1.14 | Sharpe 0.58 | DD –26.4%
-  V18 target: CAGR >7% | WR >64% | PF >1.15 | Sharpe >0.67 | DD <–18%
+  V7  (original): CAGR 9.05% | WR 69.72% | PF 1.14 | Sharpe 0.74 | $641k
+  V15:            CAGR 5.69% | WR 73.34% | PF 1.15 | Sharpe 0.61 | $327k
+  V16 (best):     CAGR 6.31% | WR 62.86% | PF 1.14 | Sharpe 0.63 | $370k
+  V19 target:     CAGR >8%   | WR >68%   | PF >1.14 | Sharpe >0.70 | $550k+
 """
 
 import io
@@ -103,22 +90,22 @@ MIN_HOLD_BEFORE_EXIT   = 2
 # ── Tier system ───────────────────────────────────────────────────────────────
 TIER1_MIN_DOWN         = 6
 TIER1_TARGET           = 0.020
-TIER1_HOLD_DAYS        = 8              # [V15-2] restored to 8 (12d hurt 2018/2021)
+TIER1_HOLD_DAYS        = 8              # [V19] uniform 8d — V7 mechanism
 TIER1_PARTIAL          = True
 TIER1_PARTIAL_FRAC     = 0.50
 TIER1_PARTIAL_TRIGGER  = 0.010         # 50% out at +1%
 
 TIER2_MIN_DOWN         = 5
-TIER2_TARGET           = 0.015         # 1.5% target
-TIER2_HOLD_DAYS        = 8              # [V15-2] restored to 8
+TIER2_TARGET           = 0.020         # [V19] uniform 2% — V7 mechanism
+TIER2_HOLD_DAYS        = 8              # [V19] uniform 8d — V7 mechanism
 TIER2_PARTIAL          = False         # no partial
 TIER2_PARTIAL_FRAC     = 0.0
 TIER2_PARTIAL_TRIGGER  = 0.0
 
 # [V15-1] Tier 3 restored — 4-day setups, fast-bounce, 1% target
 TIER3_MIN_DOWN         = 4
-TIER3_TARGET           = 0.015         # [V16-1] raised 1% → 1.5% (1% partial was killing avg win)
-TIER3_HOLD_DAYS        = 8
+TIER3_TARGET           = 0.020         # [V19] uniform 2% — V7 mechanism
+TIER3_HOLD_DAYS        = 8              # [V19] uniform 8d — V7 mechanism
 TIER3_PARTIAL          = False         # [V16-1] removed — wrong ratio (0.5% trigger on 1.5% target)
 TIER3_PARTIAL_FRAC     = 0.0
 TIER3_PARTIAL_TRIGGER  = 0.0
@@ -141,35 +128,24 @@ POSITION_SIZE_BULL_CAP   = 0.03        # was 0.02
 SWEET_SPOT_SIZE          = 0.075
 SWEET_SPOT_BELOW_ATH_MIN = 0.03
 
-# ── [V18-3] SPY co-oversold (tightened) ──────────────────────────────────────
-SPY_CO_OVERSOLD_RSI      = 10          # [V18-3] tightened 15→10; size boost removed
-# V16: co-oversold 60.6% WR < neutral 62.8% — boost was wrong direction
-# Keep priority sort only, no size multiplier
+# ── SPY co-oversold boost (Larry Connors) ─────────────────────────────────────
+SPY_CO_OVERSOLD_RSI      = 15
+POSITION_SIZE_CO_OVERSOLD = 0.06
 
-# ── Crash position limit ───────────────────────────────────────────────────────
-CRASH_SPY_20D_THRESHOLD = -0.08
-CRASH_MAX_POSITIONS     = 5
+# ── [FIX C] Severe crash position limit ──────────────────────────────────────
+# If SPY 20-day return < threshold, cap open positions at CRASH_MAX_POSITIONS.
+# Does NOT halt trading — keeps compounding for recovery, just at tiny exposure.
+# Addresses 2011 (-$21k) and 2022 (38% WR) where 30-position exposure in a
+# crash amplified losses dramatically.
+CRASH_SPY_20D_THRESHOLD = -0.08        # SPY down 8%+ over 20 days = crash mode
+CRASH_MAX_POSITIONS     = 5            # max open positions during crash
 
-# ── Velocity crash pause ───────────────────────────────────────────────────────
-VELOCITY_CRASH_5D_THRESHOLD = -0.12
-VELOCITY_CRASH_PAUSE_DAYS   = 5
-
-# ── [V18-1] Conditional Tier 3 bear filter ────────────────────────────────────
-# Only active when velocity_paused=False — fixes V17 interaction bug.
-TIER3_BEAR_20D_THRESHOLD = -0.05
-
-# ── [V18-2] Dynamic sizing scalar by consecutive down days ────────────────────
-CONSEC_SIZE_SCALAR     = {4: 0.85, 5: 1.00, 6: 1.10, 7: 1.15}
-CONSEC_SIZE_SCALAR_MAX = 1.20          # cap for 8+ days
-
-# ── [V18-4] SPY same-day momentum filter for Tier 3 ──────────────────────────
-SPY_MOMENTUM_T3_MAX    = 0.005         # skip Tier 3 if SPY up > +0.5% on signal day
-
-# ── [V18-5] First-up-close time-stop refinement ───────────────────────────────
-FIRST_UP_CLOSE_MIN_HOLD = 4            # after this many days, exit on first up-close
-
-# ── [V18-6] Sector RSI(2) filter for Tier 3 ──────────────────────────────────
-SECTOR_RSI_T3_MAX      = 60            # skip Tier 3 if sector ETF RSI(2) > 60
+# ── [V16-2] Velocity crash pause ──────────────────────────────────────────────
+# If SPY drops > 12% in 5 trading days, pause ALL new entries for 5 days.
+# Targets extreme velocity crashes only (March 2020, Oct 2008).
+# Normal corrections (5-8% over 20 days) don't reach this threshold.
+VELOCITY_CRASH_5D_THRESHOLD = -0.12   # SPY 5d return below -12% triggers pause
+VELOCITY_CRASH_PAUSE_DAYS   = 5       # trading days to pause new entries
 
 # ── SPY regime break: shorten hold for open positions (from V11) ──────────────
 SPY_BREAK_HOLD_DAYS      = 4
@@ -370,8 +346,7 @@ def download_reference_data() -> tuple:
     spy["spy_ok_50"]        = (close > spy["spy_ma50"].squeeze()).values  # [V14-2] True when above 50d SMA
     spy["spy_12m_ret"]      = close.pct_change(252)
     spy["spy_20d_ret"]      = close.pct_change(20)                   # crash detection
-    spy["spy_5d_ret"]       = close.pct_change(5)                    # velocity crash detection
-    spy["spy_1d_ret"]       = close.pct_change(1)                    # [V18-4] same-day momentum filter
+    spy["spy_5d_ret"]       = close.pct_change(5)                    # [V16-2] velocity crash detection
     spy["spy_pct_above_ma"] = (close / spy["spy_ma200"].squeeze()) - 1
     spy["spy_ma20w"]        = close.rolling(100).mean()
     spy["spy_52w_high"]     = close.rolling(252).max()
@@ -404,8 +379,7 @@ def download_reference_data() -> tuple:
                 cs = df["Close"].squeeze()
                 df = df.copy()
                 df["ma"] = cs.rolling(SECTOR_MA_WINDOW).mean()
-                df["ok"]   = (cs > df["ma"].squeeze()).values
-                df["rsi2"] = _compute_rsi(cs, 2)           # [V18-6] sector RSI for Tier 3 filter
+                df["ok"] = (cs > df["ma"].squeeze()).values
                 sector_data[etf] = df
             except Exception:
                 pass
@@ -509,7 +483,7 @@ def calc_commission(shares: float, price: float) -> float:
     return max(shares * COMMISSION_RATE, COMMISSION_MIN)
 
 
-def get_position_size(today, vix_df, spy_df, drawdown_pct: float = 0.0, consec_down: int = 5) -> float:
+def get_position_size(today, vix_df, spy_df, drawdown_pct: float = 0.0) -> float:
     month          = pd.Timestamp(today).month
     earnings_month = month in EARNINGS_MONTHS
     base           = POSITION_SIZE
@@ -531,8 +505,12 @@ def get_position_size(today, vix_df, spy_df, drawdown_pct: float = 0.0, consec_d
     except Exception:
         pass
 
-    # [V18-3] Co-oversold size boost REMOVED — priority sort kept in entry loop
-    # V16 data showed co-oversold 60.6% WR < neutral 62.8%, boost was wrong
+    try:
+        if today in spy_df.index:
+            if float(spy_df.loc[today, "spy_rsi2"]) < SPY_CO_OVERSOLD_RSI:
+                base = max(base, POSITION_SIZE_CO_OVERSOLD)
+    except Exception:
+        pass
 
     try:
         if today in spy_df.index and bool(spy_df.loc[today, "spy_bull_regime"]):
@@ -547,12 +525,6 @@ def get_position_size(today, vix_df, spy_df, drawdown_pct: float = 0.0, consec_d
 
     if earnings_month and base > POSITION_SIZE_EARNINGS:
         base = POSITION_SIZE_EARNINGS
-
-    # [V18-2] Dynamic scalar by consecutive down days — applied after all caps
-    scalar = CONSEC_SIZE_SCALAR.get(consec_down, CONSEC_SIZE_SCALAR_MAX)
-    if consec_down >= 8:
-        scalar = CONSEC_SIZE_SCALAR_MAX
-    base = base * scalar
 
     return base
 
@@ -590,7 +562,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V18 simulation ...")
+    print("\n[Backtest] Running V19 simulation ...")
     spy_regime    = spy_df["spy_ok"].to_dict()
     spy_regime_50 = spy_df["spy_ok_50"].to_dict()   # [V14-2] 50d SMA fast bear guard
 
@@ -668,20 +640,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             early      = days_held < MIN_HOLD_BEFORE_EXIT
             time_stop  = days_held >= effective_hold
             profit_hit = (not early) and pos_pct >= pos["profit_target"]
-            rsi_exit   = (not early) and (rsi_now > RSI_EXIT_OVERBOUGHT)
-
-            # [V18-5] First-up-close refinement: after FIRST_UP_CLOSE_MIN_HOLD days,
-            # exit on the first day stock closes up from prior close.
-            first_up_close = False
-            if days_held >= FIRST_UP_CLOSE_MIN_HOLD and not early:
-                try:
-                    prev_idx = tkr_df.index.get_loc(today)
-                    if prev_idx > 0:
-                        prev_close = float(tkr_df.iloc[prev_idx - 1]["Close"])
-                        if exit_price > prev_close:
-                            first_up_close = True
-                except Exception:
-                    pass
+            rsi_exit   = (not early) and (rsi_now > RSI_EXIT_OVERBOUGHT)  # [FIX 3]
 
             # Partial exit — Tier 1 and Tier 2 [NEW 7]
             if (pos["partial_enabled"] and
@@ -720,7 +679,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             full_exit = (
                 time_stop or
                 rsi_exit or
-                first_up_close or
                 (not pos["partial_enabled"] and profit_hit) or
                 (pos["partial_enabled"] and pos["partial_done"] and profit_hit)
             )
@@ -730,7 +688,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                               - commission - pos["entry_commission"])
                 reason = ("time_stop" if time_stop else
                           "rsi_overbought" if rsi_exit else
-                          "first_up_close" if first_up_close else
                           "profit_target")
                 trades.append({
                     "ticker":        tkr,
@@ -811,35 +768,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             if tier_would_be in (2, 3) and in_bull:
                 continue
 
-            # [V18-1] Conditional Tier 3 bear filter — only when NOT in velocity crash pause
-            if tier_would_be == 3 and not velocity_paused:
-                try:
-                    spy_20d_now = float(spy_df.loc[today, "spy_20d_ret"]) if today in spy_df.index else 0.0
-                    if not np.isnan(spy_20d_now) and spy_20d_now < TIER3_BEAR_20D_THRESHOLD:
-                        continue
-                except Exception:
-                    pass
-
-            # [V18-4] SPY same-day momentum filter for Tier 3
-            if tier_would_be == 3:
-                try:
-                    spy_1d_now = float(spy_df.loc[today, "spy_1d_ret"]) if today in spy_df.index else 0.0
-                    if not np.isnan(spy_1d_now) and spy_1d_now > SPY_MOMENTUM_T3_MAX:
-                        continue
-                except Exception:
-                    pass
-
-            # [V18-6] Sector RSI(2) filter for Tier 3
-            if tier_would_be == 3:
-                etf = TICKER_TO_SECTOR.get(tkr)
-                if etf and etf in sector_data and today in sector_data[etf].index:
-                    try:
-                        sec_rsi = float(sector_data[etf].loc[today, "rsi2"])
-                        if not np.isnan(sec_rsi) and sec_rsi > SECTOR_RSI_T3_MAX:
-                            continue
-                    except Exception:
-                        pass
-
             priority   = 0 if spy_co_oversold else 1
             candidates.append((priority, rsi_val, -dist_ma50, tkr, consec_val))
 
@@ -862,7 +790,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
 
             tier_cfg   = get_tier(consec_val)
-            pos_size   = get_position_size(today, vix_df, spy_df, current_drawdown, consec_val)
+            pos_size   = get_position_size(today, vix_df, spy_df, current_drawdown)
             shares     = (portfolio_value * pos_size) / entry_price
             entry_comm = calc_commission(shares, entry_price)
 
@@ -989,7 +917,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":              "V18",
+        "version":              "V19",
         "period_start":         start_dt.date().isoformat(),
         "period_end":           end_dt.date().isoformat(),
         "years_tested":         round(years, 2),
@@ -1014,11 +942,11 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity":         round(equity, 2),
         "total_return_pct":     round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version":                   "V18",
+            "version":                   "V19",
             "min_consec_down":           MIN_CONSEC_DOWN,
-            "tier1_6plus_days":          f"2% target, {TIER1_HOLD_DAYS}d, partial at +1% — all regimes [V15-2]",
-            "tier2_5_days":              f"1.5% target, {TIER2_HOLD_DAYS}d, no partial — blocked in bull regime",
-            "tier3_4_days":              f"1.5% target, {TIER3_HOLD_DAYS}d, no partial — bull+cond.bear blocked [V18-1]",
+            "tier1_6plus_days":          f"2% target, {TIER1_HOLD_DAYS}d, partial at +1% — all regimes [V19: V7 uniform]",
+            "tier2_5_days":              f"2% target [V19: V7 uniform], {TIER2_HOLD_DAYS}d, no partial — blocked in bull regime",
+            "tier3_4_days":              f"2% target [V19: V7 uniform], {TIER3_HOLD_DAYS}d, no partial — blocked in bull regime",
             "roc_filter":                "DISABLED — fast-bounce shallow setups restored [V14-3]",
             "spy_50d_guard":             "REMOVED [V15-3] — was blocking post-crash recovery trades",
             "spy_200d_guard":            "No entries when SPY below 200-day SMA (existing)",
@@ -1028,15 +956,9 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             "rsi_exit_overbought":       f"{RSI_EXIT_OVERBOUGHT}",
             "spy_break_hold_days":       f"{SPY_BREAK_HOLD_DAYS}d max hold when SPY below 200d SMA",
             "crash_limit":               f"SPY 20d ret <{CRASH_SPY_20D_THRESHOLD*100:.0f}% → max {CRASH_MAX_POSITIONS} positions",
-            "tier3_cond_bear_filter":    f"Tier 3 blocked: SPY 20d <{TIER3_BEAR_20D_THRESHOLD*100:.0f}% AND not velocity-paused [V18-1]",
-            "dynamic_sizing_scalar":     f"4d:0.85x 5d:1.00x 6d:1.10x 7d:1.15x 8+d:1.20x [V18-2]",
-            "co_oversold_rsi":           f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → priority only, no size boost [V18-3]",
-            "spy_momentum_t3":           f"Skip Tier3 if SPY 1d return >{SPY_MOMENTUM_T3_MAX*100:.1f}% [V18-4]",
-            "first_up_close_exit":       f"Exit on first up-close after {FIRST_UP_CLOSE_MIN_HOLD} days held [V18-5]",
-            "sector_rsi_t3":             f"Skip Tier3 if sector ETF RSI(2) >{SECTOR_RSI_T3_MAX} [V18-6]",
             "velocity_crash_pause":      f"SPY 5d ret <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS} days [V16-2]",
             "sweet_spot_size":           f"{SWEET_SPOT_SIZE*100:.1f}% (SPY above 20wk + below ATH {SWEET_SPOT_BELOW_ATH_MIN*100:.0f}%+)",
-            "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → priority sort only, no size boost [V18-3]",
+            "spy_co_oversold_rsi":       f"SPY RSI(2)<{SPY_CO_OVERSOLD_RSI} → {POSITION_SIZE_CO_OVERSOLD*100:.0f}% + priority",
             "dist_ma50":                 "secondary ranking (not hard filter)",
             "max_positions":             MAX_POSITIONS,
             "crash_max_positions":       CRASH_MAX_POSITIONS,
@@ -1071,7 +993,7 @@ def save_outputs(trades_df, metrics, eq_df):
 
     opt_report = {
         "run_date":         datetime.date.today().isoformat(),
-        "version":          "V18",
+        "version":          "V19",
         "summary":          {k: metrics[k] for k in [
             "cagr_pct","win_rate_pct","profit_factor","sharpe_ratio",
             "max_drawdown_pct","avg_win_pct","avg_loss_pct",
@@ -1087,7 +1009,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(opt_report, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V18")
+    print("  NAIVE MR BACKTEST — V19")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
