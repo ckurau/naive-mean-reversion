@@ -1,213 +1,218 @@
 {
-  "version": "V33d",
+  "version": "V34a",
   "period_start": "2004-10-19",
   "period_end": "2026-03-30",
   "years_tested": 21.44,
-  "total_trades": 22366,
-  "trades_per_year": 1043.1,
-  "cagr_pct": 17.4,
-  "roi_per_year_pct": 140.65,
-  "final_equity": 3116011.96,
-  "total_return_pct": 3016.01,
+  "total_trades": 29165,
+  "trades_per_year": 1360.1,
+  "cagr_pct": 15.5,
+  "roi_per_year_pct": 97.84,
+  "final_equity": 2197917.4,
+  "total_return_pct": 2097.92,
   "initial_capital": 100000.0,
-  "sharpe_ratio": 0.68,
-  "sortino_ratio": 0.78,
-  "rolling_sharpe_avg_12m": 0.84,
-  "rolling_sharpe_min_12m": -2.07,
-  "rolling_sortino_avg_12m": 2.85,
-  "rolling_sortino_min_12m": -2.73,
-  "max_drawdown_pct": -55.05,
-  "max_drawdown_duration_trades": 3903,
-  "win_rate_pct": 59.98,
-  "profit_factor": 1.06,
-  "avg_win_pct": 3.11,
+  "sharpe_ratio": 0.66,
+  "sortino_ratio": 0.8,
+  "rolling_sharpe_avg_12m": 0.79,
+  "rolling_sharpe_min_12m": -2.5,
+  "rolling_sortino_avg_12m": 2.21,
+  "rolling_sortino_min_12m": -43.59,
+  "max_drawdown_pct": -52.61,
+  "max_drawdown_duration_trades": 5292,
+  "win_rate_pct": 58.41,
+  "profit_factor": 1.81,
+  "avg_win_pct": 3.14,
   "avg_loss_pct": -3.63,
-  "avg_days_held": 6.53,
-  "median_days_held": 8.0,
-  "annual_return_std_pct": 30.98,
-  "monthly_return_skewness": -0.639,
-  "monthly_return_kurtosis": 3.502,
+  "avg_days_held": 6.21,
+  "median_days_held": 7.0,
+  "annual_return_std_pct": 27.87,
+  "monthly_return_skewness": -0.422,
+  "monthly_return_kurtosis": 3.082,
+  "partial_loss_exits": 6800,
+  "partial_loss_enabled": true,
   "time_stop_rate_pct": 59.4,
-  "total_commission_usd": 861055.97,
+  "total_commission_usd": 615112.58,
   "exit_reasons": {
-    "time_stop": 12798,
-    "profit_target": 8734,
+    "time_stop": 12800,
+    "profit_target": 8731,
+    "partial_loss": 6800,
     "partial_exit": 834
   },
   "tier_stats": {
     "tier_1": {
-      "trades": 2244,
-      "win_rate": 70.1,
-      "avg_win": 3.13,
+      "trades": 1410,
+      "win_rate": 52.3,
+      "avg_win": 3.56,
       "avg_loss": -4.03,
-      "avg_days": 6.3
+      "avg_days": 7.8
     },
     "tier_2": {
-      "trades": 3312,
-      "win_rate": 58.5,
+      "trades": 3314,
+      "win_rate": 58.4,
       "avg_win": 3.11,
       "avg_loss": -3.75,
       "avg_days": 6.5
     },
     "tier_3": {
-      "trades": 16810,
+      "trades": 16807,
       "win_rate": 58.9,
       "avg_win": 3.11,
-      "avg_loss": -3.57,
+      "avg_loss": -3.56,
       "avg_days": 6.6
     }
   },
   "year_stats": {
     "2004": {
-      "trades": 130,
-      "win_rate": 79.2,
-      "pnl_usd": 24599.01,
+      "trades": 147,
+      "win_rate": 70.1,
+      "pnl_usd": 23205.58,
       "avg_win": 3.13
     },
     "2005": {
-      "trades": 999,
-      "win_rate": 61.3,
-      "pnl_usd": 52220.22,
+      "trades": 1252,
+      "win_rate": 48.9,
+      "pnl_usd": 52282.13,
       "avg_win": 2.92
     },
     "2006": {
-      "trades": 1035,
-      "win_rate": 63.6,
-      "pnl_usd": 68861.01,
+      "trades": 1307,
+      "win_rate": 50.3,
+      "pnl_usd": 48616.12,
       "avg_win": 3.23
     },
     "2007": {
-      "trades": 867,
-      "win_rate": 61.8,
-      "pnl_usd": 54212.35,
+      "trades": 1123,
+      "win_rate": 47.8,
+      "pnl_usd": 44123.84,
       "avg_win": 2.97
     },
     "2008": {
-      "trades": 10,
-      "win_rate": 80.0,
-      "pnl_usd": 5587.59,
+      "trades": 12,
+      "win_rate": 66.7,
+      "pnl_usd": 4932.52,
       "avg_win": 3.68
     },
     "2009": {
-      "trades": 672,
-      "win_rate": 62.5,
-      "pnl_usd": 54510.42,
+      "trades": 909,
+      "win_rate": 46.1,
+      "pnl_usd": 25735.61,
       "avg_win": 3.58
     },
     "2010": {
-      "trades": 750,
-      "win_rate": 59.7,
-      "pnl_usd": 72740.19,
+      "trades": 998,
+      "win_rate": 44.9,
+      "pnl_usd": 48868.69,
       "avg_win": 3.17
     },
     "2011": {
-      "trades": 822,
-      "win_rate": 62.5,
-      "pnl_usd": 98831.74,
-      "avg_win": 3.11
+      "trades": 1094,
+      "win_rate": 47.1,
+      "pnl_usd": 76696.51,
+      "avg_win": 3.1
     },
     "2012": {
-      "trades": 1202,
-      "win_rate": 64.2,
-      "pnl_usd": 145511.85,
+      "trades": 1517,
+      "win_rate": 50.9,
+      "pnl_usd": 96044.6,
       "avg_win": 2.98
     },
     "2013": {
-      "trades": 1378,
-      "win_rate": 63.7,
-      "pnl_usd": 439233.91,
+      "trades": 1702,
+      "win_rate": 51.6,
+      "pnl_usd": 310592.94,
       "avg_win": 2.93
     },
     "2014": {
-      "trades": 1244,
-      "win_rate": 54.4,
-      "pnl_usd": 130979.62,
-      "avg_win": 2.87
+      "trades": 1647,
+      "win_rate": 41.0,
+      "pnl_usd": 122824.16,
+      "avg_win": 2.88
     },
     "2015": {
-      "trades": 949,
-      "win_rate": 60.7,
-      "pnl_usd": 269127.26,
+      "trades": 1185,
+      "win_rate": 48.6,
+      "pnl_usd": 183843.1,
       "avg_win": 2.72
     },
     "2016": {
-      "trades": 893,
-      "win_rate": 55.7,
-      "pnl_usd": 105072.32,
+      "trades": 1157,
+      "win_rate": 43.0,
+      "pnl_usd": 82171.52,
       "avg_win": 2.7
     },
     "2017": {
-      "trades": 1574,
-      "win_rate": 60.6,
-      "pnl_usd": 822836.7,
+      "trades": 1972,
+      "win_rate": 48.4,
+      "pnl_usd": 536812.95,
       "avg_win": 2.66
     },
     "2018": {
-      "trades": 1123,
-      "win_rate": 52.1,
-      "pnl_usd": -545769.24,
-      "avg_win": 3.07
+      "trades": 1555,
+      "win_rate": 37.6,
+      "pnl_usd": -356417.58,
+      "avg_win": 3.08
     },
     "2019": {
-      "trades": 1151,
-      "win_rate": 62.8,
-      "pnl_usd": 1417773.46,
+      "trades": 1443,
+      "win_rate": 50.0,
+      "pnl_usd": 859497.74,
       "avg_win": 2.91
     },
     "2020": {
-      "trades": 980,
-      "win_rate": 61.9,
-      "pnl_usd": 482737.61,
-      "avg_win": 3.57
+      "trades": 1289,
+      "win_rate": 47.0,
+      "pnl_usd": 472667.08,
+      "avg_win": 3.58
     },
     "2021": {
-      "trades": 1710,
-      "win_rate": 58.1,
-      "pnl_usd": 514390.01,
-      "avg_win": 3.45
+      "trades": 2321,
+      "win_rate": 42.8,
+      "pnl_usd": 1367.32,
+      "avg_win": 3.46
     },
     "2022": {
-      "trades": 239,
-      "win_rate": 31.8,
-      "pnl_usd": -1051614.74,
+      "trades": 375,
+      "win_rate": 20.3,
+      "pnl_usd": -590737.63,
       "avg_win": 3.34
     },
     "2023": {
-      "trades": 1317,
-      "win_rate": 60.1,
-      "pnl_usd": -106760.68,
+      "trades": 1745,
+      "win_rate": 45.3,
+      "pnl_usd": 82593.9,
       "avg_win": 3.32
     },
     "2024": {
-      "trades": 1645,
-      "win_rate": 60.9,
-      "pnl_usd": 1002566.53,
+      "trades": 2169,
+      "win_rate": 46.2,
+      "pnl_usd": 536213.71,
       "avg_win": 3.4
     },
     "2025": {
-      "trades": 1254,
-      "win_rate": 58.3,
-      "pnl_usd": -315972.66,
+      "trades": 1681,
+      "win_rate": 43.5,
+      "pnl_usd": -283245.67,
       "avg_win": 3.18
     },
     "2026": {
-      "trades": 422,
-      "win_rate": 60.4,
-      "pnl_usd": -725662.52,
+      "trades": 565,
+      "win_rate": 45.1,
+      "pnl_usd": -280771.73,
       "avg_win": 4.02
     }
   },
   "parameters": {
-    "version": "V33d",
-    "base": "V32e ($2.454M, 16.10% CAGR) + MAX_POSITIONS 40\u219260",
+    "version": "V34a",
+    "base": "V33d + partial loss exit [V34a] / Tier1 target raise [V34b]",
     "universe": "S&P500 + S&P400 + S&P600",
     "min_consec_down": 4,
     "max_positions": 60,
-    "tier1_6plus": "2% target, 8d, partial at +1%",
-    "tier2_5days": "2% target, 8d, no partial",
-    "tier3_4days": "2% target, 8d, no partial",
+    "tier1_target": "2%",
+    "tier1_partial_trig": "1%",
+    "tier2_target": "2%",
+    "tier3_target": "2%",
+    "partial_loss": "day 4, \u2264-2%, trim 50%",
     "entry_ranking": "Composite RSI(2)/ATR_pct [V32e]",
-    "velocity_crash_pause": "SPY 5d <-12% \u2192 pause 5d [V21]",
+    "velocity_crash_pause": "SPY 5d <-12% \u2192 pause 5d",
     "vix_sizing": "<25VIX: 9.0%, base: 5.0%",
     "commission": "$0.005/share, $0.35 min",
     "dd_scale": "REMOVED \u2014 thresholds set unreachable [V22]"
