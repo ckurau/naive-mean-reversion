@@ -61,7 +61,7 @@ START_DATE = "2004-01-01"
 END_DATE = datetime.date.today().isoformat()
 
 MIN_DOLLAR_VOLUME = 5_000_000
-MAX_POSITIONS = 40          # [V24-1] raised 30→40, size UNCHANGED at 5%
+MAX_POSITIONS = 60          # [V33d] raised 40→60 across V33b/c/d series
 POSITION_SIZE = 0.05
 POSITION_SIZE_HIGH = 0.09   # [V30-1] raised 7.5%→9% for VIX<20 calm days
 POSITION_SIZE_LOW = 0.025   # VIX > 25
@@ -673,7 +673,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. Metrics
+# 7. Metrics — V33d expanded (Sharpe, Sortino, MaxDD length, rolling ratios,
+#    holding time stats, return distribution statistics)
 # ─────────────────────────────────────────────────────────────────────────────
 def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     if trades_df.empty:
@@ -698,19 +699,79 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     avg_win = winners["pnl_pct"].mean() if len(winners) else 0
     avg_loss = losers["pnl_pct"].mean() if len(losers) else 0
 
+    # ── Drawdown — depth and duration ────────────────────────────────────────
     eq_df["peak"] = eq_df["equity"].cummax()
     eq_df["dd"] = (eq_df["equity"] - eq_df["peak"]) / eq_df["peak"] * 100
     max_dd = eq_df["dd"].min()
+
+    # Max drawdown duration: days from peak to trough (or to end if not recovered)
+    eq_df["date_col"] = pd.to_datetime(eq_df["date"] if "date" in eq_df.columns
+                                       else eq_df.index)
+    max_dd_duration_days = 0
+    try:
+        dd_start = None
+        max_dur = 0
+        cur_dur = 0
+        prev_peak = INITIAL_CAPITAL
+        for i, row in eq_df.iterrows():
+            if row["equity"] >= row["peak"] and row["equity"] >= prev_peak:
+                cur_dur = 0
+                prev_peak = row["equity"]
+            else:
+                cur_dur += 1
+                if cur_dur > max_dur:
+                    max_dur = cur_dur
+        max_dd_duration_days = max_dur
+    except Exception:
+        max_dd_duration_days = 0
 
     gp = winners["pnl_usd"].sum()
     gl = abs(losers["pnl_usd"].sum())
     pf = gp / gl if gl > 0 else float("inf")
 
-    eq_df["date"] = pd.to_datetime(eq_df["date"])
-    eq_df.set_index("date", inplace=True)
-    monthly_ret = eq_df["equity"].resample("ME").last().ffill().pct_change().dropna()
+    # ── Monthly returns ───────────────────────────────────────────────────────
+    eq_df_dt = eq_df.copy()
+    eq_df_dt["date"] = pd.to_datetime(
+        eq_df_dt["date"] if "date" in eq_df_dt.columns else eq_df_dt.index
+    )
+    eq_df_dt = eq_df_dt.set_index("date")
+    monthly_ret = eq_df_dt["equity"].resample("ME").last().ffill().pct_change().dropna()
+
+    # Sharpe (annualised from monthly)
     sharpe = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
               if monthly_ret.std() > 0 else 0)
+
+    # Sortino (annualised — downside deviation only)
+    downside = monthly_ret[monthly_ret < 0]
+    downside_std = downside.std() if len(downside) > 1 else 0
+    sortino = (monthly_ret.mean() / downside_std * np.sqrt(12)
+               if downside_std > 0 else 0)
+
+    # Return distribution statistics
+    ret_std = monthly_ret.std() * np.sqrt(12) * 100  # annualised std %
+    ret_skew = float(monthly_ret.skew()) if len(monthly_ret) > 3 else 0
+    ret_kurt = float(monthly_ret.kurt()) if len(monthly_ret) > 3 else 0  # excess kurtosis
+
+    # Rolling 12-month Sharpe and Sortino
+    rolling_sharpe_vals = []
+    rolling_sortino_vals = []
+    if len(monthly_ret) >= 12:
+        for i in range(11, len(monthly_ret)):
+            window = monthly_ret.iloc[i-11:i+1]
+            ws = window.mean() / window.std() * np.sqrt(12) if window.std() > 0 else 0
+            rolling_sharpe_vals.append(ws)
+            wd = window[window < 0]
+            wds = wd.std() if len(wd) > 1 else 0
+            wso = window.mean() / wds * np.sqrt(12) if wds > 0 else 0
+            rolling_sortino_vals.append(wso)
+
+    rolling_sharpe_avg  = round(float(np.mean(rolling_sharpe_vals)), 2)  if rolling_sharpe_vals  else 0
+    rolling_sharpe_min  = round(float(np.min(rolling_sharpe_vals)), 2)   if rolling_sharpe_vals  else 0
+    rolling_sortino_avg = round(float(np.mean(rolling_sortino_vals)), 2) if rolling_sortino_vals else 0
+    rolling_sortino_min = round(float(np.min(rolling_sortino_vals)), 2)  if rolling_sortino_vals else 0
+
+    # Holding time
+    median_days_held = float(trades_df["days_held"].median())
 
     total_comm = trades_df["commission"].sum() if "commission" in trades_df else 0
     exit_counts = (trades_df["exit_reason"].value_counts().to_dict()
@@ -748,50 +809,63 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version": "V32e",
+        "version": "V33d",
         "period_start": start_dt.date().isoformat(),
         "period_end": end_dt.date().isoformat(),
         "years_tested": round(years, 2),
         "total_trades": len(trades_df),
         "trades_per_year": round(len(trades_df) / years, 1),
-        "win_rate_pct": round(win_rate, 2),
+        # ── Core performance ─────────────────────────────────────────────────
         "cagr_pct": round(cagr * 100, 2),
         "roi_per_year_pct": round((equity - INITIAL_CAPITAL) / INITIAL_CAPITAL / years * 100, 2),
-        "avg_days_held": round(trades_df["days_held"].mean(), 2),
+        "final_equity": round(equity, 2),
+        "total_return_pct": round((equity / INITIAL_CAPITAL - 1) * 100, 2),
+        "initial_capital": INITIAL_CAPITAL,
+        # ── Risk-adjusted ratios ─────────────────────────────────────────────
+        "sharpe_ratio": round(sharpe, 2),
+        "sortino_ratio": round(sortino, 2),
+        "rolling_sharpe_avg_12m": rolling_sharpe_avg,
+        "rolling_sharpe_min_12m": rolling_sharpe_min,
+        "rolling_sortino_avg_12m": rolling_sortino_avg,
+        "rolling_sortino_min_12m": rolling_sortino_min,
+        # ── Drawdown ─────────────────────────────────────────────────────────
+        "max_drawdown_pct": round(max_dd, 2),
+        "max_drawdown_duration_trades": max_dd_duration_days,
+        # ── Trade quality ────────────────────────────────────────────────────
+        "win_rate_pct": round(win_rate, 2),
+        "profit_factor": round(pf, 2),
         "avg_win_pct": round(avg_win, 2),
         "avg_loss_pct": round(avg_loss, 2),
-        "profit_factor": round(pf, 2),
-        "max_drawdown_pct": round(max_dd, 2),
-        "sharpe_ratio": round(sharpe, 2),
+        # ── Holding time ─────────────────────────────────────────────────────
+        "avg_days_held": round(trades_df["days_held"].mean(), 2),
+        "median_days_held": round(median_days_held, 2),
+        # ── Return distribution ──────────────────────────────────────────────
+        "annual_return_std_pct": round(ret_std, 2),
+        "monthly_return_skewness": round(ret_skew, 3),
+        "monthly_return_kurtosis": round(ret_kurt, 3),
+        # ── Other ────────────────────────────────────────────────────────────
         "time_stop_rate_pct": time_stop_rt,
+        "total_commission_usd": round(total_comm, 2),
         "exit_reasons": {k: int(v) for k, v in exit_counts.items()},
         "tier_stats": tier_stats,
         "year_stats": year_stats,
-        "total_commission_usd": round(total_comm, 2),
-        "initial_capital": INITIAL_CAPITAL,
-        "final_equity": round(equity, 2),
-        "total_return_pct": round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version": "V32e",
-            "base": "V30+S&P600 ($2.41M, 16.01% CAGR)",
+            "version": "V33d",
+            "base": "V32e ($2.454M, 16.10% CAGR) + MAX_POSITIONS 40→60",
             "universe": "S&P500 + S&P400 + S&P600",
             "min_consec_down": MIN_CONSEC_DOWN,
+            "max_positions": MAX_POSITIONS,
             "tier1_6plus": "2% target, 8d, partial at +1%",
             "tier2_5days": "2% target, 8d, no partial",
             "tier3_4days": "2% target, 8d, no partial",
-            "entry_ranking": "Composite RSI(2)/ATR_pct — most oversold + most volatile first [V32e]",
+            "entry_ranking": "Composite RSI(2)/ATR_pct [V32e]",
             "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]",
-            "dd_scale_mild": "REMOVED [V22-1] — thresholds set unreachable",
-            "dd_scale_severe": "REMOVED [V22-1] — thresholds set unreachable",
-            "max_positions": MAX_POSITIONS,
-            "vix_sizing": f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V30-1], base: {POSITION_SIZE*100:.1f}% — no penalty",
-            "commission": f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min [V22-2 lowered]",
-            "no_rsi_exit": "RSI overbought exit NOT present (Run 5 baseline)",
-            "no_bull_block": "Bull regime block NOT present (Run 5 baseline)",
-            "no_sweet_spot": "Sweet spot sizing NOT present (Run 5 baseline)",
+            "vix_sizing": f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
+            "commission": f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
+            "dd_scale": "REMOVED — thresholds set unreachable [V22]",
         },
     }
-    return metrics, eq_df.reset_index()
+    return metrics, eq_df_dt.reset_index()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -804,27 +878,72 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V30 (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V33d (S&P 500 + 400 + 600)")
     print("=" * 70)
-    for k, v in metrics.items():
-        if k == "tier_stats":
-            print(f"\n  Per-Tier Statistics:")
-            for tk, tv in v.items():
-                print(f"    {tk}:")
-                for sk, sv in tv.items():
-                    print(f"      {sk:<16}: {sv}")
-        elif k == "year_stats":
-            print(f"\n  Per-Year Breakdown:")
-            for yr, yv in v.items():
-                print(f"    {yr}: {yv['trades']:>5} trades  WR {yv['win_rate']:>5}%  "
-                      f"P&L ${yv['pnl_usd']:>10,.0f}")
-        elif k in ("parameters", "exit_reasons"):
-            label = "Parameters" if "param" in k else "Exit Reason Breakdown"
-            print(f"\n  {label}:")
-            for ek, ev in v.items():
-                print(f"    {ek:<40}: {ev}")
-        else:
-            print(f"  {k.replace('_',' ').title():<36}: {v}")
+
+    # Core performance
+    core_keys = ["version","period_start","period_end","years_tested",
+                 "total_trades","trades_per_year","cagr_pct","roi_per_year_pct",
+                 "final_equity","total_return_pct"]
+    print("\n  Core Performance:")
+    for k in core_keys:
+        if k in metrics:
+            print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
+
+    # Risk-adjusted
+    print("\n  Risk-Adjusted Ratios:")
+    ratio_keys = ["sharpe_ratio","sortino_ratio",
+                  "rolling_sharpe_avg_12m","rolling_sharpe_min_12m",
+                  "rolling_sortino_avg_12m","rolling_sortino_min_12m"]
+    for k in ratio_keys:
+        if k in metrics:
+            print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
+
+    # Drawdown
+    print("\n  Drawdown:")
+    for k in ["max_drawdown_pct","max_drawdown_duration_trades"]:
+        if k in metrics:
+            print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
+
+    # Trade quality
+    print("\n  Trade Quality:")
+    for k in ["win_rate_pct","profit_factor","avg_win_pct","avg_loss_pct",
+              "avg_days_held","median_days_held","time_stop_rate_pct"]:
+        if k in metrics:
+            print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
+
+    # Return distribution
+    print("\n  Return Distribution:")
+    for k in ["annual_return_std_pct","monthly_return_skewness","monthly_return_kurtosis"]:
+        if k in metrics:
+            print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
+
+    # Tier stats
+    if "tier_stats" in metrics:
+        print(f"\n  Per-Tier Statistics:")
+        for tk, tv in metrics["tier_stats"].items():
+            print(f"    {tk}:")
+            for sk, sv in tv.items():
+                print(f"      {sk:<16}: {sv}")
+
+    # Year breakdown
+    if "year_stats" in metrics:
+        print(f"\n  Per-Year Breakdown:")
+        for yr, yv in metrics["year_stats"].items():
+            print(f"    {yr}: {yv['trades']:>5} trades  WR {yv['win_rate']:>5}%  "
+                  f"P&L ${yv['pnl_usd']:>10,.0f}")
+
+    # Parameters
+    if "parameters" in metrics:
+        print(f"\n  Parameters:")
+        for ek, ev in metrics["parameters"].items():
+            print(f"    {ek:<40}: {ev}")
+
+    # Commission and exit reasons
+    for k in ["total_commission_usd","exit_reasons"]:
+        if k in metrics:
+            print(f"  {k.replace('_',' ').title():<36}: {metrics[k]}")
+
     print("=" * 70)
     print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 
