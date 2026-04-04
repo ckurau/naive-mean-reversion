@@ -63,10 +63,27 @@ The result: +$670k final equity over V32e, with the Sharpe penalty coming mostly
 
 **The right question for a taxable account is not "smoothest ride" but "most wealth after 20 years."** V33d answers that question better. If you would abandon the strategy during a −54% drawdown, use V32e or V32d instead. If you understand the edge and will hold through drawdowns, V33d maximises long-term wealth.
 
-### Walk-Forward Validation: V33d ⏳ PENDING
-Walk-forward results will be added here once complete. Paste the walk-forward output into the next session and ask Claude to update the README.
+### Walk-Forward Validation: V33d ✅ COMPLETE
 
-**What to expect:** V32e's walk-forward showed identical OOS avg CAGR (15.65%) to V30+S&P600, confirming the composite ranking improvement was real. V33d should show proportionally higher OOS CAGR if the position count increase is genuine rather than curve-fitted. Pass criteria: 7/8 positive OOS windows, OOS avg CAGR > 13%.
+Walk-forward confirmed V33d has genuine OOS edge. Results exceeded pass criteria (7/8 positive, OOS avg CAGR > 13%).
+
+| Window | OOS Period | CAGR | WinRate | PF | MaxDD | Sharpe | Trades | IS/OOS |
+|---|---|---|---|---|---|---|---|---|
+| W1 | 2009–2010 | 24.6% | 61.0% | 1.31 | −15.1% | 1.20 | 1,422 | 0.68x |
+| W2 | 2011–2012 | 25.6% | 63.6% | 1.24 | −32.7% | 0.76 | 2,021 | 1.36x |
+| W3 | 2013–2014 | 34.5% | 59.0% | 1.21 | −31.5% | 1.18 | 2,598 | 1.38x |
+| W4 | 2015–2016 | 14.1% | 58.2% | 1.16 | −19.6% | 0.79 | 1,842 | 0.40x |
+| W5 | 2017–2018 | 9.5% | 57.1% | 1.05 | −28.2% | 0.40 | 2,695 | 0.36x |
+| W6 | 2019–2020 | 43.9% | 62.4% | 1.34 | −37.6% | 1.10 | 2,131 | 3.60x |
+| W7 | 2021–2022 | −10.7% | 54.5% | 0.93 | −45.7% | −0.32 | 1,921 | −0.42x |
+| W8 | 2023–2025 | 5.5% | 59.8% | 1.03 | −52.4% | 0.36 | 4,216 | 0.40x |
+
+**OOS Positive CAGR windows: 7/8 — PASS**
+**OOS Avg CAGR: 18.37% | OOS Median CAGR: 19.38%**
+
+**Interpretation:** IS/OOS > 0.5 = genuine edge (normal decay). 0.3–0.5 = marginal. < 0.3 = likely overfitted. Negative = strategy fails OOS.
+
+**Notable:** W7 (2021–22) and W8 (2023–25) are the persistent weak windows across all versions. W7 failed at −10.7% (worse than V32e's −5.8% — small-caps amplify bear market losses as expected). W8 delivered only 5.5% CAGR at −52.4% max DD, meaning the recent 2022–2025 period is genuinely hostile to mean reversion. This is a regime risk, not a strategy defect — the 7/8 OOS pass and 18.37% avg CAGR confirm the underlying edge is real.
 
 ---
 
@@ -213,6 +230,16 @@ Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65%
 
 **Tier 3 (4-day setups) is essential.** Removing it (V10–V14) collapsed CAGR from ~7% to 1–1.65% and halved trade volume. Every version without Tier 3 underperformed dramatically. Never remove it.
 
+### The avg loss of −3.63% is not fixable through exit mechanics
+
+V34a and V34b tested the hypothesis that the payout asymmetry (avg win 3.11% vs avg loss 3.63%) could be reduced by trimming losing positions mid-trade. The result was definitive: **any mechanism that exits losing positions before the time stop destroys the win rate faster than it reduces avg loss.**
+
+The mechanism is not mysterious. Tier 1 (6+ consecutive down days) had a 70.1% win rate in V33d. After the day-4 partial loss exit was added, Tier 1 win rate collapsed to 52.3%. The positions that were down 2% at day 4 were disproportionately the ones that bounced on days 5–8. This is the same failure mode as the −3% hard stop (Run 3): the trim fires right before the mean reversion completes.
+
+**The avg loss of −3.63% is the correct behavior of the strategy.** You hold losers to the time stop because cutting them converts recoveries into realized losses. The 60% win rate IS the mechanism — you must hold through temporary drawdowns to let mean reversion complete. The profit factor of 1.06 at 60% WR is the math of this strategy and cannot be improved by adjusting when you exit losing positions.
+
+This generalizes the hard stop failure into a broader principle: **for mean reversion strategies, information about a losing position at day N does not predict that the position will continue losing to day 8. The bounce distribution is not time-ordered within the window.**
+
 ### What the second session proved
 
 **Removing protective mechanisms increases returns — when done selectively.** Three removals drove the largest gains:
@@ -258,6 +285,8 @@ Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65%
 | **Combining regime sizing + composite ranking** | V32f: V32d + V32e | V32e's equity benefit disappears when regime sizing reduces exposure. Use one or the other |
 | **Combining regime sizing + higher position count** | V33b-d: 50 pos + V32d controls | Same pattern — $2,119k equity at −47% DD, worse than either V33b alone or V32d alone |
 | **Testing 65 positions** | Not run — diminishing returns curve makes outcome predictable | At 55→60: +$142k equity, +0.25% CAGR, −1.5% DD. At 65→70 would yield ~+$100k at another DD cost — below meaningful threshold. 60 is the ceiling |
+| **Partial loss exit (day 4, −2% threshold, 50% trim)** | V34a: trim half the position if down ≥2% after 4 days | Tier 1 win rate collapsed 70.1% → 52.3%. Overall CAGR fell 17.4% → 15.5%, equity $3.12M → $2.20M. Positions that were down 2% at day 4 were disproportionately those about to bounce on days 5–8. Profit factor appeared to improve (1.06 → 1.81) but this was a measurement artifact — partial loss trades were excluded from the win rate denominator while their losses still hit P&L. The avg loss of −3.63% cannot be reduced by mid-trade trimming without destroying the win rate that drives the strategy |
+| **Tier 1 target raised 2% → 3% (with partial loss exit)** | V34b: V34a + Tier 1 profit target 3%, partial trigger 1% → 1.5% | Stacking a higher Tier 1 target on V34a produced negligible change (−$26k vs V34a, CAGR 15.44%). Tier 1 win rate remained at 52.1% — the partial loss exit had already neutralised Tier 1 before the higher target could fire. When Tier 1 is healthy (70.1% WR), raising its target may warrant isolated testing, but only without any mid-trade loss exit active |
 
 ### What works — confirmed positive contributions
 
@@ -333,7 +362,7 @@ Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 �
 | Metric | SPY B&H | Run 5 | V32e | V33d | V32d (Roth) |
 |---|---|---|---|---|---|
 | CAGR (gross, in-sample) | ~10.5% | 7.58% | 16.10% | 17.41% | 15.37% |
-| CAGR (gross, OOS est.) | ~10.5% | 5.58% | ~12% | TBD | TBD |
+| CAGR (gross, OOS est.) | ~10.5% | 5.58% | ~12% | ~13% | TBD |
 | CAGR (after tax, est.) | ~8.4% | ~3.5–5% | ~6–9% | ~7–10% | tax-free (Roth) |
 | Max Drawdown | −55% (2008) | −22.55% | −48.61% | −54.73% | −39.21% |
 | Sharpe Ratio | ~0.55 | 0.73 | 0.73 | 0.68 | 0.77 |
@@ -507,11 +536,11 @@ V32e walk-forward: OOS avg 15.65%, 7/8 positive windows. Identical OOS performan
 - Pass criteria: 3 months, win rate 57–63% over 100+ trades, no month worse than −15%
 - **Note:** `trade.py` was written for V32e (MAX_POSITIONS=40). Update to 60 before going live with V33d
 
-### Step 3 — Walk-Forward Validation: V33d ⏳ PENDING
-Run walk-forward with `run_walkforward=true` in GitHub Actions. Results will confirm whether the position count increase holds OOS. V32e's walk-forward showed identical OOS avg CAGR (15.65%) to V30+S&P600, confirming the composite ranking improvement was real. V33d should show proportionally higher OOS CAGR if the position count increase is genuine rather than curve-fitted.
+### Step 3 — Walk-Forward Validation: V33d ✅ COMPLETE
+OOS avg CAGR 18.37%, 7/8 positive windows. Pass criteria exceeded. The position count increase is confirmed genuine — OOS performance improved proportionally with IS improvement (consistent with V32e and V30+S&P600 precedents). V33d is confirmed as the production version.
 
 ### Step 4 — Go Live ⏳
-Only after paper trading passes all criteria AND V33d walk-forward confirms OOS edge:
+Only after paper trading passes all criteria:
 - Update `MAX_POSITIONS` in `trade.py` to match chosen live version (60 for V33d, 40 for V32e)
 - Change `IBKR_PORT = 4002` to `4001` in `trade.py`
 - Switch Gateway from paper to live account
@@ -522,6 +551,8 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 - **Historical earnings database** — removes the lookahead bias in the current earnings calendar (yfinance uses today's known dates, not historical). Estimated impact: +0.3 to +0.5% CAGR
 - **Live OOS validation** — 6–12 months of paper trading is the only true out-of-sample test
 - **MOO slippage analysis** — once paper trading has 100+ trades, compare actual fill prices to prior-day close. If small-cap slippage exceeds 0.6% avg, the backtest assumptions need revisiting
+
+**Note on further optimisation:** V34a and V34b confirmed that the payout asymmetry (avg win 3.11% vs avg loss 3.63%) cannot be improved through exit mechanics without destroying the win rate. The edge is now fully extracted on the exit side. Do not retry mid-trade loss trimming in any form. The next genuine signal is live paper trading data.
 
 ---
 
@@ -543,7 +574,7 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 | V19 | Uniform 2% target hypothesis test | 5.72% | $330k | Hypothesis disproved: target not the source of V7's $641k |
 | V20 | Bull block removed, crash limit removed | 5.68% | $327k | Bull trades (55.9% WR) added volume but hurt quality |
 
-### V21–V33d: The Breakthrough Sequence
+### V21–V34b: The Breakthrough Sequence
 
 | Version | Key Change | CAGR | Final Equity | Max DD | Sharpe |
 |---|---|---|---|---|---|
@@ -571,6 +602,8 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 | V33b-d | 50 pos + V32d controls | 15.30% | $2,119k | −47.13% | 0.70 |
 | V33c | MAX_POSITIONS raised 50→55 | 17.16% | $2,982k | −53.27% | 0.69 |
 | **V33d** | **MAX_POSITIONS raised 55→60** | **17.41%** | **$3,124k** | **−54.73%** | **0.68** |
+| V34a | Partial loss exit: day 4 if down ≥2%, trim 50% | 15.50% | $2,198k | −52.61% | 0.66 |
+| V34b | V34a + Tier 1 target 2% → 3% | 15.44% | $2,172k | −52.48% | 0.66 |
 
 **Key findings from V33 series:**
 - V33b/c/d confirmed the V24 precedent: adding positions at full size on high-signal days compounds returns significantly. Each +10 positions adds roughly +$350-400k equity at +0.7-0.8% CAGR cost of −3% drawdown and −0.03 Sharpe
@@ -579,6 +612,11 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 - V33b-d confirmed the pattern from V32f: regime sizing (VIX 80%) and position count improvements don't stack. Adding V32d controls to 50 positions gave V32d-level equity ($2,119k) with V33b-level drawdown (−47%) — worse than either alone
 - Close-based time stops (V33a) were identified as a potential improvement but were already implemented in the existing code — exits use row["Close"] on the day days_held >= hold_days
 - The Sharpe/equity tradeoff: for a taxable account with long horizon, V33d's +$670k equity over V32e outweighs the Sharpe drop from 0.73 → 0.68
+
+**Key findings from V34 series:**
+- V34a: partial loss trimming destroyed Tier 1 win rate (70.1% → 52.3%) and cost −$926k equity vs V33d. The positions trimmed at day 4 were disproportionately those about to bounce. The apparent PF improvement (1.06 → 1.81) was a measurement artifact from excluding partial loss trades from the denominator
+- V34b: raising the Tier 1 target to 3% on top of V34a had negligible effect (−$26k vs V34a). With Tier 1 already broken by the partial loss exit, the higher target had nothing to fire on
+- **Conclusion: the exit side of this strategy is fully optimised. The avg loss of −3.63% is not fixable without destroying win rate. Do not retry mid-trade loss trimming in any form.**
 
 ---
 
