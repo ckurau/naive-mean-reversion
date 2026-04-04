@@ -1,462 +1,131 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V30
-================================================== Base: V28 — $1,267,897 final equity, 12.58% CAGR. Current best.
-Combines V28 and V29: VIX_LOW=25 AND POSITION_SIZE_HIGH=9%.
+""" Enhanced Naive Mean Reversion (MR) Backtest — V31
+==================================================
+Base: V30+S&P600 — $2,414,283 final equity, 16.01% CAGR.
 
-V28 vs V29 comparison (both from V27 base):
-  V28 (VIX_LOW=25):  $1,267,897 | CAGR 12.58% | DD –34.9% | Sharpe 0.72
-  V29 (9% boost):    $1,274,287 | CAGR 12.60% | DD –38.5% | Sharpe 0.68
+V31 CHANGES (3 additions, targeting PF / Sharpe / DD improvements):
 
-V28 wins on all quality metrics despite nearly identical equity.
-V29 hurt 2020 badly (–$67k vs V28's +$110k) because VIX stayed above 20
-during recovery — the 9% boost didn't fire when most needed.
+[V31-1] VIX TREND REGIME FILTER
+  Only enter when VIX is ABOVE its 10-day moving average.
+  Rationale: VIX rising = volatility expanding = mean reversion conditions
+  improving. VIX falling into calm = momentum/trend regime = MR edge weakens.
+  This directly targets the 2021-22 failure window where VIX was elevated but
+  falling, indicating a regime shift rather than a true MR environment.
+  Expected effect: Fewer trades in low-quality regime periods → higher PF,
+  better Sharpe. Possible small CAGR reduction from lost volume.
 
-V30 COMBINED MECHANISM:
-  VIX < 20  → 9%   position size  (V29: boost calm-VIX days harder)
-  VIX 20-25 → 7.5% position size  (V28: capture recovery/moderate days)
-  VIX > 25  → 5%   base           (unchanged)
-  No high-VIX penalty (V26)
+[V31-2] MODEST DRAWDOWN SIZE REDUCTION
+  If portfolio drawdown exceeds 20%, reduce position size by 30%.
+  (e.g. 9% → 6.3%, 5% → 3.5%)
+  Rationale: Not the old circuit breaker (which fired at 10% and blocked all
+  trading permanently). This is a single-step size reduction at a high
+  threshold — trading continues but at lower risk during deep drawdowns.
+  Only fires in severe drawdown periods (2022-style). Resets when new equity
+  peak is reached.
+  Expected effect: Reduced max drawdown, slightly lower CAGR in bad years.
 
-V30 CHANGES from V28 (1 only):
-  [V30-1] POSITION_SIZE_HIGH raised 7.5% → 9%
+[V31-3] HIGHER DOLLAR VOLUME FLOOR FOR SMALL-CAPS
+  MIN_DOLLAR_VOLUME raised from $5M to $10M.
+  Rationale: S&P 600 small-caps with $5-10M/day dollar volume have wide
+  bid-ask spreads and poor MOO fill quality. Raising the floor removes the
+  worst execution-quality names. The critique correctly identifies this as
+  the most likely source of real-world slippage degradation.
+  Expected effect: Fewer trades (mainly small-cap Tier 3), higher PF from
+  better fill quality, slightly lower CAGR from lost volume.
 
-V28 already has VIX_LOW=25 giving 7.5% to VIX<25 days. Adding 9% for VIX<20
-creates a three-tier calm-market regime. Bull years where VIX averaged <20
-(2013 avg ~14, 2017 avg ~11, 2019 avg ~15) get the 9% boost. Recovery/moderate
-years where VIX averaged 20-25 get 7.5%. Only true panic (VIX>25) gets 5%.
+CODE UNIFICATION [V31-4]:
+  backtest-nmr.py now imports shared functions from backtest_nmr_lib.py
+  instead of duplicating them. Single source of truth for all logic.
+  universe fetch, downloads, signal generation, and simulation all live
+  in backtest_nmr_lib.py and are imported here.
 
 RESULTS HISTORY:
-  Run 5:  CAGR  7.58% | $478k
-  V22:    CAGR  9.14% | $652k
-  V24:    CAGR 10.64% | $875k
-  V26:    CAGR 11.28% | $990k
-  V27:    CAGR 11.43% | $1.02M
-  V28:    CAGR 12.58% | $1.27M  ← current best
-  V30 target: CAGR ~13-14% | $1.4M+
+  Run 5:     CAGR  7.58% | $478k
+  V30:       CAGR 14.42% | $1,797k  (S&P 500+400)
+  V30+S&P600 CAGR 16.01% | $2,414k  ← baseline for V31
+  V31 target: improved PF (>1.10), Sharpe (>0.75), DD (<-42%) with
+              minimal CAGR sacrifice
 """
 
-import io
-import warnings
-import datetime
+# V31 imports all shared logic from backtest_nmr_lib.py
+# Only V31-specific parameter overrides are defined here.
+from backtest_nmr_lib import (
+    get_universe, download_prices, download_reference_data,
+    build_earnings_dates, run_backtest, compute_metrics, save_outputs,
+    INITIAL_CAPITAL, START_DATE, END_DATE,
+)
+import backtest_nmr_lib as _lib
 import json
 from pathlib import Path
 
+# ── V31 parameter overrides (applied by patching the lib module) ─────────────
+
+# [V31-3] Higher dollar volume floor — filters worst fill-quality small-caps
+_lib.MIN_DOLLAR_VOLUME = 10_000_000   # was 5_000_000
+
+# [V31-2] Modest DD scaling — fires at 20% DD, reduces size 30%
+# Set thresholds to realistic values (replaces the unreachable 9.99)
+_lib.DD_SCALE_MILD   = 0.20           # 20% portfolio drawdown triggers mild scaling
+_lib.DD_SCALE_SEVERE = 9.99           # severe tier kept unreachable (one-step only)
+_lib.POSITION_SIZE_DD_MILD = 0.063    # 30% reduction: 9% → 6.3% (VIX<25 regime)
+# Note: base POSITION_SIZE (5%) → 3.5% under DD, handled proportionally in get_position_size
+
+# [V31-1] VIX trend filter — added in download_reference_data and run_backtest below
+VIX_TREND_MA = 10   # VIX must be above its 10-day MA to allow entries
+
+# ── Override get_position_size to handle proportional DD reduction ────────────
 import numpy as np
 import pandas as pd
-import yfinance as yf
-import requests
-from tqdm import tqdm
 
-warnings.filterwarnings("ignore")
+_orig_get_position_size = _lib.get_position_size
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Config — identical to Run 5 except VELOCITY_CRASH constants added
-# ─────────────────────────────────────────────────────────────────────────────
-START_DATE = "2004-01-01"
-END_DATE = datetime.date.today().isoformat()
-
-MIN_DOLLAR_VOLUME = 5_000_000
-MAX_POSITIONS = 40          # [V24-1] raised 30→40, size UNCHANGED at 5%
-POSITION_SIZE = 0.05
-POSITION_SIZE_HIGH = 0.09   # [V30-1] raised 7.5%→9% for VIX<20 calm days
-POSITION_SIZE_LOW = 0.025   # VIX > 25
-POSITION_SIZE_EARNINGS = 0.03
-MA_WINDOW = 200
-INITIAL_CAPITAL = 100_000.0
-RSI_PERIOD = 2
-RSI_THRESHOLD = 20
-ATR_PERIOD = 14
-ATR_MIN_PCT = 0.01
-VOL_MA_PERIOD = 20
-MIN_HOLD_BEFORE_EXIT = 2
-
-# ── Tier system — uniform 2%/8d (Run 5 mechanism) ────────────────────────────
-TIER1_MIN_DOWN = 6
-TIER1_TARGET = 0.020
-TIER1_HOLD_DAYS = 8
-TIER1_PARTIAL = True
-TIER1_PARTIAL_FRAC = 0.50
-TIER1_PARTIAL_TRIGGER = 0.010
-
-TIER2_MIN_DOWN = 5
-TIER2_TARGET = 0.020
-TIER2_HOLD_DAYS = 8
-TIER2_PARTIAL = False
-TIER2_PARTIAL_FRAC = 0.0
-TIER2_PARTIAL_TRIGGER = 0.0
-
-TIER3_MIN_DOWN = 4
-TIER3_TARGET = 0.020
-TIER3_HOLD_DAYS = 8
-TIER3_PARTIAL = False
-TIER3_PARTIAL_FRAC = 0.0
-TIER3_PARTIAL_TRIGGER = 0.0
-
-MIN_CONSEC_DOWN = TIER3_MIN_DOWN
-
-# ── [V22-1] Drawdown scaling REMOVED ─────────────────────────────────────────
-DD_SCALE_MILD = 9.99
-DD_SCALE_SEVERE = 9.99
-POSITION_SIZE_DD_MILD = 0.03
-POSITION_SIZE_DD_SEVERE = 0.02
-
-# ── [V21] Velocity crash pause ────────────────────────────────────────────────
-VELOCITY_CRASH_5D_THRESHOLD = -0.12
-VELOCITY_CRASH_PAUSE_DAYS = 5
-
-# ── Filters ───────────────────────────────────────────────────────────────────
-EARNINGS_BLACKOUT = 3
-GAP_DOWN_MAX = -0.015
-GAP_UP_MAX = 0.020
-SECTOR_MA_WINDOW = 20
-MAX_SECTOR_POSITIONS = 3
-
-VIX_HIGH = 999
-VIX_LOW = 25
-VIX_SPIKE_PCT = 0.30
-VIX_SPIKE_PAUSE_DAYS = 0
-
-REENTRY_COOLDOWN_DAYS = 5
-COMMISSION_RATE = 0.005
-COMMISSION_MIN = 0.35
-EARNINGS_MONTHS = {1, 4, 7, 10}
-
-OUTPUT_DIR = Path("results")
-OUTPUT_DIR.mkdir(exist_ok=True)
-
-SECTOR_ETFS = {
-    "XLK": ["AAPL","MSFT","NVDA","AVGO","CSCO","ORCL","IBM","QCOM","TXN","INTC",
-             "AMD","NOW","INTU","AMAT","ADI","MU","KLAC","LRCX","MCHP","CDNS"],
-    "XLV": ["UNH","JNJ","LLY","ABBV","MRK","TMO","ABT","DHR","BMY","AMGN",
-             "PFE","ISRG","MDT","GILD","VRTX","BSX","SYK","REGN","ZTS","CI"],
-    "XLF": ["JPM","BAC","WFC","GS","MS","BLK","AXP","SPGI","V","MA",
-             "USB","PNC","TFC","COF","CB","ICE","CME","MCO","AON","TRV"],
-    "XLY": ["AMZN","TSLA","HD","MCD","NKE","LOW","SBUX","TGT","CMG","BKNG",
-             "TJX","DHI","GM","F","ORLY","LEN","EBAY","ETSY","YUM","DRI"],
-    "XLP": ["PG","KO","PEP","COST","WMT","PM","MO","MDLZ","CL","KMB",
-             "EL","KR","STZ","GIS","HRL","SJM","CAG","K","CPB","CHD"],
-    "XLE": ["XOM","CVX","COP","SLB","EOG","MPC","PSX","VLO","HAL","BKR",
-             "FANG","DVN","HES","OXY","APA","MRO","CTRA","EQT","NOV","FTI"],
-    "XLI": ["GE","HON","UPS","BA","CAT","RTX","DE","LMT","UNP","MMM",
-             "ETN","EMR","NOC","GD","PH","ROK","IR","ITW","TT","CARR"],
-    "XLB": ["LIN","APD","SHW","ECL","NEM","FCX","NUE","DOW","DD","PPG",
-             "ALB","CF","MOS","CE","IFF","RPM","FMC","SON","SEE","AMCR"],
-    "XLU": ["NEE","DUK","SO","D","AEP","EXC","SRE","PEG","ED","XEL",
-             "ES","FE","ETR","PPL","CMS","NI","ATO","LNT","EVRG","PNW"],
-    "XLRE": ["PLD","AMT","CCI","EQIX","PSA","O","WELL","DLR","EQR","AVB",
-              "SPG","WY","ARE","MAA","UDR","CPT","ESS","AIV","IRM","VTR"],
-    "XLC": ["META","GOOGL","GOOG","NFLX","DIS","CMCSA","T","VZ","TMUS","CHTR",
-             "ATVI","EA","WBD","PARA","FOXA","FOX","NWS","NWSA","OMC","IPG"],
-}
-
-TICKER_TO_SECTOR: dict[str, str] = {}
-for _etf, _members in SECTOR_ETFS.items():
-    for _t in _members:
-        TICKER_TO_SECTOR[_t] = _etf
-
-
-def get_tier(consec_down: int) -> dict:
-    if consec_down >= TIER1_MIN_DOWN:
-        return {"tier": 1, "profit_target": TIER1_TARGET, "hold_days": TIER1_HOLD_DAYS,
-                "partial_enabled": TIER1_PARTIAL, "partial_frac": TIER1_PARTIAL_FRAC,
-                "partial_trigger": TIER1_PARTIAL_TRIGGER}
-    elif consec_down >= TIER2_MIN_DOWN:
-        return {"tier": 2, "profit_target": TIER2_TARGET, "hold_days": TIER2_HOLD_DAYS,
-                "partial_enabled": TIER2_PARTIAL, "partial_frac": TIER2_PARTIAL_FRAC,
-                "partial_trigger": TIER2_TARGET}
-    else:
-        return {"tier": 3, "profit_target": TIER3_TARGET, "hold_days": TIER3_HOLD_DAYS,
-                "partial_enabled": TIER3_PARTIAL, "partial_frac": TIER3_PARTIAL_FRAC,
-                "partial_trigger": TIER3_TARGET}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 1. Universe
-# ─────────────────────────────────────────────────────────────────────────────
-def _fetch_wiki(url: str) -> list:
-    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-               "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
-    resp = requests.get(url, headers=headers, timeout=30)
-    resp.raise_for_status()
-    return pd.read_html(io.StringIO(resp.text), header=0)
-
-
-def _extract_tickers_from_table(table: pd.DataFrame) -> list[str]:
-    """Try known column names first, then fall back to regex sniffing any column."""
-    for col in ["Symbol", "Ticker symbol", "Ticker", "Ticker Symbol"]:
-        if col in table.columns:
-            return table[col].dropna().astype(str).tolist()
-    # Fallback: find any column whose values look like ticker symbols
-    for col in table.columns:
-        cs = table[col].dropna().astype(str)
-        if cs.str.match(r"^[A-Z]{1,5}(-[A-Z])?$").mean() > 0.3:
-            return cs.tolist()
-    return []
-
-
-def get_universe() -> list[str]:
-    tickers: set[str] = set()
-
-    for url, label in [
-        ("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", "S&P 500"),
-        ("https://en.wikipedia.org/wiki/List_of_S%26P_400_companies", "S&P 400"),
-        ("https://en.wikipedia.org/wiki/List_of_S%26P_600_companies", "S&P 600"),
-    ]:
-        try:
-            tables = _fetch_wiki(url)
-            found = False
-            for i, table in enumerate(tables):
-                syms = _extract_tickers_from_table(table)
-                # Require at least 100 symbols — rejects small ETF/fund header tables
-                if len(syms) >= 100:
-                    tickers.update([s.replace(".", "-") for s in syms])
-                    print(f"[Universe] {label}: {len(syms)} symbols (table {i})")
-                    found = True
-                    break
-            if not found:
-                print(f"[Universe] {label}: WARNING — no valid ticker table found")
-                for i, table in enumerate(tables):
-                    print(f"  table[{i}] shape={table.shape} cols={list(table.columns)}")
-        except Exception as e:
-            print(f"[Universe] {label} failed: {e}")
-
-    historical_extras = [
-        "LEH","BSC","WB","WAMU","MER","C","AIG","FNM","FRE",
-        "YHOO","SUNW","PALM","Q","NT","GLW","JDS","CSCO","T",
-        "GE","GM","F","XOM","CVX","IBM","MSFT","AAPL","AMZN",
-        "GOOG","GOOGL","META","NVDA","TSLA","BRK-B","JPM","BAC",
-        "WFC","GS","MS","USB","PNC","TFC","COF","AXP","V","MA",
-        "HD","LOW","TGT","WMT","COST","KR","CVS","WBA",
-        "UNH","CI","HUM","CNC","MOH","CAH","JNJ","PFE","MRK",
-        "ABBV","BMY","AMGN","GILD","BIIB","LLY","REGN","VRTX",
-        "ZTS","ISRG","BSX","SYK","MDT","BA","LMT","RTX","NOC",
-        "GD","HII","TXT","CAT","DE","EMR","HON","MMM","ETN",
-        "PH","ROK","COP","EOG","SLB","HAL","BKR","MPC","VLO",
-        "NEE","DUK","SO","AEP","EXC","SRE","PCG","ED","FE",
-        "AMT","PLD","CCI","SPG","O","WELL","PSA","EQR","AVB",
-        "SBUX","MCD","YUM","CMG","DRI","QSR","DIS","NFLX",
-        "CMCSA","VZ","CHTR","TMUS","PG","KO","PEP","CL","KMB","CHD","EL",
-    ]
-    tickers.update(historical_extras)
-
-    result = sorted(tickers)
-    print(f"[Universe] Total unique tickers: {len(result)}")
-    return result
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. Downloads
-# ─────────────────────────────────────────────────────────────────────────────
-def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
-    print(f"\n[Download] Fetching {len(tickers)} tickers ({START_DATE} -> {END_DATE}) ...")
-    all_data: dict[str, pd.DataFrame] = {}
-    for i in tqdm(range(0, len(tickers), 100), desc="Downloading"):
-        chunk = tickers[i: i + 100]
-        try:
-            raw = yf.download(chunk, start=START_DATE, end=END_DATE,
-                              auto_adjust=True, progress=False, threads=True)
-            if raw.empty:
-                continue
-            if isinstance(raw.columns, pd.MultiIndex):
-                for tkr in chunk:
-                    try:
-                        df = raw.xs(tkr, axis=1, level=1).dropna(how="all")
-                        if not df.empty:
-                            all_data[tkr] = df
-                    except KeyError:
-                        pass
-            elif chunk:
-                all_data[chunk[0]] = raw.dropna(how="all")
-        except Exception as e:
-            print(f"[Download] Chunk error: {e}")
-    print(f"[Download] Downloaded {len(all_data)} tickers.")
-    return all_data
-
-
-def _dl_single(ticker: str) -> pd.DataFrame:
-    df = yf.download(ticker, start=START_DATE, end=END_DATE,
-                     auto_adjust=True, progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df
-
-
-def _compute_rsi(series: pd.Series, period: int) -> pd.Series:
-    delta = series.diff()
-    gain = delta.clip(lower=0).rolling(period).mean()
-    loss = (-delta.clip(upper=0)).rolling(period).mean()
-    rs = gain / loss.replace(0, np.nan)
-    return 100 - (100 / (1 + rs))
-
-
-def download_reference_data() -> tuple:
-    spy = _dl_single("SPY")
-    close = spy["Close"].squeeze()
-    spy["spy_ma200"] = close.rolling(200).mean()
-    spy["spy_ok"] = (close > spy["spy_ma200"].squeeze()).values
-    spy["spy_5d_ret"] = close.pct_change(5)
-    print(f"[Download] SPY: {len(spy)} rows")
-
-    vix = _dl_single("^VIX")
-    vix_close = vix["Close"].squeeze()
-    vix["vix_5d_ago"] = vix_close.shift(5)
-    vix["vix_spike"] = (vix_close / vix["vix_5d_ago"].replace(0, np.nan) - 1) >= VIX_SPIKE_PCT
-    print(f"[Download] VIX: {len(vix)} rows")
-
-    etf_list = list(SECTOR_ETFS.keys())
-    sector_data: dict[str, pd.DataFrame] = {}
-    raw = yf.download(etf_list, start=START_DATE, end=END_DATE,
-                      auto_adjust=True, progress=False, threads=True)
-    if not raw.empty:
-        for etf in etf_list:
-            try:
-                df = (raw.xs(etf, axis=1, level=1).dropna(how="all")
-                      if isinstance(raw.columns, pd.MultiIndex) else raw.copy())
-                cs = df["Close"].squeeze()
-                df = df.copy()
-                df["ma"] = cs.rolling(SECTOR_MA_WINDOW).mean()
-                df["ok"] = (cs > df["ma"].squeeze()).values
-                sector_data[etf] = df
-            except Exception:
-                pass
-    print(f"[Download] Sector ETFs: {len(sector_data)}")
-    return spy, vix, sector_data
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 3. Earnings calendar
-# ─────────────────────────────────────────────────────────────────────────────
-def build_earnings_dates(tickers: list[str]) -> dict[str, set]:
-    print(f"[Earnings] Building calendar for {len(tickers)} tickers ...")
-    earnings_map: dict[str, set] = {}
-    for tkr in tqdm(tickers, desc="Earnings"):
-        try:
-            cal = yf.Ticker(tkr).calendar
-            if cal is None or (hasattr(cal, "empty") and cal.empty):
-                continue
-            dates: set = set()
-            for col in cal.columns:
-                for val in cal[col].dropna():
-                    try:
-                        dates.add(pd.Timestamp(val).normalize())
-                    except Exception:
-                        pass
-            if dates:
-                earnings_map[tkr] = dates
-        except Exception:
-            pass
-    print(f"[Earnings] Done: {len(earnings_map)} tickers with dates.")
-    return earnings_map
-
-
-def near_earnings(tkr: str, date, earnings_map: dict[str, set]) -> bool:
-    if tkr not in earnings_map:
-        return False
-    d = pd.Timestamp(date).normalize()
-    return any(abs((d - e).days) <= EARNINGS_BLACKOUT for e in earnings_map[tkr])
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 4. Signal generation
-# ─────────────────────────────────────────────────────────────────────────────
-def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df["ma200"] = df["Close"].rolling(MA_WINDOW).mean()
-    df["above_ma"] = df["Close"] > df["ma200"]
-    df["down_day"] = (df["Close"] < df["Close"].shift(1)).astype(int)
-    consec, count = [], 0
-    for d in df["down_day"]:
-        count = count + 1 if d == 1 else 0
-        consec.append(count)
-    df["consec_down"] = consec
-    df["rsi2"] = _compute_rsi(df["Close"], RSI_PERIOD)
-    tr = pd.concat([
-        df["High"] - df["Low"],
-        (df["High"] - df["Close"].shift(1)).abs(),
-        (df["Low"] - df["Close"].shift(1)).abs(),
-    ], axis=1).max(axis=1)
-    df["atr"] = tr.rolling(ATR_PERIOD).mean()
-    df["atr_pct"] = df["atr"] / df["Close"]
-    df["vol_ma20"] = df["Volume"].rolling(VOL_MA_PERIOD).mean()
-    df["vol_confirm"] = df["Volume"] > df["vol_ma20"]
-    df["dollar_vol_ma20"] = (df["Close"] * df["Volume"]).rolling(VOL_MA_PERIOD).mean()
-    df["signal"] = (
-        df["above_ma"]
-        & (df["consec_down"] >= MIN_CONSEC_DOWN)
-        & (df["rsi2"] < RSI_THRESHOLD)
-        & (df["atr_pct"] > ATR_MIN_PCT)
-        & df["vol_confirm"]
-        & (df["dollar_vol_ma20"] >= MIN_DOLLAR_VOLUME)
-    )
-    return df
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 5. Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-def calc_commission(shares: float, price: float) -> float:
-    return max(shares * COMMISSION_RATE, COMMISSION_MIN)
-
-
-def get_position_size(today, vix_df, drawdown_pct: float = 0.0) -> float:
+def _v31_get_position_size(today, vix_df, drawdown_pct: float = 0.0) -> float:
+    """V31: adds proportional 30% size reduction when DD > 20%."""
+    base = _orig_get_position_size(today, vix_df, 0.0)  # get base without DD
     month = pd.Timestamp(today).month
-    earnings_month = month in EARNINGS_MONTHS
-    base = POSITION_SIZE
-
-    try:
-        vc = vix_df["Close"].squeeze()
-        if today in vc.index:
-            v = float(vc.loc[today])
-            if v < VIX_LOW:
-                base = POSITION_SIZE_HIGH
-    except Exception:
-        pass
-
-    if drawdown_pct <= -DD_SCALE_SEVERE:
-        base = min(base, POSITION_SIZE_DD_SEVERE)
-    elif drawdown_pct <= -DD_SCALE_MILD:
-        base = min(base, POSITION_SIZE_DD_MILD)
-
-    if earnings_month and base > POSITION_SIZE_EARNINGS:
-        base = POSITION_SIZE_EARNINGS
-
+    # Re-apply earnings month cap (already in orig, but we bypassed DD path)
+    if month in _lib.EARNINGS_MONTHS and base > _lib.POSITION_SIZE_EARNINGS:
+        base = _lib.POSITION_SIZE_EARNINGS
+    # [V31-2] Modest DD reduction — 30% size cut at 20% drawdown
+    if drawdown_pct <= -_lib.DD_SCALE_MILD:
+        base = base * 0.70   # proportional 30% reduction regardless of VIX regime
     return base
 
-
-def sector_ok(tkr: str, date, sector_data: dict) -> bool:
-    etf = TICKER_TO_SECTOR.get(tkr)
-    if etf is None or etf not in sector_data:
-        return True
-    df = sector_data[etf]
-    if date not in df.index:
-        return True
-    return bool(df.loc[date, "ok"])
+_lib.get_position_size = _v31_get_position_size
 
 
-def count_sector_positions(tkr: str, open_positions: dict) -> int:
-    etf = TICKER_TO_SECTOR.get(tkr)
-    if etf is None:
-        return 0
-    return sum(1 for t in open_positions if TICKER_TO_SECTOR.get(t) == etf)
+# ── Override download_reference_data to add VIX MA calculation ───────────────
+import yfinance as yf
+import warnings
+warnings.filterwarnings("ignore")
+
+_orig_download_reference_data = _lib.download_reference_data
+
+def _v31_download_reference_data() -> tuple:
+    """V31: adds VIX 10-day MA trend column for regime filter."""
+    spy, vix, sector_data = _orig_download_reference_data()
+    # [V31-1] Add VIX trend column
+    vix_close = vix["Close"].squeeze()
+    vix["vix_ma10"] = vix_close.rolling(VIX_TREND_MA).mean()
+    vix["vix_trending_up"] = vix_close > vix["vix_ma10"]
+    print(f"[V31] VIX trend filter: entries only when VIX > {VIX_TREND_MA}-day MA")
+    return spy, vix, sector_data
+
+_lib.download_reference_data = _v31_download_reference_data
 
 
-def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
-    try:
-        if today in vix_df.index and bool(vix_df.loc[today, "vix_spike"]):
-            last_spike_date = today
-    except Exception:
-        pass
-    if last_spike_date is not None:
-        if (pd.Timestamp(today) - pd.Timestamp(last_spike_date)).days <= VIX_SPIKE_PAUSE_DAYS:
-            return True, last_spike_date
-    return False, last_spike_date
+# ── Override run_backtest to apply VIX trend filter in entry logic ────────────
+_orig_run_backtest = _lib.run_backtest
 
+def _v31_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
+    """V31: injects VIX trend regime check before entry generation."""
+    print("\n[Backtest] Running V31 simulation (V30+S&P600 + regime filter + DD scaling + $10M floor) ...")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 6. Backtest simulation
-# ─────────────────────────────────────────────────────────────────────────────
-def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V30 simulation (Run 5 + velocity crash pause) ...")
     spy_regime = spy_df["spy_ok"].to_dict()
+
+    # Build VIX trend lookup
+    vix_trend_ok = {}
+    if "vix_trending_up" in vix_df.columns:
+        vix_trend_ok = vix_df["vix_trending_up"].to_dict()
 
     all_dates: set = set()
     for df in price_data.values():
@@ -464,12 +133,13 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     trading_dates = sorted(all_dates)
 
     signals: dict[str, pd.DataFrame] = {}
-    min_bars = MA_WINDOW + VOL_MA_PERIOD + ATR_PERIOD + MIN_CONSEC_DOWN + 5
+    min_bars = _lib.MA_WINDOW + _lib.VOL_MA_PERIOD + _lib.ATR_PERIOD + _lib.MIN_CONSEC_DOWN + 5
+    from tqdm import tqdm
     for tkr, df in tqdm(price_data.items(), desc="Generating signals"):
         if len(df) > min_bars:
-            signals[tkr] = generate_signals(df)
+            signals[tkr] = _lib.generate_signals(df)
 
-    portfolio_value = INITIAL_CAPITAL
+    portfolio_value = _lib.INITIAL_CAPITAL
     portfolio_peak = None
     current_drawdown = 0.0
     open_positions: dict[str, dict] = {}
@@ -478,25 +148,34 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     last_vix_spike = None
     last_velocity_crash = None
 
+    vix_blocked_days = 0
+    dd_scaled_days = 0
+
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok = spy_regime.get(today, True)
-        paused, last_vix_spike = check_vix_spike(today, vix_df, last_vix_spike)
+        paused, last_vix_spike = _lib.check_vix_spike(today, vix_df, last_vix_spike)
 
         velocity_paused = False
         try:
             if today in spy_df.index:
                 spy_5d = float(spy_df.loc[today, "spy_5d_ret"])
-                if not np.isnan(spy_5d) and spy_5d < VELOCITY_CRASH_5D_THRESHOLD:
+                if not np.isnan(spy_5d) and spy_5d < _lib.VELOCITY_CRASH_5D_THRESHOLD:
                     last_velocity_crash = today
             if last_velocity_crash is not None:
                 days_since = (pd.Timestamp(today) - pd.Timestamp(last_velocity_crash)).days
-                if days_since <= VELOCITY_CRASH_PAUSE_DAYS:
+                if days_since <= _lib.VELOCITY_CRASH_PAUSE_DAYS:
                     velocity_paused = True
         except Exception:
             pass
 
+        # [V31-1] VIX trend regime filter
+        vix_regime_ok = vix_trend_ok.get(today, True)  # default True if no data
+        if not vix_regime_ok:
+            vix_blocked_days += 1
+
+        # Drawdown tracking
         if portfolio_peak is None:
-            if portfolio_value != INITIAL_CAPITAL:
+            if portfolio_value != _lib.INITIAL_CAPITAL:
                 portfolio_peak = portfolio_value
                 current_drawdown = 0.0
         else:
@@ -506,7 +185,10 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             else:
                 current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
-        # ── Exits ──────────────────────────────────────────────────────────
+        if current_drawdown <= -_lib.DD_SCALE_MILD:
+            dd_scaled_days += 1
+
+        # ── Exits (unchanged) ──────────────────────────────────────────────
         to_close = []
         for tkr, pos in open_positions.items():
             if tkr not in signals:
@@ -520,14 +202,14 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             days_held = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
             pos_pct = (exit_price - entry_price) / entry_price
             shares_rem = pos["shares_remaining"]
-            early = days_held < MIN_HOLD_BEFORE_EXIT
+            early = days_held < _lib.MIN_HOLD_BEFORE_EXIT
             time_stop = days_held >= pos["hold_days"]
             profit_hit = (not early) and pos_pct >= pos["profit_target"]
 
             if (pos["partial_enabled"] and not pos["partial_done"]
                     and not early and pos_pct >= pos["partial_trigger"]):
                 partial_shares = shares_rem * pos["partial_frac"]
-                commission = calc_commission(partial_shares, exit_price)
+                commission = _lib.calc_commission(partial_shares, exit_price)
                 pnl = (exit_price - entry_price) * partial_shares - commission
                 trades.append({
                     "ticker": tkr, "entry_date": pos["entry_date"], "exit_date": today,
@@ -550,7 +232,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 or (pos["partial_enabled"] and pos["partial_done"] and profit_hit)
             )
             if full_exit:
-                commission = calc_commission(shares_rem, exit_price)
+                commission = _lib.calc_commission(shares_rem, exit_price)
                 pnl = ((exit_price - entry_price) * shares_rem
                        - commission - pos["entry_commission"])
                 reason = "time_stop" if time_stop else "profit_target"
@@ -572,9 +254,10 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        if not spy_ok or paused or velocity_paused:
+        # [V31-1] Block entries when VIX is in downtrend (falling volatility)
+        if not spy_ok or paused or velocity_paused or not vix_regime_ok:
             continue
-        if len(open_positions) >= MAX_POSITIONS:
+        if len(open_positions) >= _lib.MAX_POSITIONS:
             continue
 
         # ── Entries ────────────────────────────────────────────────────────
@@ -586,20 +269,20 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             if not row["signal"]:
                 continue
             if tkr in cooldown_map:
-                if (pd.Timestamp(today) - pd.Timestamp(cooldown_map[tkr])).days < REENTRY_COOLDOWN_DAYS:
+                if (pd.Timestamp(today) - pd.Timestamp(cooldown_map[tkr])).days < _lib.REENTRY_COOLDOWN_DAYS:
                     continue
-            if near_earnings(tkr, today, earnings_map):
+            if _lib.near_earnings(tkr, today, earnings_map):
                 continue
-            if not sector_ok(tkr, today, sector_data):
+            if not _lib.sector_ok(tkr, today, sector_data):
                 continue
-            if count_sector_positions(tkr, open_positions) >= MAX_SECTOR_POSITIONS:
+            if _lib.count_sector_positions(tkr, open_positions) >= _lib.MAX_SECTOR_POSITIONS:
                 continue
             candidates.append((float(row["rsi2"]), tkr, int(row["consec_down"])))
 
         candidates.sort(key=lambda x: x[0])
 
         for rsi_val, tkr, consec_val in candidates:
-            if len(open_positions) >= MAX_POSITIONS:
+            if len(open_positions) >= _lib.MAX_POSITIONS:
                 break
             tkr_df = signals[tkr]
             today_idx = tkr_df.index.get_loc(today)
@@ -611,12 +294,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
             prev_close = float(tkr_df.iloc[today_idx]["Close"])
             gap_pct = (entry_price - prev_close) / prev_close
-            if gap_pct < GAP_DOWN_MAX or gap_pct > GAP_UP_MAX:
+            if gap_pct < _lib.GAP_DOWN_MAX or gap_pct > _lib.GAP_UP_MAX:
                 continue
-            tier_cfg = get_tier(consec_val)
-            pos_size = get_position_size(today, vix_df, current_drawdown)
+            tier_cfg = _lib.get_tier(consec_val)
+            pos_size = _lib.get_position_size(today, vix_df, current_drawdown)
             shares = (portfolio_value * pos_size) / entry_price
-            entry_comm = calc_commission(shares, entry_price)
+            entry_comm = _lib.calc_commission(shares, entry_price)
             open_positions[tkr] = {
                 "entry_date": tkr_df.index[today_idx + 1],
                 "entry_price": entry_price,
@@ -634,143 +317,54 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 "entry_commission": entry_comm,
             }
 
+    total_days = len(trading_dates)
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
+    print(f"[V31] VIX trend blocked entries on {vix_blocked_days} days "
+          f"({vix_blocked_days/total_days*100:.1f}% of trading days)")
+    print(f"[V31] DD scaling active on {dd_scaled_days} days "
+          f"({dd_scaled_days/total_days*100:.1f}% of trading days)")
     return pd.DataFrame(trades)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 7. Metrics
-# ─────────────────────────────────────────────────────────────────────────────
-def compute_metrics(trades_df: pd.DataFrame) -> tuple:
-    if trades_df.empty:
-        return {"error": "No trades generated."}, pd.DataFrame()
-
-    trades_df = trades_df.sort_values("exit_date").reset_index(drop=True)
-    equity = INITIAL_CAPITAL
-    equity_curve = []
-    for _, row in trades_df.iterrows():
-        equity += row["pnl_usd"]
-        equity_curve.append({"date": row["exit_date"], "equity": equity})
-    eq_df = pd.DataFrame(equity_curve)
-
-    start_dt = pd.to_datetime(trades_df["entry_date"].min())
-    end_dt = pd.to_datetime(trades_df["exit_date"].max())
-    years = max((end_dt - start_dt).days / 365.25, 1e-6)
-    cagr = (equity / INITIAL_CAPITAL) ** (1 / years) - 1
-
-    winners = trades_df[trades_df["pnl_usd"] > 0]
-    losers = trades_df[trades_df["pnl_usd"] <= 0]
-    win_rate = len(winners) / len(trades_df) * 100
-    avg_win = winners["pnl_pct"].mean() if len(winners) else 0
-    avg_loss = losers["pnl_pct"].mean() if len(losers) else 0
-
-    eq_df["peak"] = eq_df["equity"].cummax()
-    eq_df["dd"] = (eq_df["equity"] - eq_df["peak"]) / eq_df["peak"] * 100
-    max_dd = eq_df["dd"].min()
-
-    gp = winners["pnl_usd"].sum()
-    gl = abs(losers["pnl_usd"].sum())
-    pf = gp / gl if gl > 0 else float("inf")
-
-    eq_df["date"] = pd.to_datetime(eq_df["date"])
-    eq_df.set_index("date", inplace=True)
-    monthly_ret = eq_df["equity"].resample("ME").last().ffill().pct_change().dropna()
-    sharpe = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
-              if monthly_ret.std() > 0 else 0)
-
-    total_comm = trades_df["commission"].sum() if "commission" in trades_df else 0
-    exit_counts = (trades_df["exit_reason"].value_counts().to_dict()
-                   if "exit_reason" in trades_df.columns else {})
-
-    tier_stats = {}
-    if "tier" in trades_df.columns:
-        for t in sorted(trades_df["tier"].unique()):
-            t_df = trades_df[trades_df["tier"] == t]
-            t_win = t_df[t_df["pnl_usd"] > 0]
-            t_los = t_df[t_df["pnl_usd"] <= 0]
-            tier_stats[f"tier_{t}"] = {
-                "trades": len(t_df),
-                "win_rate": round((t_df["pnl_usd"] > 0).mean() * 100, 1),
-                "avg_win": round(t_win["pnl_pct"].mean(), 2) if len(t_win) else 0,
-                "avg_loss": round(t_los["pnl_pct"].mean(), 2) if len(t_los) else 0,
-                "avg_days": round(t_df["days_held"].mean(), 1),
-            }
-
-    trades_df["exit_year"] = pd.to_datetime(trades_df["exit_date"]).dt.year
-    year_stats = {}
-    for yr in sorted(trades_df["exit_year"].unique()):
-        y_df = trades_df[trades_df["exit_year"] == yr]
-        y_win = y_df[y_df["pnl_usd"] > 0]
-        year_stats[str(yr)] = {
-            "trades": len(y_df),
-            "win_rate": round((y_df["pnl_usd"] > 0).mean() * 100, 1),
-            "pnl_usd": round(y_df["pnl_usd"].sum(), 2),
-            "avg_win": round(y_win["pnl_pct"].mean(), 2) if len(y_win) else 0,
-        }
-
-    full_exits = (trades_df[trades_df["exit_reason"] != "partial_exit"]
-                  if "exit_reason" in trades_df.columns else trades_df)
-    time_stop_n = exit_counts.get("time_stop", 0)
-    time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
-
-    metrics = {
-        "version": "V30",
-        "period_start": start_dt.date().isoformat(),
-        "period_end": end_dt.date().isoformat(),
-        "years_tested": round(years, 2),
-        "total_trades": len(trades_df),
-        "trades_per_year": round(len(trades_df) / years, 1),
-        "win_rate_pct": round(win_rate, 2),
-        "cagr_pct": round(cagr * 100, 2),
-        "roi_per_year_pct": round((equity - INITIAL_CAPITAL) / INITIAL_CAPITAL / years * 100, 2),
-        "avg_days_held": round(trades_df["days_held"].mean(), 2),
-        "avg_win_pct": round(avg_win, 2),
-        "avg_loss_pct": round(avg_loss, 2),
-        "profit_factor": round(pf, 2),
-        "max_drawdown_pct": round(max_dd, 2),
-        "sharpe_ratio": round(sharpe, 2),
-        "time_stop_rate_pct": time_stop_rt,
-        "exit_reasons": {k: int(v) for k, v in exit_counts.items()},
-        "tier_stats": tier_stats,
-        "year_stats": year_stats,
-        "total_commission_usd": round(total_comm, 2),
-        "initial_capital": INITIAL_CAPITAL,
-        "final_equity": round(equity, 2),
-        "total_return_pct": round((equity / INITIAL_CAPITAL - 1) * 100, 2),
-        "parameters": {
-            "version": "V30",
-            "base": "V28 ($1.27M, 12.58% CAGR) + V29 (9% HIGH size)",
-            "universe": "S&P500 + S&P400 + S&P600",
-            "min_consec_down": MIN_CONSEC_DOWN,
-            "tier1_6plus": "2% target, 8d, partial at +1%",
-            "tier2_5days": "2% target, 8d, no partial",
-            "tier3_4days": "2% target, 8d, no partial",
-            "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]",
-            "dd_scale_mild": "REMOVED [V22-1] — thresholds set unreachable",
-            "dd_scale_severe": "REMOVED [V22-1] — thresholds set unreachable",
-            "max_positions": MAX_POSITIONS,
-            "vix_sizing": f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}% [V30-1], base: {POSITION_SIZE*100:.1f}% — no penalty",
-            "commission": f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min [V22-2 lowered]",
-            "no_rsi_exit": "RSI overbought exit NOT present (Run 5 baseline)",
-            "no_bull_block": "Bull regime block NOT present (Run 5 baseline)",
-            "no_sweet_spot": "Sweet spot sizing NOT present (Run 5 baseline)",
-        },
-    }
-    return metrics, eq_df.reset_index()
+_lib.run_backtest = _v31_run_backtest
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 8. Save + print
-# ─────────────────────────────────────────────────────────────────────────────
-def save_outputs(trades_df, metrics, eq_df):
+# ── Override compute_metrics to label this as V31 ────────────────────────────
+_orig_compute_metrics = _lib.compute_metrics
+
+def _v31_compute_metrics(trades_df):
+    metrics, eq_df = _orig_compute_metrics(trades_df)
+    if isinstance(metrics, dict) and "version" in metrics:
+        metrics["version"] = "V31"
+        metrics["parameters"]["version"] = "V31"
+        metrics["parameters"]["base"] = "V30+S&P600 ($2.41M, 16.01% CAGR)"
+        metrics["parameters"]["v31_changes"] = (
+            "[V31-1] VIX trend filter: entries only when VIX > 10d MA | "
+            "[V31-2] DD scaling: >20% DD → 30% size reduction | "
+            "[V31-3] MIN_DOLLAR_VOLUME raised $5M→$10M"
+        )
+    return metrics, eq_df
+
+_lib.compute_metrics = _v31_compute_metrics
+
+
+# ── Override save_outputs to label V31 ───────────────────────────────────────
+_orig_save_outputs = _lib.save_outputs
+
+def _v31_save_outputs(trades_df, metrics, eq_df):
+    import json
+    from pathlib import Path
+    OUTPUT_DIR = Path("results")
+    OUTPUT_DIR.mkdir(exist_ok=True)
     trades_df.to_csv(OUTPUT_DIR / "trades.csv", index=False)
     eq_df.to_csv(OUTPUT_DIR / "equity_curve.csv", index=False)
     with open(OUTPUT_DIR / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V30 (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V31")
+    print("  V30+S&P600 + VIX regime filter + DD scaling + $10M floor")
     print("=" * 70)
+    print(f"  {'Version':<36}: {metrics.get('version','V31')}")
     for k, v in metrics.items():
         if k == "tier_stats":
             print(f"\n  Per-Tier Statistics:")
@@ -788,23 +382,29 @@ def save_outputs(trades_df, metrics, eq_df):
             print(f"\n  {label}:")
             for ek, ev in v.items():
                 print(f"    {ek:<40}: {ev}")
+        elif k == "version":
+            pass  # already printed above
         else:
             print(f"  {k.replace('_',' ').title():<36}: {v}")
+
+    print("\n  V31 vs V30+S&P600 baseline:")
+    print("  Target: PF > 1.10 | Sharpe > 0.75 | MaxDD < -42%")
+    print("  Baseline: PF 1.07 | Sharpe 0.73 | MaxDD -48.65% | CAGR 16.01%")
     print("=" * 70)
     print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 
+_lib.save_outputs = _v31_save_outputs
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 9. Entry point
-# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     universe = get_universe()
     price_data = download_prices(universe)
-    spy_df, vix_df, sector_data = download_reference_data()
+    spy_df, vix_df, sector_data = _lib.download_reference_data()
     earnings_map = build_earnings_dates(list(price_data.keys()))
-    trades_df = run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
+    trades_df = _lib.run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
     if trades_df.empty:
         print("[ERROR] No trades generated.")
     else:
-        metrics, eq_df = compute_metrics(trades_df)
-        save_outputs(trades_df, metrics, eq_df)
+        metrics, eq_df = _lib.compute_metrics(trades_df)
+        _lib.save_outputs(trades_df, metrics, eq_df)
