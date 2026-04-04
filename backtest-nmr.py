@@ -1,51 +1,51 @@
-""" Naive Mean Reversion — V32a
+""" Naive Mean Reversion — V32e
 ==============================
-NEW: ATR-based position sizing.
+NEW: Composite entry ranking.
 
-Current sizing: VIX regime only (9% or 5% of portfolio).
-Problem: All stocks get the same size regardless of individual volatility.
-A stock with 0.5% ATR and one with 3% ATR both get 9% of portfolio —
-the high-ATR stock carries 6x more dollar risk per trade.
+Current ranking: Sort candidates by RSI(2) alone — lowest RSI first.
+Problem: Two stocks with identical RSI(2) of 5 are treated equally,
+even if one has 0.5% ATR (mild pullback) and one has 3% ATR
+(violent selloff). The high-ATR stock has more mean reversion energy.
 
-V32a fix: Size each position to target a fixed dollar risk per trade.
-Formula: shares = (portfolio * RISK_PER_TRADE) / (ATR * entry_price)
-Where RISK_PER_TRADE = 0.005 (0.5% of portfolio per trade, risking 1 ATR)
+V32e: Composite score = RSI(2) / ATR_pct
+  Lower score = more oversold AND more volatile = better MR candidate
+  This prioritizes stocks that are both deeply oversold AND
+  experiencing high volatility — the strongest mean reversion setups.
 
-VIX regime still applies as a cap:
-  VIX < 25: max position = 9% of portfolio (unchanged)
-  VIX >= 25: max position = 5% of portfolio (unchanged)
-ATR sizing can only reduce below the VIX cap, never exceed it.
+Why this is different from ATR sizing (V32a which failed):
+  V32a changed HOW MUCH capital per trade → VIX cap overrode it
+  V32e changes WHICH TRADES get priority → no cap can override ranking
+  On days with 20+ signals but only 5 open slots, V32e picks better.
+
+Trade volume: Identical to V30+S&P600 on average.
+  Only affects which trades are selected on high-signal days.
+  On low-signal days (fewer candidates than slots) — no effect at all.
 
 Expected effect:
-  - High-ATR stocks (volatile small-caps) get smaller positions
-  - Low-ATR stocks (stable large-caps) get larger positions
-  - More uniform dollar risk per trade → better PF and Sharpe
-  - Trade volume unchanged (no filtering)
+  Slightly higher avg win (better quality entries selected)
+  Slightly better PF
+  CAGR and trade count essentially unchanged
+  Biggest improvement on high-volatility days with many signals
 
-Target: PF > 1.10 | Sharpe > 0.75 | CAGR within 1% of baseline
-Baseline (V30+S&P600): PF 1.07 | Sharpe 0.73 | CAGR 16.01%
+Target: PF > 1.08 | Avg Win improvement | CAGR within 0.5%
+Baseline (V30+S&P600): PF 1.07 | Avg Win 3.10% | CAGR 16.01%
 """
 
 from backtest_nmr_lib import (
     get_universe, download_prices, download_reference_data,
-    build_earnings_dates, compute_metrics, save_outputs,
+    build_earnings_dates, run_backtest, compute_metrics, save_outputs,
     INITIAL_CAPITAL, START_DATE, END_DATE,
 )
 import backtest_nmr_lib as _lib
 import numpy as np
 import pandas as pd
 import warnings
+from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
-# ── ATR sizing parameters ─────────────────────────────────────────────────────
-ATR_RISK_PER_TRADE = 0.005   # risk 0.5% of portfolio per 1 ATR move
-ATR_SIZING_MULTIPLIER = 1.0  # how many ATRs we're willing to risk (1 ATR = typical daily range)
-
-# ── Override run_backtest to use ATR-based sizing ─────────────────────────────
-from tqdm import tqdm
-
-def _v32a_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
-    print("\n[Backtest] Running V32a — ATR-based position sizing ...")
+# ── Override run_backtest with composite ranking ──────────────────────────────
+def _v32e_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
+    print("\n[Backtest] Running V32e — composite entry ranking (RSI2 / ATR_pct) ...")
 
     spy_regime = spy_df["spy_ok"].to_dict()
 
@@ -69,7 +69,8 @@ def _v32a_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
     last_vix_spike = None
     last_velocity_crash = None
 
-    atr_size_used = []   # track ATR sizing vs VIX cap for diagnostics
+    composite_used = 0    # days where composite ranking differed from RSI-only
+    total_entry_days = 0
 
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok = spy_regime.get(today, True)
@@ -99,7 +100,7 @@ def _v32a_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
             else:
                 current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
-        # Exits (unchanged)
+        # Exits — unchanged
         to_close = []
         for tkr, pos in open_positions.items():
             if tkr not in signals:
@@ -170,7 +171,7 @@ def _v32a_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
         if len(open_positions) >= _lib.MAX_POSITIONS:
             continue
 
-        # Entries with ATR-based sizing
+        # Entries — composite ranking
         candidates = []
         for tkr, tkr_df in signals.items():
             if tkr in open_positions or today not in tkr_df.index:
@@ -187,11 +188,34 @@ def _v32a_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
                 continue
             if _lib.count_sector_positions(tkr, open_positions) >= _lib.MAX_SECTOR_POSITIONS:
                 continue
-            candidates.append((float(row["rsi2"]), tkr, int(row["consec_down"])))
 
+            rsi2 = float(row["rsi2"])
+            atr_pct = float(row["atr_pct"])
+
+            # [V32e] Composite score: RSI2 / ATR_pct
+            # Lower = more oversold AND more volatile = better candidate
+            # Guard against zero ATR (shouldn't happen given ATR filter but safety check)
+            if atr_pct > 0:
+                composite_score = rsi2 / atr_pct
+            else:
+                composite_score = rsi2 * 1000  # penalize zero-ATR entries to back of queue
+
+            candidates.append((composite_score, tkr, int(row["consec_down"]), rsi2))
+
+        if candidates:
+            total_entry_days += 1
+            slots_available = _lib.MAX_POSITIONS - len(open_positions)
+            # Check if composite ranking would differ from RSI-only on constrained days
+            if len(candidates) > slots_available:
+                rsi_order = sorted(candidates, key=lambda x: x[3])[:slots_available]
+                composite_order = sorted(candidates, key=lambda x: x[0])[:slots_available]
+                if set(c[1] for c in rsi_order) != set(c[1] for c in composite_order):
+                    composite_used += 1
+
+        # Sort by composite score (ascending = best first)
         candidates.sort(key=lambda x: x[0])
 
-        for rsi_val, tkr, consec_val in candidates:
+        for composite_score, tkr, consec_val, rsi_val in candidates:
             if len(open_positions) >= _lib.MAX_POSITIONS:
                 break
             tkr_df = signals[tkr]
@@ -206,45 +230,9 @@ def _v32a_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
             gap_pct = (entry_price - prev_close) / prev_close
             if gap_pct < _lib.GAP_DOWN_MAX or gap_pct > _lib.GAP_UP_MAX:
                 continue
-
             tier_cfg = _lib.get_tier(consec_val)
-
-            # [V32a] ATR-based sizing
-            # VIX regime gives the maximum allowed position size
-            vix_cap_pct = _lib.get_position_size(today, vix_df, current_drawdown)
-
-            # Earnings month cap
-            month = pd.Timestamp(today).month
-            if month in _lib.EARNINGS_MONTHS:
-                vix_cap_pct = min(vix_cap_pct, _lib.POSITION_SIZE_EARNINGS)
-
-            # ATR-based size: target fixed dollar risk per trade
-            atr_pct = float(tkr_df.iloc[today_idx]["atr_pct"])  # ATR as % of price
-            if atr_pct > 0:
-                # shares = dollar_risk / (ATR_in_dollars)
-                # dollar_risk = portfolio * ATR_RISK_PER_TRADE
-                # ATR_in_dollars = entry_price * atr_pct * ATR_SIZING_MULTIPLIER
-                dollar_risk = portfolio_value * ATR_RISK_PER_TRADE
-                atr_dollars = entry_price * atr_pct * ATR_SIZING_MULTIPLIER
-                atr_based_shares = dollar_risk / atr_dollars
-                atr_based_pct = (atr_based_shares * entry_price) / portfolio_value
-            else:
-                atr_based_pct = vix_cap_pct
-
-            # Use ATR size but cap at VIX regime maximum
-            final_pct = min(atr_based_pct, vix_cap_pct)
-            # Also enforce a minimum — don't go below 1% (avoid tiny positions)
-            final_pct = max(final_pct, 0.01)
-
-            atr_size_used.append({
-                "atr_pct": atr_pct,
-                "atr_based_pct": atr_based_pct,
-                "vix_cap_pct": vix_cap_pct,
-                "final_pct": final_pct,
-                "capped": atr_based_pct > vix_cap_pct,
-            })
-
-            shares = (portfolio_value * final_pct) / entry_price
+            pos_size = _lib.get_position_size(today, vix_df, current_drawdown)
+            shares = (portfolio_value * pos_size) / entry_price
             entry_comm = _lib.calc_commission(shares, entry_price)
             open_positions[tkr] = {
                 "entry_date": tkr_df.index[today_idx + 1],
@@ -261,35 +249,32 @@ def _v32a_run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map):
             }
 
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
-    if atr_size_used:
-        atr_df = pd.DataFrame(atr_size_used)
-        avg_final = atr_df["final_pct"].mean() * 100
-        pct_capped = atr_df["capped"].mean() * 100
-        avg_atr_based = atr_df["atr_based_pct"].mean() * 100
-        print(f"[V32a] ATR sizing: avg ATR-based size {avg_atr_based:.1f}% | "
-              f"avg final size {avg_final:.1f}% | "
-              f"VIX-capped {pct_capped:.1f}% of entries")
+    if total_entry_days > 0:
+        print(f"[V32e] Composite ranking changed selection on "
+              f"{composite_used}/{total_entry_days} constrained days "
+              f"({composite_used/total_entry_days*100:.1f}% of days with entries)")
     return pd.DataFrame(trades)
 
-_lib.run_backtest = _v32a_run_backtest
+_lib.run_backtest = _v32e_run_backtest
 
 # ── Labels ────────────────────────────────────────────────────────────────────
 _orig_compute_metrics = _lib.compute_metrics
 
-def _v32a_compute_metrics(trades_df):
+def _v32e_compute_metrics(trades_df):
     metrics, eq_df = _orig_compute_metrics(trades_df)
     if isinstance(metrics, dict):
-        metrics["version"] = "V32a"
-        metrics["parameters"]["version"] = "V32a"
-        metrics["parameters"]["v32a_changes"] = (
-            f"[V32a] ATR-based sizing: risk {ATR_RISK_PER_TRADE*100:.1f}% portfolio per ATR | "
-            "VIX regime remains as cap | no filtering changes"
+        metrics["version"] = "V32e"
+        metrics["parameters"]["version"] = "V32e"
+        metrics["parameters"]["v32e_changes"] = (
+            "[V32e] Composite ranking: sort by RSI(2)/ATR_pct instead of RSI(2) alone | "
+            "prioritizes oversold + high-volatility setups | "
+            "no change to sizing, exits, or filters"
         )
     return metrics, eq_df
 
-_lib.compute_metrics = _v32a_compute_metrics
+_lib.compute_metrics = _v32e_compute_metrics
 
-def _v32a_save_outputs(trades_df, metrics, eq_df):
+def _v32e_save_outputs(trades_df, metrics, eq_df):
     import json
     from pathlib import Path
     OUTPUT_DIR = Path("results")
@@ -299,8 +284,8 @@ def _v32a_save_outputs(trades_df, metrics, eq_df):
     with open(OUTPUT_DIR / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2, default=str)
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V32a")
-    print("  ATR-based position sizing")
+    print("  NAIVE MR BACKTEST — V32e")
+    print("  Composite ranking: RSI(2) / ATR_pct")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
@@ -321,13 +306,15 @@ def _v32a_save_outputs(trades_df, metrics, eq_df):
                 print(f"    {ek:<40}: {ev}")
         else:
             print(f"  {k.replace('_',' ').title():<36}: {v}")
-    print("\n  V32a vs V30+S&P600 baseline:")
-    print("  Target:   PF > 1.10 | Sharpe > 0.75 | CAGR within 1% of baseline")
-    print("  Baseline: PF 1.07   | Sharpe 0.73   | CAGR 16.01%")
+    print("\n  V32e vs V30+S&P600 baseline:")
+    print("  Target:   PF > 1.08 | Avg Win improvement | CAGR within 0.5%")
+    print("  Baseline: PF 1.07   | Avg Win 3.10%        | CAGR 16.01%")
+    print("  Note: Check the composite_used diagnostic in the run log")
+    print("  If <10% of days were constrained, ranking had minimal impact")
     print("=" * 70)
     print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 
-_lib.save_outputs = _v32a_save_outputs
+_lib.save_outputs = _v32e_save_outputs
 
 if __name__ == "__main__":
     universe = get_universe()
