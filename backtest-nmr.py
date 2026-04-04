@@ -1,70 +1,68 @@
-""" Naive Mean Reversion — V31b
+""" Naive Mean Reversion — V32b
 ==============================
-Isolates: $10M dollar volume floor + modest DD scaling ONLY.
-VIX trend filter REMOVED — testing whether PF/DD improvements
-came from the floor and scaling rather than the VIX filter.
+NEW: Shorter hold window for Tier 3 only (6 days instead of 8).
 
-Changes vs V30+S&P600:
-  [V31b-1] MIN_DOLLAR_VOLUME raised $5M → $10M
-  [V31b-2] DD scaling: >20% DD → 30% size reduction
-  NO VIX trend filter
+Current: All tiers use uniform 8-day hold window.
+The 8-day window is the core mechanism — proven across all versions.
+This is NOT changing the core mechanism, just testing whether
+the weakest signal tier (Tier 3: 4 consecutive down days) benefits
+from a slightly shorter window.
 
-Hypothesis: Most of V31's PF and DD improvement came from
-these two changes, not from the VIX filter that killed volume.
+Rationale:
+  Tier 1 (6+ down days): strongest signal, 8 days makes sense
+  Tier 2 (5 down days):  strong signal, 8 days makes sense
+  Tier 3 (4 down days):  weakest signal, may mean-revert faster
+                         and benefit from cutting losers sooner
 
-Target: PF > 1.10 | MaxDD < -42% | CAGR > 14% | Sharpe > 0.73
-Baseline (V30+S&P600): PF 1.07 | MaxDD -48.65% | CAGR 16.01% | Sharpe 0.73
+What was previously tested (and failed — DO NOT confuse):
+  - Lower PROFIT TARGETS for Tier 3 (1%, 1.25%, 1.5%) — all failed
+  - Extended hold to 11-12 days — failed
+  This test is about HOLD DAYS only, not profit targets.
+
+V32b: TIER3_HOLD_DAYS = 6 (was 8), everything else unchanged.
+Profit target remains 2% for all tiers.
+
+Expected effect:
+  - Losers in Tier 3 exit 2 days earlier → smaller avg loss
+  - Some winners cut early if they haven't hit 2% by day 6
+  - Net effect on PF uncertain — testing to find out
+  - Trade volume unchanged
+
+Target: PF > 1.09 | Avg Loss improvement | CAGR within 1%
+Baseline (V30+S&P600): PF 1.07 | Avg Loss -3.58% | CAGR 16.01%
 """
 
 from backtest_nmr_lib import (
     get_universe, download_prices, download_reference_data,
-    build_earnings_dates, compute_metrics, save_outputs,
+    build_earnings_dates, run_backtest, compute_metrics, save_outputs,
     INITIAL_CAPITAL, START_DATE, END_DATE,
 )
 import backtest_nmr_lib as _lib
-import numpy as np
-import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-# ── Parameter overrides ───────────────────────────────────────────────────────
-_lib.MIN_DOLLAR_VOLUME  = 10_000_000   # [V31b-1] was 5M
-_lib.DD_SCALE_MILD      = 0.20         # [V31b-2] 20% DD threshold
-_lib.DD_SCALE_SEVERE    = 9.99         # kept unreachable
-_lib.POSITION_SIZE_DD_MILD = 0.063     # not used directly — see override below
+# ── Single parameter change ───────────────────────────────────────────────────
+_lib.TIER3_HOLD_DAYS = 6   # was 8 — only Tier 3 (4-day setups) affected
 
-_orig_get_position_size = _lib.get_position_size
-
-def _v31b_get_position_size(today, vix_df, drawdown_pct: float = 0.0) -> float:
-    base = _orig_get_position_size(today, vix_df, 0.0)
-    month = pd.Timestamp(today).month
-    if month in _lib.EARNINGS_MONTHS and base > _lib.POSITION_SIZE_EARNINGS:
-        base = _lib.POSITION_SIZE_EARNINGS
-    if drawdown_pct <= -_lib.DD_SCALE_MILD:
-        base = base * 0.70
-    return base
-
-_lib.get_position_size = _v31b_get_position_size
-
-# ── Override compute_metrics label ───────────────────────────────────────────
+# ── Labels ────────────────────────────────────────────────────────────────────
 _orig_compute_metrics = _lib.compute_metrics
 
-def _v31b_compute_metrics(trades_df):
+def _v32b_compute_metrics(trades_df):
     metrics, eq_df = _orig_compute_metrics(trades_df)
     if isinstance(metrics, dict):
-        metrics["version"] = "V31b"
-        metrics["parameters"]["version"] = "V31b"
-        metrics["parameters"]["v31b_changes"] = (
-            "[V31b-1] MIN_DOLLAR_VOLUME $5M→$10M | "
-            "[V31b-2] DD>20% → 30% size reduction | "
-            "NO VIX trend filter"
+        metrics["version"] = "V32b"
+        metrics["parameters"]["version"] = "V32b"
+        metrics["parameters"]["tier3_hold_days"] = "6 (was 8) — Tier 3 only"
+        metrics["parameters"]["v32b_changes"] = (
+            "[V32b] TIER3_HOLD_DAYS reduced 8→6 | "
+            "Tier 1 and Tier 2 hold days unchanged at 8 | "
+            "Profit targets unchanged (2% all tiers)"
         )
     return metrics, eq_df
 
-_lib.compute_metrics = _v31b_compute_metrics
+_lib.compute_metrics = _v32b_compute_metrics
 
-# ── Override save_outputs label ───────────────────────────────────────────────
-def _v31b_save_outputs(trades_df, metrics, eq_df):
+def _v32b_save_outputs(trades_df, metrics, eq_df):
     import json
     from pathlib import Path
     OUTPUT_DIR = Path("results")
@@ -74,8 +72,8 @@ def _v31b_save_outputs(trades_df, metrics, eq_df):
     with open(OUTPUT_DIR / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2, default=str)
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V31b")
-    print("  $10M floor + DD scaling | NO VIX trend filter")
+    print("  NAIVE MR BACKTEST — V32b")
+    print("  Tier 3 hold window: 6 days (was 8)")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
@@ -96,15 +94,15 @@ def _v31b_save_outputs(trades_df, metrics, eq_df):
                 print(f"    {ek:<40}: {ev}")
         else:
             print(f"  {k.replace('_',' ').title():<36}: {v}")
-    print("\n  V31b vs V30+S&P600 baseline:")
-    print("  Target:   PF > 1.10 | MaxDD < -42% | CAGR > 14% | Sharpe > 0.73")
-    print("  Baseline: PF 1.07   | MaxDD -48.65% | CAGR 16.01% | Sharpe 0.73")
+    print("\n  V32b vs V30+S&P600 baseline:")
+    print("  Target:   PF > 1.09 | Avg Loss improvement | CAGR within 1%")
+    print("  Baseline: PF 1.07   | Avg Loss -3.58%       | CAGR 16.01%")
+    print("  Note: Check tier_3 stats specifically — that is what changed")
     print("=" * 70)
     print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 
-_lib.save_outputs = _v31b_save_outputs
+_lib.save_outputs = _v32b_save_outputs
 
-# ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     universe = get_universe()
     price_data = download_prices(universe)
