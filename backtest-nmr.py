@@ -1,44 +1,21 @@
-""" Naive Mean Reversion — V33b
+""" Naive Mean Reversion — V33c
 ==============================
-NEW: Adaptive MAX_POSITIONS raised from 40 to 50.
+Tests whether position ceiling is above 50.
 
-Context: V33a (close-based time stops) was identified as the first
-priority but on inspection the current backtest ALREADY exits at
-close of day 8 (not open of day 9). The time stop exits at
-row["Close"] on the day when days_held >= hold_days. Close-based
-exits are already implemented. V33a is therefore not needed.
+V33b (50 positions) result:
+  CAGR 16.83% | Equity $2,808k | MaxDD -51.73% | Sharpe 0.70
 
-V33b: Raise MAX_POSITIONS from 40 to 50.
+V33c raises to 55 positions to find the optimum.
+Same logic as V24 (30→40) and V33b (40→50):
+  Adding positions at full size on high-signal days = more compounding
+  The optimum is where CAGR gains stop outpacing drawdown costs
 
-Rationale (same logic that made V24 the first breakthrough):
-  V24 raised positions 30→40 at UNCHANGED size = major improvement
-  because it captured overflow on high-signal days.
-  V33b raises 40→50 at UNCHANGED size for the same reason.
+If V33c regresses vs V33b (Sharpe < 0.68, PF < 1.05, or CAGR gain
+< 0.3%) → 50 is the ceiling, stop here.
+If V33c improves → try 60 in V33d.
 
-  Average simultaneous open positions: 8–15
-  Max slots are only a constraint on high-signal days
-  High-signal days = best MR days (many stocks oversold simultaneously)
-  Currently leaving 10 entries on the table on those days
-
-Position sizing unchanged:
-  VIX < 25 → 9% per position (same)
-  VIX ≥ 25 → 5% per position (same)
-  Theoretical max exposure: 50 × 9% = 450% (vs current 360%)
-  Practical: still 8–15 open at any time on average
-
-Risk consideration:
-  Sector cap (max 3) still applies — prevents hidden concentration
-  Velocity crash pause still applies — extreme days fully protected
-  The extra 10 slots only fire when genuine signal overflow exists
-
-Expected effect:
-  More trades on high-signal days (best MR conditions)
-  Higher CAGR from capturing previously missed entries
-  Drawdown may increase modestly on crowded-signal days
-  Trade count: ~900–950/year (from 872)
-
-Target: CAGR > 16.5% | Final Equity > $2,500k | Sharpe ≥ 0.73
-Baseline (V32e): CAGR 16.10% | Final Equity $2,454k | Sharpe 0.73
+Target: CAGR > 17% | Equity > $2,900k | Sharpe ≥ 0.69
+Baseline (V33b): CAGR 16.83% | Equity $2,808k | Sharpe 0.70
 """
 
 from backtest_nmr_lib import (
@@ -50,29 +27,25 @@ import backtest_nmr_lib as _lib
 import warnings
 warnings.filterwarnings("ignore")
 
-# ── Single parameter change ───────────────────────────────────────────────────
-_lib.MAX_POSITIONS = 50   # was 40
+_lib.MAX_POSITIONS = 55   # was 40 (V32e), was 50 (V33b)
 
-# ── Labels ────────────────────────────────────────────────────────────────────
 _orig_compute_metrics = _lib.compute_metrics
 
-def _v33b_compute_metrics(trades_df):
+def _v33c_compute_metrics(trades_df):
     metrics, eq_df = _orig_compute_metrics(trades_df)
     if isinstance(metrics, dict):
-        metrics["version"] = "V33b"
-        metrics["parameters"]["version"] = "V33b"
-        metrics["parameters"]["max_positions"] = "50 (was 40) [V33b]"
-        metrics["parameters"]["v33b_changes"] = (
-            "[V33b] MAX_POSITIONS raised 40→50 | "
-            "position sizing unchanged | "
-            "sector cap (max 3) unchanged | "
-            "note: V33a not needed — backtest already exits at close"
+        metrics["version"] = "V33c"
+        metrics["parameters"]["version"] = "V33c"
+        metrics["parameters"]["max_positions"] = "55 (was 50 in V33b) [V33c]"
+        metrics["parameters"]["v33c_changes"] = (
+            "[V33c] MAX_POSITIONS raised 50→55 | "
+            "testing whether position ceiling is above 50"
         )
     return metrics, eq_df
 
-_lib.compute_metrics = _v33b_compute_metrics
+_lib.compute_metrics = _v33c_compute_metrics
 
-def _v33b_save_outputs(trades_df, metrics, eq_df):
+def _v33c_save_outputs(trades_df, metrics, eq_df):
     import json
     from pathlib import Path
     OUTPUT_DIR = Path("results")
@@ -82,8 +55,8 @@ def _v33b_save_outputs(trades_df, metrics, eq_df):
     with open(OUTPUT_DIR / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2, default=str)
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V33b")
-    print("  MAX_POSITIONS raised 40 → 50")
+    print("  NAIVE MR BACKTEST — V33c")
+    print("  MAX_POSITIONS raised 50 → 55")
     print("=" * 70)
     for k, v in metrics.items():
         if k == "tier_stats":
@@ -104,14 +77,15 @@ def _v33b_save_outputs(trades_df, metrics, eq_df):
                 print(f"    {ek:<40}: {ev}")
         else:
             print(f"  {k.replace('_',' ').title():<36}: {v}")
-    print("\n  V33b vs V32e baseline:")
-    print("  Target:   CAGR > 16.5% | Equity > $2,500k | Sharpe ≥ 0.73")
-    print("  Baseline: CAGR 16.10%  | Equity $2,454k   | Sharpe 0.73")
-    print("  Note: V33a not needed — exits already close-based in current code")
+    print("\n  V33c vs baselines:")
+    print("  Target:  CAGR > 17%   | Equity > $2,900k | Sharpe ≥ 0.69")
+    print("  V33b:    CAGR 16.83%  | Equity $2,808k   | Sharpe 0.70 | MaxDD -51.73%")
+    print("  V32e:    CAGR 16.10%  | Equity $2,454k   | Sharpe 0.73 | MaxDD -48.61%")
+    print("  Decision: if CAGR gain < 0.3% or Sharpe < 0.68 → 50 is the ceiling")
     print("=" * 70)
     print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 
-_lib.save_outputs = _v33b_save_outputs
+_lib.save_outputs = _v33c_save_outputs
 
 if __name__ == "__main__":
     universe = get_universe()
