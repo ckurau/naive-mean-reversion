@@ -1,45 +1,30 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V30
-================================================== Base: V28 — $1,267,897 final equity, 12.58% CAGR. Current best.
+""" Enhanced Naive Mean Reversion (MR) Backtest — V33d/V34a/V34b
+==================================================
+Base: V28 — $1,267,897 final equity, 12.58% CAGR. Current best.
 Combines V28 and V29: VIX_LOW=25 AND POSITION_SIZE_HIGH=9%.
 
-V28 vs V29 comparison (both from V27 base):
-  V28 (VIX_LOW=25):  $1,267,897 | CAGR 12.58% | DD –34.9% | Sharpe 0.72
-  V29 (9% boost):    $1,274,287 | CAGR 12.60% | DD –38.5% | Sharpe 0.68
+V34a CHANGES vs V33d:
+[V34a-1] Partial loss exit: if position down ≥ 2% after 4 days held,
+          exit 50% of remaining position. Other 50% rides to time stop
+          or profit target. Directly reduces avg loss without hard stop.
 
-V28 wins on all quality metrics despite nearly identical equity.
-V29 hurt 2020 badly (–$67k vs V28's +$110k) because VIX stayed above 20
-during recovery — the 9% boost didn't fire when most needed.
-
-V30 COMBINED MECHANISM:
-  VIX < 20  → 9%   position size  (V29: boost calm-VIX days harder)
-  VIX 20-25 → 7.5% position size  (V28: capture recovery/moderate days)
-  VIX > 25  → 5%   base           (unchanged)
-  No high-VIX penalty (V26)
-
-V30 CHANGES from V28 (1 only):
-  [V30-1] POSITION_SIZE_HIGH raised 7.5% → 9%
-
-V28 already has VIX_LOW=25 giving 7.5% to VIX<25 days. Adding 9% for VIX<20
-creates a three-tier calm-market regime. Bull years where VIX averaged <20
-(2013 avg ~14, 2017 avg ~11, 2019 avg ~15) get the 9% boost. Recovery/moderate
-years where VIX averaged 20-25 get 7.5%. Only true panic (VIX>25) gets 5%.
-
-UNIVERSE CHANGE (V30 + S&P 600):
-  Added S&P SmallCap 600 to universe alongside S&P 500 + S&P 400.
-  ~600 additional names. Same filters apply (MIN_DOLLAR_VOLUME, ATR, volume).
-  SmallCaps have stronger mean reversion characteristics but higher slippage
-  in practice — backtest CAGR improvement will be partially offset in live trading.
+V34b CHANGES vs V34a:
+[V34b-1] Tier 1 profit target raised 2% → 3%
+[V34b-2] Tier 1 partial trigger raised 1% → 1.5% (maintains partial-then-full structure)
+          Tier 2 and Tier 3 targets unchanged at 2%.
 
 RESULTS HISTORY:
-  Run 5:  CAGR  7.58% | $478k
-  V22:    CAGR  9.14% | $652k
-  V24:    CAGR 10.64% | $875k
-  V26:    CAGR 11.28% | $990k
-  V27:    CAGR 11.43% | $1.02M
-  V28:    CAGR 12.58% | $1.27M  ← V30 base
-  V30:    CAGR 14.42% | $1.80M  ← current best
+  Run 5:   CAGR 7.58%  | $478k
+  V22:     CAGR 9.14%  | $652k
+  V24:     CAGR 10.64% | $875k
+  V26:     CAGR 11.28% | $990k
+  V27:     CAGR 11.43% | $1.02M
+  V28:     CAGR 12.58% | $1.27M  ← V30 base
+  V30:     CAGR 14.42% | $1.80M  ← S&P 500+400 best
+  V30+600: CAGR 16.01% | $2.41M
+  V32e:    CAGR 16.10% | $2.45M
+  V33d:    CAGR 17.41% | $3.12M  ← current best (taxable)
 """
-
 import io
 import warnings
 import datetime
@@ -55,78 +40,103 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# TEST VERSION SWITCH — change this to run different experiments.
+# "V33d" = current baseline (no changes)
+# "V34a" = partial loss exit at day 4 if down ≥ 2% (50% trim)
+# "V34b" = V34a + Tier 1 target raised to 3%, partial trigger 1% → 1.5%
+# ─────────────────────────────────────────────────────────────────────────────
+TEST_VERSION = "V34a"  # <── change this before each workflow run
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Config — identical to Run 5 except VELOCITY_CRASH constants added
 # ─────────────────────────────────────────────────────────────────────────────
-START_DATE = "2004-01-01"
-END_DATE = datetime.date.today().isoformat()
+START_DATE  = "2004-01-01"
+END_DATE    = datetime.date.today().isoformat()
 
-MIN_DOLLAR_VOLUME = 5_000_000
-MAX_POSITIONS = 60          # [V33d] raised 40→60 across V33b/c/d series
-POSITION_SIZE = 0.05
-POSITION_SIZE_HIGH = 0.09   # [V30-1] raised 7.5%→9% for VIX<20 calm days
-POSITION_SIZE_LOW = 0.025   # VIX > 25
+MIN_DOLLAR_VOLUME      = 5_000_000
+MAX_POSITIONS          = 60          # [V33d] raised 40→60 across V33b/c/d series
+POSITION_SIZE          = 0.05
+POSITION_SIZE_HIGH     = 0.09        # [V30-1] raised 7.5%→9% for VIX<20 calm days
+POSITION_SIZE_LOW      = 0.025       # VIX > 25
 POSITION_SIZE_EARNINGS = 0.03
-MA_WINDOW = 200
-INITIAL_CAPITAL = 100_000.0
-RSI_PERIOD = 2
-RSI_THRESHOLD = 20
-ATR_PERIOD = 14
-ATR_MIN_PCT = 0.01
-VOL_MA_PERIOD = 20
-MIN_HOLD_BEFORE_EXIT = 2
+MA_WINDOW              = 200
+INITIAL_CAPITAL        = 100_000.0
+RSI_PERIOD             = 2
+RSI_THRESHOLD          = 20
+ATR_PERIOD             = 14
+ATR_MIN_PCT            = 0.01
+VOL_MA_PERIOD          = 20
+MIN_HOLD_BEFORE_EXIT   = 2
 
 # ── Tier system — uniform 2%/8d (Run 5 mechanism) ────────────────────────────
-TIER1_MIN_DOWN = 6
-TIER1_TARGET = 0.020
-TIER1_HOLD_DAYS = 8
-TIER1_PARTIAL = True
-TIER1_PARTIAL_FRAC = 0.50
+TIER1_MIN_DOWN       = 6
+TIER1_TARGET         = 0.020
+TIER1_HOLD_DAYS      = 8
+TIER1_PARTIAL        = True
+TIER1_PARTIAL_FRAC   = 0.50
 TIER1_PARTIAL_TRIGGER = 0.010
 
-TIER2_MIN_DOWN = 5
-TIER2_TARGET = 0.020
-TIER2_HOLD_DAYS = 8
-TIER2_PARTIAL = False
-TIER2_PARTIAL_FRAC = 0.0
+TIER2_MIN_DOWN       = 5
+TIER2_TARGET         = 0.020
+TIER2_HOLD_DAYS      = 8
+TIER2_PARTIAL        = False
+TIER2_PARTIAL_FRAC   = 0.0
 TIER2_PARTIAL_TRIGGER = 0.0
 
-TIER3_MIN_DOWN = 4
-TIER3_TARGET = 0.020
-TIER3_HOLD_DAYS = 8
-TIER3_PARTIAL = False
-TIER3_PARTIAL_FRAC = 0.0
+TIER3_MIN_DOWN       = 4
+TIER3_TARGET         = 0.020
+TIER3_HOLD_DAYS      = 8
+TIER3_PARTIAL        = False
+TIER3_PARTIAL_FRAC   = 0.0
 TIER3_PARTIAL_TRIGGER = 0.0
 
 MIN_CONSEC_DOWN = TIER3_MIN_DOWN
 
+# ── V34: Partial loss exit parameters ────────────────────────────────────────
+# [V34a] If position is down ≥ PARTIAL_LOSS_THRESHOLD after PARTIAL_LOSS_DAY
+#         days held, exit PARTIAL_LOSS_FRAC of remaining shares.
+#         The remaining (1 - PARTIAL_LOSS_FRAC) rides to time stop or target.
+#         Set PARTIAL_LOSS_ENABLED = False to revert to V33d behaviour.
+PARTIAL_LOSS_ENABLED   = False       # overridden per version below
+PARTIAL_LOSS_DAY       = 4           # trigger on day 4 held
+PARTIAL_LOSS_THRESHOLD = -0.02       # -2% or worse
+PARTIAL_LOSS_FRAC      = 0.50        # exit 50% of remaining position
+
+# ── Version-specific overrides ────────────────────────────────────────────────
+if TEST_VERSION == "V34a":
+    PARTIAL_LOSS_ENABLED = True
+    # All targets unchanged from V33d
+
+elif TEST_VERSION == "V34b":
+    PARTIAL_LOSS_ENABLED = True
+    # Tier 1 gets higher target and adjusted partial trigger
+    TIER1_TARGET          = 0.030    # raised 2% → 3%
+    TIER1_PARTIAL_TRIGGER = 0.015    # raised 1% → 1.5%
+
 # ── [V22-1] Drawdown scaling REMOVED ─────────────────────────────────────────
-# Scaling fired during recoveries, capping positions when compounding is highest.
-# Velocity crash pause handles extreme events. Normal drawdowns ridden at full size.
-DD_SCALE_MILD = 9.99        # [V22-1] unreachable — scaling disabled
-DD_SCALE_SEVERE = 9.99      # [V22-1] unreachable — scaling disabled
-POSITION_SIZE_DD_MILD = 0.03    # unused
-POSITION_SIZE_DD_SEVERE = 0.02  # unused
+DD_SCALE_MILD          = 9.99        # [V22-1] unreachable — scaling disabled
+DD_SCALE_SEVERE        = 9.99        # [V22-1] unreachable — scaling disabled
+POSITION_SIZE_DD_MILD  = 0.03        # unused
+POSITION_SIZE_DD_SEVERE = 0.02       # unused
 
 # ── [V21] Velocity crash pause — ONLY addition from Run 5 ────────────────────
-VELOCITY_CRASH_5D_THRESHOLD = -0.12   # SPY 5d return below -12%
-VELOCITY_CRASH_PAUSE_DAYS = 5         # pause new entries for 5 trading days
+VELOCITY_CRASH_5D_THRESHOLD = -0.12  # SPY 5d return below -12%
+VELOCITY_CRASH_PAUSE_DAYS   = 5      # pause new entries for 5 trading days
 
 # ── Filters (identical to Run 5) ─────────────────────────────────────────────
-EARNINGS_BLACKOUT = 3
-GAP_DOWN_MAX = -0.015
-GAP_UP_MAX = 0.020
-SECTOR_MA_WINDOW = 20
+EARNINGS_BLACKOUT    = 3
+GAP_DOWN_MAX         = -0.015
+GAP_UP_MAX           = 0.020
+SECTOR_MA_WINDOW     = 20
 MAX_SECTOR_POSITIONS = 3
-
-VIX_HIGH = 999          # [V26-1] effectively disabled — penalty branch removed
-VIX_LOW = 25            # [V28-1] raised 20→25: near-universal 7.5% except panic days
-VIX_SPIKE_PCT = 0.30
-VIX_SPIKE_PAUSE_DAYS = 0   # [V22-3] VIX spike pause REMOVED — best entries happen during VIX spikes
-
-REENTRY_COOLDOWN_DAYS = 5  # [V26-2] reverted 2→5 (V25 showed 2d was neutral, +3 trades/yr)
-COMMISSION_RATE = 0.005
-COMMISSION_MIN = 0.35       # [V22-2] IB tiered pricing reality (was $1.00)
-EARNINGS_MONTHS = {1, 4, 7, 10}
+VIX_HIGH             = 999           # [V26-1] effectively disabled
+VIX_LOW              = 25            # [V28-1] raised 20→25
+VIX_SPIKE_PCT        = 0.30
+VIX_SPIKE_PAUSE_DAYS = 0             # [V22-3] VIX spike pause REMOVED
+REENTRY_COOLDOWN_DAYS = 5
+COMMISSION_RATE      = 0.005
+COMMISSION_MIN       = 0.35          # [V22-2] IB tiered pricing reality
+EARNINGS_MONTHS      = {1, 4, 7, 10}
 
 OUTPUT_DIR = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -164,17 +174,32 @@ for _etf, _members in SECTOR_ETFS.items():
 
 def get_tier(consec_down: int) -> dict:
     if consec_down >= TIER1_MIN_DOWN:
-        return {"tier": 1, "profit_target": TIER1_TARGET, "hold_days": TIER1_HOLD_DAYS,
-                "partial_enabled": TIER1_PARTIAL, "partial_frac": TIER1_PARTIAL_FRAC,
-                "partial_trigger": TIER1_PARTIAL_TRIGGER}
+        return {
+            "tier": 1,
+            "profit_target": TIER1_TARGET,
+            "hold_days": TIER1_HOLD_DAYS,
+            "partial_enabled": TIER1_PARTIAL,
+            "partial_frac": TIER1_PARTIAL_FRAC,
+            "partial_trigger": TIER1_PARTIAL_TRIGGER,
+        }
     elif consec_down >= TIER2_MIN_DOWN:
-        return {"tier": 2, "profit_target": TIER2_TARGET, "hold_days": TIER2_HOLD_DAYS,
-                "partial_enabled": TIER2_PARTIAL, "partial_frac": TIER2_PARTIAL_FRAC,
-                "partial_trigger": TIER2_TARGET}
+        return {
+            "tier": 2,
+            "profit_target": TIER2_TARGET,
+            "hold_days": TIER2_HOLD_DAYS,
+            "partial_enabled": TIER2_PARTIAL,
+            "partial_frac": TIER2_PARTIAL_FRAC,
+            "partial_trigger": TIER2_TARGET,
+        }
     else:
-        return {"tier": 3, "profit_target": TIER3_TARGET, "hold_days": TIER3_HOLD_DAYS,
-                "partial_enabled": TIER3_PARTIAL, "partial_frac": TIER3_PARTIAL_FRAC,
-                "partial_trigger": TIER3_TARGET}
+        return {
+            "tier": 3,
+            "profit_target": TIER3_TARGET,
+            "hold_days": TIER3_HOLD_DAYS,
+            "partial_enabled": TIER3_PARTIAL,
+            "partial_frac": TIER3_PARTIAL_FRAC,
+            "partial_trigger": TIER3_TARGET,
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -182,7 +207,7 @@ def get_tier(consec_down: int) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 def _fetch_wiki(url: str) -> list:
     headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-               "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+                              "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()
     return pd.read_html(io.StringIO(resp.text), header=0)
@@ -193,7 +218,6 @@ def _extract_tickers_from_table(table: pd.DataFrame) -> list[str]:
     for col in ["Symbol", "Ticker symbol", "Ticker", "Ticker Symbol"]:
         if col in table.columns:
             return table[col].dropna().astype(str).tolist()
-    # Fallback: find any column whose values look like ticker symbols
     for col in table.columns:
         cs = table[col].dropna().astype(str)
         if cs.str.match(r"^[A-Z]{1,5}(-[A-Z])?$").mean() > 0.3:
@@ -203,7 +227,6 @@ def _extract_tickers_from_table(table: pd.DataFrame) -> list[str]:
 
 def get_universe() -> list[str]:
     tickers: set[str] = set()
-
     for url, label in [
         ("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", "S&P 500"),
         ("https://en.wikipedia.org/wiki/List_of_S%26P_400_companies", "S&P 400"),
@@ -214,14 +237,12 @@ def get_universe() -> list[str]:
             found = False
             for i, table in enumerate(tables):
                 syms = _extract_tickers_from_table(table)
-                # Require at least 100 symbols — rejects small ETF/fund header tables
                 if len(syms) >= 100:
                     tickers.update([s.replace(".", "-") for s in syms])
                     print(f"[Universe] {label}: {len(syms)} symbols (table {i})")
                     found = True
                     break
             if not found:
-                # Print all table shapes and columns to diagnose the failure
                 print(f"[Universe] {label}: WARNING — no valid ticker table found")
                 for i, table in enumerate(tables):
                     print(f"  table[{i}] shape={table.shape} cols={list(table.columns)}")
@@ -246,7 +267,6 @@ def get_universe() -> list[str]:
         "CMCSA","VZ","CHTR","TMUS","PG","KO","PEP","CL","KMB","CHD","EL",
     ]
     tickers.update(historical_extras)
-
     result = sorted(tickers)
     print(f"[Universe] Total unique tickers: {len(result)}")
     return result
@@ -291,27 +311,27 @@ def _dl_single(ticker: str) -> pd.DataFrame:
 
 def _compute_rsi(series: pd.Series, period: int) -> pd.Series:
     delta = series.diff()
-    gain = delta.clip(lower=0).rolling(period).mean()
-    loss = (-delta.clip(upper=0)).rolling(period).mean()
-    rs = gain / loss.replace(0, np.nan)
+    gain  = delta.clip(lower=0).rolling(period).mean()
+    loss  = (-delta.clip(upper=0)).rolling(period).mean()
+    rs    = gain / loss.replace(0, np.nan)
     return 100 - (100 / (1 + rs))
 
 
 def download_reference_data() -> tuple:
-    spy = _dl_single("SPY")
-    close = spy["Close"].squeeze()
-    spy["spy_ma200"] = close.rolling(200).mean()
-    spy["spy_ok"] = (close > spy["spy_ma200"].squeeze()).values
-    spy["spy_5d_ret"] = close.pct_change(5)   # [V21] velocity crash detection
+    spy       = _dl_single("SPY")
+    close     = spy["Close"].squeeze()
+    spy["spy_ma200"]  = close.rolling(200).mean()
+    spy["spy_ok"]     = (close > spy["spy_ma200"].squeeze()).values
+    spy["spy_5d_ret"] = close.pct_change(5)
     print(f"[Download] SPY: {len(spy)} rows")
 
-    vix = _dl_single("^VIX")
+    vix       = _dl_single("^VIX")
     vix_close = vix["Close"].squeeze()
     vix["vix_5d_ago"] = vix_close.shift(5)
-    vix["vix_spike"] = (vix_close / vix["vix_5d_ago"].replace(0, np.nan) - 1) >= VIX_SPIKE_PCT
+    vix["vix_spike"]  = (vix_close / vix["vix_5d_ago"].replace(0, np.nan) - 1) >= VIX_SPIKE_PCT
     print(f"[Download] VIX: {len(vix)} rows")
 
-    etf_list = list(SECTOR_ETFS.keys())
+    etf_list    = list(SECTOR_ETFS.keys())
     sector_data: dict[str, pd.DataFrame] = {}
     raw = yf.download(etf_list, start=START_DATE, end=END_DATE,
                       auto_adjust=True, progress=False, threads=True)
@@ -369,24 +389,24 @@ def near_earnings(tkr: str, date, earnings_map: dict[str, set]) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["ma200"] = df["Close"].rolling(MA_WINDOW).mean()
-    df["above_ma"] = df["Close"] > df["ma200"]
-    df["down_day"] = (df["Close"] < df["Close"].shift(1)).astype(int)
-    consec, count = [], 0
+    df["ma200"]     = df["Close"].rolling(MA_WINDOW).mean()
+    df["above_ma"]  = df["Close"] > df["ma200"]
+    df["down_day"]  = (df["Close"] < df["Close"].shift(1)).astype(int)
+    consec, count   = [], 0
     for d in df["down_day"]:
         count = count + 1 if d == 1 else 0
         consec.append(count)
     df["consec_down"] = consec
-    df["rsi2"] = _compute_rsi(df["Close"], RSI_PERIOD)
+    df["rsi2"]        = _compute_rsi(df["Close"], RSI_PERIOD)
     tr = pd.concat([
         df["High"] - df["Low"],
         (df["High"] - df["Close"].shift(1)).abs(),
-        (df["Low"] - df["Close"].shift(1)).abs(),
+        (df["Low"]  - df["Close"].shift(1)).abs(),
     ], axis=1).max(axis=1)
-    df["atr"] = tr.rolling(ATR_PERIOD).mean()
-    df["atr_pct"] = df["atr"] / df["Close"]
-    df["vol_ma20"] = df["Volume"].rolling(VOL_MA_PERIOD).mean()
-    df["vol_confirm"] = df["Volume"] > df["vol_ma20"]
+    df["atr"]           = tr.rolling(ATR_PERIOD).mean()
+    df["atr_pct"]       = df["atr"] / df["Close"]
+    df["vol_ma20"]      = df["Volume"].rolling(VOL_MA_PERIOD).mean()
+    df["vol_confirm"]   = df["Volume"] > df["vol_ma20"]
     df["dollar_vol_ma20"] = (df["Close"] * df["Volume"]).rolling(VOL_MA_PERIOD).mean()
     df["signal"] = (
         df["above_ma"]
@@ -407,30 +427,23 @@ def calc_commission(shares: float, price: float) -> float:
 
 
 def get_position_size(today, vix_df, drawdown_pct: float = 0.0) -> float:
-    month = pd.Timestamp(today).month
+    month         = pd.Timestamp(today).month
     earnings_month = month in EARNINGS_MONTHS
-    base = POSITION_SIZE
-
-    # [V26-1] VIX penalty removed — high-VIX = best MR conditions, not penalised
-    # VIX only boosts size (< VIX_LOW → POSITION_SIZE_HIGH), never reduces it
+    base           = POSITION_SIZE
     try:
         vc = vix_df["Close"].squeeze()
         if today in vc.index:
             v = float(vc.loc[today])
             if v < VIX_LOW:
-                base = POSITION_SIZE_HIGH   # 9% when VIX < 25 (calm/moderate)
-            # No penalty branch — VIX > threshold used to give 2.5%, now removed
+                base = POSITION_SIZE_HIGH
     except Exception:
         pass
-
     if drawdown_pct <= -DD_SCALE_SEVERE:
         base = min(base, POSITION_SIZE_DD_SEVERE)
     elif drawdown_pct <= -DD_SCALE_MILD:
         base = min(base, POSITION_SIZE_DD_MILD)
-
     if earnings_month and base > POSITION_SIZE_EARNINGS:
         base = POSITION_SIZE_EARNINGS
-
     return base
 
 
@@ -467,9 +480,8 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V30 simulation (Run 5 + velocity crash pause) ...")
-    spy_regime = spy_df["spy_ok"].to_dict()
-
+    print(f"\n[Backtest] Running {TEST_VERSION} simulation ...")
+    spy_regime  = spy_df["spy_ok"].to_dict()
     all_dates: set = set()
     for df in price_data.values():
         all_dates.update(df.index)
@@ -481,14 +493,14 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         if len(df) > min_bars:
             signals[tkr] = generate_signals(df)
 
-    portfolio_value = INITIAL_CAPITAL
-    portfolio_peak = None
+    portfolio_value  = INITIAL_CAPITAL
+    portfolio_peak   = None
     current_drawdown = 0.0
     open_positions: dict[str, dict] = {}
     trades: list[dict] = []
     cooldown_map: dict = {}
-    last_vix_spike = None
-    last_velocity_crash = None  # [V21]
+    last_vix_spike      = None
+    last_velocity_crash = None
 
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok = spy_regime.get(today, True)
@@ -511,16 +523,16 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         # Drawdown tracking
         if portfolio_peak is None:
             if portfolio_value != INITIAL_CAPITAL:
-                portfolio_peak = portfolio_value
+                portfolio_peak   = portfolio_value
                 current_drawdown = 0.0
         else:
             if portfolio_value > portfolio_peak:
-                portfolio_peak = portfolio_value
+                portfolio_peak   = portfolio_value
                 current_drawdown = 0.0
             else:
                 current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
-        # ── Exits ──────────────────────────────────────────────────────────
+        # ── Exits ──────────────────────────────────────────────────────────────
         to_close = []
         for tkr, pos in open_positions.items():
             if tkr not in signals:
@@ -528,44 +540,86 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             tkr_df = signals[tkr]
             if today not in tkr_df.index:
                 continue
-            row = tkr_df.loc[today]
+            row        = tkr_df.loc[today]
             exit_price = float(row["Close"])
             entry_price = pos["entry_price"]
-            days_held = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
-            pos_pct = (exit_price - entry_price) / entry_price
-            shares_rem = pos["shares_remaining"]
-            early = days_held < MIN_HOLD_BEFORE_EXIT
-            time_stop = days_held >= pos["hold_days"]
-            profit_hit = (not early) and pos_pct >= pos["profit_target"]
+            days_held   = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
+            pos_pct     = (exit_price - entry_price) / entry_price
+            shares_rem  = pos["shares_remaining"]
+            early       = days_held < MIN_HOLD_BEFORE_EXIT
+            time_stop   = days_held >= pos["hold_days"]
+            profit_hit  = (not early) and pos_pct >= pos["profit_target"]
 
-            # Partial exit (Tier 1 only)
-            if (pos["partial_enabled"] and not pos["partial_done"]
-                    and not early and pos_pct >= pos["partial_trigger"]):
-                partial_shares = shares_rem * pos["partial_frac"]
-                commission = calc_commission(partial_shares, exit_price)
-                pnl = (exit_price - entry_price) * partial_shares - commission
+            # ── [V34a/b] Partial loss exit ──────────────────────────────────
+            # Fires once per position on day PARTIAL_LOSS_DAY if down ≥ threshold.
+            # Does NOT fire if profit target already hit, time stop already due,
+            # or partial loss already taken on this position.
+            if (
+                PARTIAL_LOSS_ENABLED
+                and not pos.get("partial_loss_done", False)
+                and not early
+                and not time_stop
+                and not profit_hit
+                and days_held >= PARTIAL_LOSS_DAY
+                and pos_pct <= PARTIAL_LOSS_THRESHOLD
+            ):
+                trim_shares  = shares_rem * PARTIAL_LOSS_FRAC
+                commission   = calc_commission(trim_shares, exit_price)
+                pnl          = (exit_price - entry_price) * trim_shares - commission
                 trades.append({
-                    "ticker": tkr,
-                    "entry_date": pos["entry_date"],
-                    "exit_date": today,
-                    "entry_price": entry_price,
-                    "exit_price": exit_price,
-                    "shares": partial_shares,
-                    "commission": round(commission, 4),
-                    "pnl_usd": pnl,
-                    "pnl_pct": pos_pct * 100,
-                    "days_held": days_held,
-                    "exit_reason": "partial_exit",
-                    "tier": pos["tier"],
-                    "consec_down": pos["consec_down_at_entry"],
+                    "ticker":       tkr,
+                    "entry_date":   pos["entry_date"],
+                    "exit_date":    today,
+                    "entry_price":  entry_price,
+                    "exit_price":   exit_price,
+                    "shares":       trim_shares,
+                    "commission":   round(commission, 4),
+                    "pnl_usd":      pnl,
+                    "pnl_pct":      pos_pct * 100,
+                    "days_held":    days_held,
+                    "exit_reason":  "partial_loss",
+                    "tier":         pos["tier"],
+                    "consec_down":  pos["consec_down_at_entry"],
                     "portfolio_val": portfolio_value + pnl,
                 })
-                portfolio_value += pnl
-                pos["shares_remaining"] -= partial_shares
-                pos["partial_done"] = True
-                pos["profit_target"] = pos["profit_target"] * 2
+                portfolio_value      += pnl
+                pos["shares_remaining"] -= trim_shares
+                pos["partial_loss_done"] = True
+                continue  # remaining shares still tracked; proceed to next day
+
+            # ── Tier 1 profit partial exit (unchanged) ──────────────────────
+            if (
+                pos["partial_enabled"]
+                and not pos["partial_done"]
+                and not early
+                and pos_pct >= pos["partial_trigger"]
+            ):
+                partial_shares = shares_rem * pos["partial_frac"]
+                commission     = calc_commission(partial_shares, exit_price)
+                pnl            = (exit_price - entry_price) * partial_shares - commission
+                trades.append({
+                    "ticker":       tkr,
+                    "entry_date":   pos["entry_date"],
+                    "exit_date":    today,
+                    "entry_price":  entry_price,
+                    "exit_price":   exit_price,
+                    "shares":       partial_shares,
+                    "commission":   round(commission, 4),
+                    "pnl_usd":      pnl,
+                    "pnl_pct":      pos_pct * 100,
+                    "days_held":    days_held,
+                    "exit_reason":  "partial_exit",
+                    "tier":         pos["tier"],
+                    "consec_down":  pos["consec_down_at_entry"],
+                    "portfolio_val": portfolio_value + pnl,
+                })
+                portfolio_value          += pnl
+                pos["shares_remaining"]  -= partial_shares
+                pos["partial_done"]       = True
+                pos["profit_target"]      = pos["profit_target"] * 2
                 continue
 
+            # ── Full exit ────────────────────────────────────────────────────
             full_exit = (
                 time_stop
                 or (not pos["partial_enabled"] and profit_hit)
@@ -573,23 +627,26 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             )
             if full_exit:
                 commission = calc_commission(shares_rem, exit_price)
-                pnl = ((exit_price - entry_price) * shares_rem
-                       - commission - pos["entry_commission"])
+                pnl        = (
+                    (exit_price - entry_price) * shares_rem
+                    - commission
+                    - pos["entry_commission"]
+                )
                 reason = "time_stop" if time_stop else "profit_target"
                 trades.append({
-                    "ticker": tkr,
-                    "entry_date": pos["entry_date"],
-                    "exit_date": today,
-                    "entry_price": entry_price,
-                    "exit_price": exit_price,
-                    "shares": shares_rem,
-                    "commission": round(commission + pos["entry_commission"], 4),
-                    "pnl_usd": pnl,
-                    "pnl_pct": pos_pct * 100,
-                    "days_held": days_held,
-                    "exit_reason": reason,
-                    "tier": pos["tier"],
-                    "consec_down": pos["consec_down_at_entry"],
+                    "ticker":       tkr,
+                    "entry_date":   pos["entry_date"],
+                    "exit_date":    today,
+                    "entry_price":  entry_price,
+                    "exit_price":   exit_price,
+                    "shares":       shares_rem,
+                    "commission":   round(commission + pos["entry_commission"], 4),
+                    "pnl_usd":      pnl,
+                    "pnl_pct":      pos_pct * 100,
+                    "days_held":    days_held,
+                    "exit_reason":  reason,
+                    "tier":         pos["tier"],
+                    "consec_down":  pos["consec_down_at_entry"],
                     "portfolio_val": portfolio_value + pnl,
                 })
                 portfolio_value += pnl
@@ -600,13 +657,13 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        # [V21] block entries during velocity crash pause (in addition to SPY 200d and VIX pause)
+        # [V21] block entries during velocity crash pause
         if not spy_ok or paused or velocity_paused:
             continue
         if len(open_positions) >= MAX_POSITIONS:
             continue
 
-        # ── Entries ────────────────────────────────────────────────────────
+        # ── Entries ────────────────────────────────────────────────────────────
         candidates = []
         for tkr, tkr_df in signals.items():
             if tkr in open_positions or today not in tkr_df.index:
@@ -623,49 +680,49 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
             if count_sector_positions(tkr, open_positions) >= MAX_SECTOR_POSITIONS:
                 continue
-            rsi2 = float(row["rsi2"])
+            rsi2    = float(row["rsi2"])
             atr_pct = float(row["atr_pct"])
             # [V32e] Composite ranking: RSI(2) / ATR_pct
-            # Lower = more oversold AND more volatile = stronger MR candidate
             composite_score = rsi2 / atr_pct if atr_pct > 0 else rsi2 * 1000
             candidates.append((composite_score, tkr, int(row["consec_down"]), rsi2))
 
-        candidates.sort(key=lambda x: x[0])   # lowest composite score = best candidate
+        candidates.sort(key=lambda x: x[0])
 
         for composite_score, tkr, consec_val, rsi_val in candidates:
             if len(open_positions) >= MAX_POSITIONS:
                 break
-            tkr_df = signals[tkr]
+            tkr_df    = signals[tkr]
             today_idx = tkr_df.index.get_loc(today)
             if today_idx + 1 >= len(tkr_df):
                 continue
-            next_row = tkr_df.iloc[today_idx + 1]
+            next_row    = tkr_df.iloc[today_idx + 1]
             entry_price = float(next_row["Open"])
             if entry_price <= 0:
                 continue
             prev_close = float(tkr_df.iloc[today_idx]["Close"])
-            gap_pct = (entry_price - prev_close) / prev_close
+            gap_pct    = (entry_price - prev_close) / prev_close
             if gap_pct < GAP_DOWN_MAX or gap_pct > GAP_UP_MAX:
                 continue
-            tier_cfg = get_tier(consec_val)
-            pos_size = get_position_size(today, vix_df, current_drawdown)
-            shares = (portfolio_value * pos_size) / entry_price
+            tier_cfg   = get_tier(consec_val)
+            pos_size   = get_position_size(today, vix_df, current_drawdown)
+            shares     = (portfolio_value * pos_size) / entry_price
             entry_comm = calc_commission(shares, entry_price)
             open_positions[tkr] = {
-                "entry_date": tkr_df.index[today_idx + 1],
-                "entry_price": entry_price,
-                "shares": shares,
-                "shares_remaining": shares,
-                "rsi2_at_entry": rsi_val,
+                "entry_date":           tkr_df.index[today_idx + 1],
+                "entry_price":          entry_price,
+                "shares":               shares,
+                "shares_remaining":     shares,
+                "rsi2_at_entry":        rsi_val,
                 "consec_down_at_entry": consec_val,
-                "profit_target": tier_cfg["profit_target"],
-                "hold_days": tier_cfg["hold_days"],
-                "partial_enabled": tier_cfg["partial_enabled"],
-                "partial_frac": tier_cfg["partial_frac"],
-                "partial_trigger": tier_cfg["partial_trigger"],
-                "partial_done": False,
-                "tier": tier_cfg["tier"],
-                "entry_commission": entry_comm,
+                "profit_target":        tier_cfg["profit_target"],
+                "hold_days":            tier_cfg["hold_days"],
+                "partial_enabled":      tier_cfg["partial_enabled"],
+                "partial_frac":         tier_cfg["partial_frac"],
+                "partial_trigger":      tier_cfg["partial_trigger"],
+                "partial_done":         False,
+                "partial_loss_done":    False,   # [V34a] tracks partial loss exit
+                "tier":                 tier_cfg["tier"],
+                "entry_commission":     entry_comm,
             }
 
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
@@ -673,8 +730,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. Metrics — V33d expanded (Sharpe, Sortino, MaxDD length, rolling ratios,
-#    holding time stats, return distribution statistics)
+# 7. Metrics — V33d expanded + partial_loss exit reason support
 # ─────────────────────────────────────────────────────────────────────────────
 def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     if trades_df.empty:
@@ -686,36 +742,37 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     for _, row in trades_df.iterrows():
         equity += row["pnl_usd"]
         equity_curve.append({"date": row["exit_date"], "equity": equity})
-    eq_df = pd.DataFrame(equity_curve)
 
+    eq_df    = pd.DataFrame(equity_curve)
     start_dt = pd.to_datetime(trades_df["entry_date"].min())
-    end_dt = pd.to_datetime(trades_df["exit_date"].max())
-    years = max((end_dt - start_dt).days / 365.25, 1e-6)
-    cagr = (equity / INITIAL_CAPITAL) ** (1 / years) - 1
+    end_dt   = pd.to_datetime(trades_df["exit_date"].max())
+    years    = max((end_dt - start_dt).days / 365.25, 1e-6)
+    cagr     = (equity / INITIAL_CAPITAL) ** (1 / years) - 1
 
-    winners = trades_df[trades_df["pnl_usd"] > 0]
-    losers = trades_df[trades_df["pnl_usd"] <= 0]
-    win_rate = len(winners) / len(trades_df) * 100
-    avg_win = winners["pnl_pct"].mean() if len(winners) else 0
-    avg_loss = losers["pnl_pct"].mean() if len(losers) else 0
+    # Exclude partial_loss trades from win-rate denominator — they are intentional
+    # trims, not completed trade outcomes. Count them separately.
+    full_exits_df  = trades_df[~trades_df["exit_reason"].isin(["partial_exit", "partial_loss"])]
+    partial_loss_df = trades_df[trades_df["exit_reason"] == "partial_loss"]
 
-    # ── Drawdown — depth and duration ────────────────────────────────────────
+    winners  = full_exits_df[full_exits_df["pnl_usd"] > 0]
+    losers   = full_exits_df[full_exits_df["pnl_usd"] <= 0]
+    win_rate = len(winners) / len(full_exits_df) * 100 if len(full_exits_df) else 0
+    avg_win  = winners["pnl_pct"].mean() if len(winners) else 0
+    avg_loss = losers["pnl_pct"].mean()  if len(losers)  else 0
+
+    # ── Drawdown ──────────────────────────────────────────────────────────────
     eq_df["peak"] = eq_df["equity"].cummax()
-    eq_df["dd"] = (eq_df["equity"] - eq_df["peak"]) / eq_df["peak"] * 100
-    max_dd = eq_df["dd"].min()
+    eq_df["dd"]   = (eq_df["equity"] - eq_df["peak"]) / eq_df["peak"] * 100
+    max_dd        = eq_df["dd"].min()
 
-    # Max drawdown duration: days from peak to trough (or to end if not recovered)
-    eq_df["date_col"] = pd.to_datetime(eq_df["date"] if "date" in eq_df.columns
-                                       else eq_df.index)
     max_dd_duration_days = 0
     try:
-        dd_start = None
-        max_dur = 0
-        cur_dur = 0
+        max_dur  = 0
+        cur_dur  = 0
         prev_peak = INITIAL_CAPITAL
         for i, row in eq_df.iterrows():
             if row["equity"] >= row["peak"] and row["equity"] >= prev_peak:
-                cur_dur = 0
+                cur_dur   = 0
                 prev_peak = row["equity"]
             else:
                 cur_dur += 1
@@ -723,7 +780,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
                     max_dur = cur_dur
         max_dd_duration_days = max_dur
     except Exception:
-        max_dd_duration_days = 0
+        pass
 
     gp = winners["pnl_usd"].sum()
     gl = abs(losers["pnl_usd"].sum())
@@ -734,135 +791,132 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     eq_df_dt["date"] = pd.to_datetime(
         eq_df_dt["date"] if "date" in eq_df_dt.columns else eq_df_dt.index
     )
-    eq_df_dt = eq_df_dt.set_index("date")
+    eq_df_dt   = eq_df_dt.set_index("date")
     monthly_ret = eq_df_dt["equity"].resample("ME").last().ffill().pct_change().dropna()
 
-    # Sharpe (annualised from monthly)
-    sharpe = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
-              if monthly_ret.std() > 0 else 0)
-
-    # Sortino (annualised — downside deviation only)
-    downside = monthly_ret[monthly_ret < 0]
+    sharpe  = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
+               if monthly_ret.std() > 0 else 0)
+    downside    = monthly_ret[monthly_ret < 0]
     downside_std = downside.std() if len(downside) > 1 else 0
-    sortino = (monthly_ret.mean() / downside_std * np.sqrt(12)
-               if downside_std > 0 else 0)
-
-    # Return distribution statistics
-    ret_std = monthly_ret.std() * np.sqrt(12) * 100  # annualised std %
+    sortino     = (monthly_ret.mean() / downside_std * np.sqrt(12)
+                   if downside_std > 0 else 0)
+    ret_std  = monthly_ret.std() * np.sqrt(12) * 100
     ret_skew = float(monthly_ret.skew()) if len(monthly_ret) > 3 else 0
-    ret_kurt = float(monthly_ret.kurt()) if len(monthly_ret) > 3 else 0  # excess kurtosis
+    ret_kurt = float(monthly_ret.kurt()) if len(monthly_ret) > 3 else 0
 
-    # Rolling 12-month Sharpe and Sortino
-    rolling_sharpe_vals = []
-    rolling_sortino_vals = []
+    rolling_sharpe_vals, rolling_sortino_vals = [], []
     if len(monthly_ret) >= 12:
         for i in range(11, len(monthly_ret)):
             window = monthly_ret.iloc[i-11:i+1]
-            ws = window.mean() / window.std() * np.sqrt(12) if window.std() > 0 else 0
+            ws  = window.mean() / window.std() * np.sqrt(12) if window.std() > 0 else 0
             rolling_sharpe_vals.append(ws)
-            wd = window[window < 0]
+            wd  = window[window < 0]
             wds = wd.std() if len(wd) > 1 else 0
             wso = window.mean() / wds * np.sqrt(12) if wds > 0 else 0
             rolling_sortino_vals.append(wso)
 
-    rolling_sharpe_avg  = round(float(np.mean(rolling_sharpe_vals)), 2)  if rolling_sharpe_vals  else 0
-    rolling_sharpe_min  = round(float(np.min(rolling_sharpe_vals)), 2)   if rolling_sharpe_vals  else 0
+    rolling_sharpe_avg  = round(float(np.mean(rolling_sharpe_vals)),  2) if rolling_sharpe_vals else 0
+    rolling_sharpe_min  = round(float(np.min(rolling_sharpe_vals)),   2) if rolling_sharpe_vals else 0
     rolling_sortino_avg = round(float(np.mean(rolling_sortino_vals)), 2) if rolling_sortino_vals else 0
-    rolling_sortino_min = round(float(np.min(rolling_sortino_vals)), 2)  if rolling_sortino_vals else 0
+    rolling_sortino_min = round(float(np.min(rolling_sortino_vals)),  2) if rolling_sortino_vals else 0
 
-    # Holding time
     median_days_held = float(trades_df["days_held"].median())
-
-    total_comm = trades_df["commission"].sum() if "commission" in trades_df else 0
-    exit_counts = (trades_df["exit_reason"].value_counts().to_dict()
-                   if "exit_reason" in trades_df.columns else {})
+    total_comm       = trades_df["commission"].sum() if "commission" in trades_df else 0
+    exit_counts      = (trades_df["exit_reason"].value_counts().to_dict()
+                        if "exit_reason" in trades_df.columns else {})
 
     tier_stats = {}
     if "tier" in trades_df.columns:
         for t in sorted(trades_df["tier"].unique()):
-            t_df = trades_df[trades_df["tier"] == t]
+            # Tier stats use full_exits only for win rate
+            t_df  = full_exits_df[full_exits_df["tier"] == t]
             t_win = t_df[t_df["pnl_usd"] > 0]
             t_los = t_df[t_df["pnl_usd"] <= 0]
             tier_stats[f"tier_{t}"] = {
-                "trades": len(t_df),
-                "win_rate": round((t_df["pnl_usd"] > 0).mean() * 100, 1),
-                "avg_win": round(t_win["pnl_pct"].mean(), 2) if len(t_win) else 0,
+                "trades":   len(t_df),
+                "win_rate": round((t_df["pnl_usd"] > 0).mean() * 100, 1) if len(t_df) else 0,
+                "avg_win":  round(t_win["pnl_pct"].mean(), 2) if len(t_win) else 0,
                 "avg_loss": round(t_los["pnl_pct"].mean(), 2) if len(t_los) else 0,
-                "avg_days": round(t_df["days_held"].mean(), 1),
+                "avg_days": round(t_df["days_held"].mean(),  1) if len(t_df) else 0,
             }
 
     trades_df["exit_year"] = pd.to_datetime(trades_df["exit_date"]).dt.year
     year_stats = {}
     for yr in sorted(trades_df["exit_year"].unique()):
-        y_df = trades_df[trades_df["exit_year"] == yr]
+        y_df  = trades_df[trades_df["exit_year"] == yr]
         y_win = y_df[y_df["pnl_usd"] > 0]
         year_stats[str(yr)] = {
-            "trades": len(y_df),
+            "trades":   len(y_df),
             "win_rate": round((y_df["pnl_usd"] > 0).mean() * 100, 1),
-            "pnl_usd": round(y_df["pnl_usd"].sum(), 2),
-            "avg_win": round(y_win["pnl_pct"].mean(), 2) if len(y_win) else 0,
+            "pnl_usd":  round(y_df["pnl_usd"].sum(), 2),
+            "avg_win":  round(y_win["pnl_pct"].mean(), 2) if len(y_win) else 0,
         }
 
-    full_exits = (trades_df[trades_df["exit_reason"] != "partial_exit"]
-                  if "exit_reason" in trades_df.columns else trades_df)
-    time_stop_n = exit_counts.get("time_stop", 0)
-    time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
+    time_stop_n  = exit_counts.get("time_stop", 0)
+    time_stop_rt = round(time_stop_n / len(full_exits_df) * 100, 1) if len(full_exits_df) else 0
+    partial_loss_n = exit_counts.get("partial_loss", 0)
 
     metrics = {
-        "version": "V33d",
-        "period_start": start_dt.date().isoformat(),
-        "period_end": end_dt.date().isoformat(),
-        "years_tested": round(years, 2),
-        "total_trades": len(trades_df),
+        "version":         TEST_VERSION,
+        "period_start":    start_dt.date().isoformat(),
+        "period_end":      end_dt.date().isoformat(),
+        "years_tested":    round(years, 2),
+        "total_trades":    len(trades_df),
         "trades_per_year": round(len(trades_df) / years, 1),
         # ── Core performance ─────────────────────────────────────────────────
-        "cagr_pct": round(cagr * 100, 2),
+        "cagr_pct":         round(cagr * 100, 2),
         "roi_per_year_pct": round((equity - INITIAL_CAPITAL) / INITIAL_CAPITAL / years * 100, 2),
-        "final_equity": round(equity, 2),
+        "final_equity":     round(equity, 2),
         "total_return_pct": round((equity / INITIAL_CAPITAL - 1) * 100, 2),
-        "initial_capital": INITIAL_CAPITAL,
-        # ── Risk-adjusted ratios ─────────────────────────────────────────────
-        "sharpe_ratio": round(sharpe, 2),
-        "sortino_ratio": round(sortino, 2),
+        "initial_capital":  INITIAL_CAPITAL,
+        # ── Risk-adjusted ────────────────────────────────────────────────────
+        "sharpe_ratio":          round(sharpe,  2),
+        "sortino_ratio":         round(sortino, 2),
         "rolling_sharpe_avg_12m": rolling_sharpe_avg,
         "rolling_sharpe_min_12m": rolling_sharpe_min,
         "rolling_sortino_avg_12m": rolling_sortino_avg,
         "rolling_sortino_min_12m": rolling_sortino_min,
         # ── Drawdown ─────────────────────────────────────────────────────────
-        "max_drawdown_pct": round(max_dd, 2),
+        "max_drawdown_pct":           round(max_dd, 2),
         "max_drawdown_duration_trades": max_dd_duration_days,
         # ── Trade quality ────────────────────────────────────────────────────
-        "win_rate_pct": round(win_rate, 2),
-        "profit_factor": round(pf, 2),
-        "avg_win_pct": round(avg_win, 2),
-        "avg_loss_pct": round(avg_loss, 2),
+        "win_rate_pct":   round(win_rate, 2),
+        "profit_factor":  round(pf, 2),
+        "avg_win_pct":    round(avg_win,  2),
+        "avg_loss_pct":   round(avg_loss, 2),
         # ── Holding time ─────────────────────────────────────────────────────
-        "avg_days_held": round(trades_df["days_held"].mean(), 2),
+        "avg_days_held":    round(trades_df["days_held"].mean(), 2),
         "median_days_held": round(median_days_held, 2),
         # ── Return distribution ──────────────────────────────────────────────
-        "annual_return_std_pct": round(ret_std, 2),
-        "monthly_return_skewness": round(ret_skew, 3),
-        "monthly_return_kurtosis": round(ret_kurt, 3),
-        # ── Other ────────────────────────────────────────────────────────────
-        "time_stop_rate_pct": time_stop_rt,
-        "total_commission_usd": round(total_comm, 2),
-        "exit_reasons": {k: int(v) for k, v in exit_counts.items()},
-        "tier_stats": tier_stats,
-        "year_stats": year_stats,
+        "annual_return_std_pct":    round(ret_std,  2),
+        "monthly_return_skewness":  round(ret_skew, 3),
+        "monthly_return_kurtosis":  round(ret_kurt, 3),
+        # ── V34 diagnostics ──────────────────────────────────────────────────
+        "partial_loss_exits":       partial_loss_n,
+        "partial_loss_enabled":     PARTIAL_LOSS_ENABLED,
+        "time_stop_rate_pct":       time_stop_rt,
+        "total_commission_usd":     round(total_comm, 2),
+        "exit_reasons":             {k: int(v) for k, v in exit_counts.items()},
+        "tier_stats":               tier_stats,
+        "year_stats":               year_stats,
         "parameters": {
-            "version": "V33d",
-            "base": "V32e ($2.454M, 16.10% CAGR) + MAX_POSITIONS 40→60",
-            "universe": "S&P500 + S&P400 + S&P600",
-            "min_consec_down": MIN_CONSEC_DOWN,
-            "max_positions": MAX_POSITIONS,
-            "tier1_6plus": "2% target, 8d, partial at +1%",
-            "tier2_5days": "2% target, 8d, no partial",
-            "tier3_4days": "2% target, 8d, no partial",
-            "entry_ranking": "Composite RSI(2)/ATR_pct [V32e]",
-            "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]",
-            "vix_sizing": f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
-            "commission": f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
-            "dd_scale": "REMOVED — thresholds set unreachable [V22]",
+            "version":            TEST_VERSION,
+            "base":               "V33d + partial loss exit [V34a] / Tier1 target raise [V34b]",
+            "universe":           "S&P500 + S&P400 + S&P600",
+            "min_consec_down":    MIN_CONSEC_DOWN,
+            "max_positions":      MAX_POSITIONS,
+            "tier1_target":       f"{TIER1_TARGET*100:.0f}%",
+            "tier1_partial_trig": f"{TIER1_PARTIAL_TRIGGER*100:.0f}%",
+            "tier2_target":       f"{TIER2_TARGET*100:.0f}%",
+            "tier3_target":       f"{TIER3_TARGET*100:.0f}%",
+            "partial_loss":       (f"day {PARTIAL_LOSS_DAY}, ≤{PARTIAL_LOSS_THRESHOLD*100:.0f}%, "
+                                   f"trim {PARTIAL_LOSS_FRAC*100:.0f}%"
+                                   if PARTIAL_LOSS_ENABLED else "disabled"),
+            "entry_ranking":      "Composite RSI(2)/ATR_pct [V32e]",
+            "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d",
+            "vix_sizing":         f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
+            "commission":         f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
+            "dd_scale":           "REMOVED — thresholds set unreachable [V22]",
         },
     }
     return metrics, eq_df_dt.reset_index()
@@ -878,10 +932,9 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V33d (S&P 500 + 400 + 600)")
+    print(f"  NAIVE MR BACKTEST — {metrics.get('version','?')} (S&P 500 + 400 + 600)")
     print("=" * 70)
 
-    # Core performance
     core_keys = ["version","period_start","period_end","years_tested",
                  "total_trades","trades_per_year","cagr_pct","roi_per_year_pct",
                  "final_equity","total_return_pct"]
@@ -890,35 +943,30 @@ def save_outputs(trades_df, metrics, eq_df):
         if k in metrics:
             print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
 
-    # Risk-adjusted
     print("\n  Risk-Adjusted Ratios:")
-    ratio_keys = ["sharpe_ratio","sortino_ratio",
-                  "rolling_sharpe_avg_12m","rolling_sharpe_min_12m",
-                  "rolling_sortino_avg_12m","rolling_sortino_min_12m"]
-    for k in ratio_keys:
+    for k in ["sharpe_ratio","sortino_ratio",
+               "rolling_sharpe_avg_12m","rolling_sharpe_min_12m",
+               "rolling_sortino_avg_12m","rolling_sortino_min_12m"]:
         if k in metrics:
             print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
 
-    # Drawdown
     print("\n  Drawdown:")
     for k in ["max_drawdown_pct","max_drawdown_duration_trades"]:
         if k in metrics:
             print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
 
-    # Trade quality
     print("\n  Trade Quality:")
     for k in ["win_rate_pct","profit_factor","avg_win_pct","avg_loss_pct",
-              "avg_days_held","median_days_held","time_stop_rate_pct"]:
+               "avg_days_held","median_days_held","time_stop_rate_pct",
+               "partial_loss_exits"]:
         if k in metrics:
             print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
 
-    # Return distribution
     print("\n  Return Distribution:")
     for k in ["annual_return_std_pct","monthly_return_skewness","monthly_return_kurtosis"]:
         if k in metrics:
             print(f"    {k.replace('_',' ').title():<36}: {metrics[k]}")
 
-    # Tier stats
     if "tier_stats" in metrics:
         print(f"\n  Per-Tier Statistics:")
         for tk, tv in metrics["tier_stats"].items():
@@ -926,20 +974,17 @@ def save_outputs(trades_df, metrics, eq_df):
             for sk, sv in tv.items():
                 print(f"      {sk:<16}: {sv}")
 
-    # Year breakdown
     if "year_stats" in metrics:
         print(f"\n  Per-Year Breakdown:")
         for yr, yv in metrics["year_stats"].items():
             print(f"    {yr}: {yv['trades']:>5} trades  WR {yv['win_rate']:>5}%  "
                   f"P&L ${yv['pnl_usd']:>10,.0f}")
 
-    # Parameters
     if "parameters" in metrics:
         print(f"\n  Parameters:")
         for ek, ev in metrics["parameters"].items():
             print(f"    {ek:<40}: {ev}")
 
-    # Commission and exit reasons
     for k in ["total_commission_usd","exit_reasons"]:
         if k in metrics:
             print(f"  {k.replace('_',' ').title():<36}: {metrics[k]}")
@@ -950,24 +995,17 @@ def save_outputs(trades_df, metrics, eq_df):
 
 # ─────────────────────────────────────────────────────────────────────────────
 __all__ = [
-    "get_universe",
-    "download_prices",
-    "download_reference_data",
-    "build_earnings_dates",
-    "run_backtest",
-    "compute_metrics",
-    "save_outputs",
-    "INITIAL_CAPITAL",
-    "START_DATE",
-    "END_DATE",
+    "get_universe", "download_prices", "download_reference_data",
+    "build_earnings_dates", "run_backtest", "compute_metrics", "save_outputs",
+    "INITIAL_CAPITAL", "START_DATE", "END_DATE",
 ]
 
 if __name__ == "__main__":
-    universe = get_universe()
+    universe   = get_universe()
     price_data = download_prices(universe)
     spy_df, vix_df, sector_data = download_reference_data()
     earnings_map = build_earnings_dates(list(price_data.keys()))
-    trades_df = run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
+    trades_df    = run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
     if trades_df.empty:
         print("[ERROR] No trades generated.")
     else:
