@@ -64,33 +64,9 @@ The result: +$670k final equity over V32e, with the Sharpe penalty coming mostly
 **The right question for a taxable account is not "smoothest ride" but "most wealth after 20 years."** V33d answers that question better. If you would abandon the strategy during a −54% drawdown, use V32e or V32d instead. If you understand the edge and will hold through drawdowns, V33d maximises long-term wealth.
 
 ### Walk-Forward Validation: V33d ⏳ PENDING
-Walk-forward results will be added here once complete.
+Walk-forward results will be added here once complete. Paste the walk-forward output into the next session and ask Claude to update the README.
 
-Walk-forward run using 8 rolling windows (5-year in-sample / 2-year out-of-sample).
-
-| Window | OOS Period | CAGR | WinRate | PF | MaxDD | Sharpe | Trades | IS/OOS |
-|---|---|---|---|---|---|---|---|---|
-| W1 | 2009–2010 | 15.2% | 60.0% | 1.22 | −14.1% | 1.04 | 1224 | 0.40x |
-| W2 | 2011–2012 | 30.8% | 64.5% | 1.37 | −21.5% | 1.09 | 1686 | 2.15x |
-| W3 | 2013–2014 | 35.9% | 59.8% | 1.27 | −28.6% | 1.34 | 2127 | 1.53x |
-| W4 | 2015–2016 | 7.2% | 57.6% | 1.10 | −20.2% | 0.52 | 1565 | 0.20x |
-| W5 | 2017–2018 | 15.7% | 58.2% | 1.12 | −20.4% | 0.64 | 2224 | 0.68x |
-| W6 | 2019–2020 | 29.9% | 62.2% | 1.28 | −35.0% | 0.93 | 1814 | 2.57x |
-| W7 | 2021–2022 | −11.2% | 55.3% | 0.91 | −38.7% | −0.50 | 1506 | −0.51x |
-| W8 | 2023–2025 | 1.8% | 59.1% | 1.01 | −39.8% | 0.22 | 3402 | 0.21x |
-
-**OOS Positive CAGR windows: 7/8 — PASS**
-**OOS Avg CAGR: 15.65% | OOS Median CAGR: 15.43%**
-
-**V32e vs V30+S&P600 walk-forward comparison:**
-OOS avg CAGR is identical at 15.65% — the composite ranking improvement is genuine and not in-sample noise. W7 (2021-22) marginally improved (−11.7% → −11.2%). All other windows within noise of baseline. V32e confirmed as legitimate production upgrade.
-
-**Failure windows in context:**
-- W7 (2021–22): Fastest Fed rate-hiking cycle in 40 years + small-cap amplification. −11.2% OOS is the known structural risk. Not a disqualifying failure.
-- W4 (2015–16): Near-zero-volatility grinding market. 7.2% OOS — marginally positive.
-- W8 (2023–25): 1.8% OOS. Weak but positive. IS/OOS of 0.21x is marginal but acceptable given structural headwinds.
-
-**Conclusion: V32e has a genuine, demonstrable out-of-sample edge. Walk-forward PASSED.**
+**What to expect:** V32e's walk-forward showed identical OOS avg CAGR (15.65%) to V30+S&P600, confirming the composite ranking improvement was real. V33d should show proportionally higher OOS CAGR if the position count increase is genuine rather than curve-fitted. Pass criteria: 7/8 positive OOS windows, OOS avg CAGR > 13%.
 
 ---
 
@@ -658,12 +634,12 @@ python walkforward.py       # walk-forward (~6-8 hours with S&P 600)
 
 ### Health Checks
 If results look wrong, check:
-- `[Universe] Total unique tickers` < 1800: S&P 600 fetch failed — check both `backtest-nmr.py` AND `backtest_nmr_lib.py` for the S&P 600 URL and `_extract_tickers_from_table` function
+- `[Universe] Total unique tickers` < 1800: S&P 600 fetch failed — check `backtest_nmr_lib.py` for the S&P 600 URL and `_extract_tickers_from_table` function
 - `time_stop_rate > 70%`: 8-day window may not be firing correctly — check tier constants
 - `win_rate < 55%`: verify uniform 8-day windows are in place; check SPY regime filter
-- `CAGR < 14%` with no code changes: check `backtest_nmr_lib.py` is in sync with `backtest-nmr.py`
+- `CAGR < 15%` with no code changes: check `backtest_nmr_lib.py` has `MAX_POSITIONS = 60` and version is V33d
 - `trades_per_year < 700`: Tier 3 may be disabled — check `MIN_CONSEC_DOWN = 4`
-- `version` in metrics.json shows `V30` instead of `V32e`: workflow ran a stale cached version
+- `version` in metrics.json shows `V30` or `V32e` instead of `V33d`: workflow ran a stale cached version of backtest_nmr_lib.py
 
 ---
 
