@@ -45,7 +45,7 @@ warnings.filterwarnings("ignore")
 # "V34a" = partial loss exit at day 4 if down ≥ 2% (50% trim)
 # "V34b" = V34a + Tier 1 target raised to 3%, partial trigger 1% → 1.5%
 # ─────────────────────────────────────────────────────────────────────────────
-TEST_VERSION = "V34a"  # <── change this before each workflow run
+TEST_VERSION = "V34b"  # <── change this before each workflow run
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Config — identical to Run 5 except VELOCITY_CRASH constants added
