@@ -4,40 +4,52 @@ A survivorship-bias-free backtest of a **Naive Mean Reversion** strategy across 
 
 ---
 
-## Current Version: V30 + S&P 600 (Best Confirmed Result)
+## Current Version: V32e (Best Confirmed Result)
 
-The current script (`backtest-nmr.py`) is **V30 — Run 5 base + full VIX sizing optimisation + 40 positions + S&P 600 universe**.
+The current script (`backtest-nmr.py`) is **V32e — V30+S&P600 base + composite entry ranking**.
 
 **IMPORTANT FOR NEW SESSIONS:**
 Push `backtest-nmr.py`, `backtest_nmr_lib.py`, and `walkforward.py` to GitHub and run the workflow. All three files must be in sync.
 
-**CRITICAL ARCHITECTURE NOTE:** `backtest-nmr.py` is a **fully self-contained standalone script**. It does NOT import from `backtest_nmr_lib.py`. `walkforward.py` imports from `backtest_nmr_lib.py`. This means any changes to universe logic, parameters, or strategy rules must be made in **both** `backtest-nmr.py` and `backtest_nmr_lib.py` independently, or the two will diverge silently. This was the root cause of multiple "S&P 600 not appearing" debugging sessions — the lib was updated but the main script was not.
+**CRITICAL ARCHITECTURE NOTE:** `backtest-nmr.py` is a **fully self-contained standalone script**. It does NOT import from `backtest_nmr_lib.py`. `walkforward.py` imports from `backtest_nmr_lib.py`. This means any changes to universe logic, parameters, or strategy rules must be made in **both** `backtest-nmr.py` and `backtest_nmr_lib.py` independently, or the two will diverge silently.
 
-**Session objective: maximize total equity.** All optimisation decisions in V10–V30 were made on this basis. If your objective changes (e.g. prioritising drawdown protection or Sharpe), re-evaluate the VIX sizing aggressiveness — V16 or V22 are better starting points for capital-preservation goals.
+**Session objective: maximize total equity (taxable account).** V32e is recommended for a taxable account. V32d is recommended for a Roth IRA (better risk-adjusted profile). If your objective changes, see the version history table.
 
-### Best Confirmed Results: V30 + S&P 600
+### Best Confirmed Results: V32e
+
+| Metric | Value |
+|---|---|
+| CAGR | 16.10% |
+| ROI / Year | 109.79% |
+| Win Rate | 60.25% |
+| Avg Win | 3.10% |
+| Avg Loss | −3.57% |
+| Profit Factor | 1.07 |
+| Max Drawdown | −48.61% |
+| Sharpe Ratio | 0.73 |
+| Trades / Year | 872 |
+| Final Equity (from $100k) | $2,454,236 |
+| Period | 2004–2026 (~21 years) |
+
+### Best Risk-Adjusted: V32d (recommended for Roth IRA)
+
+| Metric | Value |
+|---|---|
+| CAGR | 15.37% |
+| Final Equity | $2,144,611 |
+| Profit Factor | 1.09 |
+| Max Drawdown | −39.21% |
+| Sharpe Ratio | 0.77 |
+| Avg Loss | −3.12% |
+
+### Previous Best (V30 + S&P 600) — for reference
 
 | Metric | Value |
 |---|---|
 | CAGR | 16.01% |
-| ROI / Year | 107.93% |
-| Win Rate | 60.27% |
-| Avg Win | 3.10% |
-| Avg Loss | −3.58% |
-| Profit Factor | 1.07 |
+| Final Equity | $2,414,283 |
 | Max Drawdown | −48.65% |
 | Sharpe Ratio | 0.73 |
-| Trades / Year | 872 |
-| Final Equity (from $100k) | $2,414,283 |
-| Period | 2004–2026 (~21 years) |
-
-### Previous Best (V30, S&P 500+400 only) — for reference
-
-| Metric | Value |
-|---|---|
-| CAGR | 14.42% |
-| Final Equity | $1,797,462 |
-| Max Drawdown | −39.37% |
 | Sharpe Ratio | 0.72 |
 | Trades / Year | 752 |
 
@@ -71,7 +83,7 @@ The S&P 600 improved 6 of 8 OOS windows. OOS avg jumped from 13.69% to 15.65% wh
 
 ---
 
-## V30 + S&P 600 Strategy Rules (current code)
+## V32e Strategy Rules (current code)
 
 | Rule | Detail |
 |---|---|
@@ -92,7 +104,7 @@ The S&P 600 improved 6 of 8 OOS windows. OOS avg jumped from 13.69% to 15.65% wh
 | **VIX spike pause** | REMOVED — VIX spike days are best entry conditions |
 | **Velocity crash pause** | SPY 5-day return < −12% → pause all entries for 5 days |
 | **Earnings month cap** | Position size capped at 2.4% in Jan/Apr/Jul/Oct |
-| **Signal ranking** | Lowest RSI(2) first (most oversold) |
+| **Signal ranking** | Composite score: RSI(2) / ATR_pct — most oversold AND most volatile first [V32e] |
 | **Sector filter** | Skip entry if stock's sector ETF is below its 20-day MA |
 | **Correlation cap** | Max 3 open positions in same sector |
 | **Earnings blackout** | Skip entries within ±3 days of earnings announcement |
@@ -251,6 +263,12 @@ Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65%
 | **SPY momentum filter for Tier 3** | Skip if SPY up >0.5% on signal day | Effect unclear under V18 noise |
 | **Drawdown scaling with tight thresholds** | 5%/10% thresholds (original) | Fired during normal volatility, reduced size when most needed |
 | **70/30 SPY blend** | Blending strategy with SPY B&H | After-tax, the strategy edge over SPY narrows — blending reduces total equity vs all-in |
+| **Binary VIX trend filter** | V31: no entries when VIX below 10d MA | Blocked 37%+ of trading days, killed volume. CAGR 11.03%, Sharpe dropped to 0.64 |
+| **$10M dollar volume floor** | V31b: raised MIN_DOLLAR_VOLUME $5M→$10M | PF improved only +0.01, Sharpe dropped. Marginal quality gain, real volume cost |
+| **DD scaling at 20% threshold** | V31b: >20% DD → 30% size reduction | Same pattern as original DD scaling removal — reduces size during best recovery periods |
+| **ATR-based position sizing** | V32a: size = fixed dollar risk / ATR | VIX cap (9%/5%) overrides ATR size on majority of trades. No net effect |
+| **VIX trend continuous sizing alone** | V32c: VIX falling → 80% size | Improved DD slightly but cost $300k equity vs baseline. V32d is better combined version |
+| **Combining regime sizing + composite ranking** | V32f: V32d + V32e | V32e's equity benefit disappears when regime sizing reduces exposure. Use one or the other |
 
 ### What works — confirmed positive contributions
 
@@ -276,23 +294,25 @@ Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65%
 | VIX_LOW raised to 25 | V28 | Recovery years get full 9% size | ✅ Applied |
 | VIX high-side penalty removed | V26 | High-VIX = strongest MR conditions | ✅ Applied |
 | 9% boost for VIX < 25 | V30 | Bull/recovery years get larger positions | ✅ Applied |
-| **S&P 600 SmallCap universe** | V30+600 | +1.59% CAGR, +$617k equity, OOS confirmed | ✅ Applied |
+| S&P 600 SmallCap universe | V30+600 | +1.59% CAGR, +$617k equity, OOS confirmed | ✅ Applied |
+| **Composite ranking (RSI2/ATR_pct)** | **V32e** | **+$40k equity, +0.09% CAGR, no downsides** | **✅ Applied** |
+| Tier 3 hold 6d (was 8d) | V32b | Sharpe 0.75, Avg Loss −3.12% — risk-adjusted improvement | ✅ Kept in V32d only |
+| VIX 5d trend 80% sizing | V32c | MaxDD −44.30%, trades continue at reduced size | ✅ Kept in V32d only |
 
 ---
 
-## The Honest Risk Picture for V30 + S&P 600
+## The Honest Risk Picture for V32e
 
-V30+S&P600's gains come entirely from **leverage amplification and universe expansion on the same edge**, not from finding a better edge. This has important implications:
+V32e's gains come entirely from **leverage amplification and universe expansion on the same edge**, not from finding a better edge. This has important implications:
 
-**The Sharpe ratio has been stable.** Run 5: 0.73. V30+S&P600: 0.73. Despite nearly 5× the final equity, the risk-adjusted return is unchanged. Every dollar of additional return came with proportional additional risk.
+**The Sharpe ratio has been stable.** Run 5: 0.73. V32e: 0.73. Despite nearly 5× the final equity, the risk-adjusted return is unchanged. Every dollar of additional return came with proportional additional risk. V32d achieved Sharpe 0.77 with MaxDD −39% but at a cost of $300k final equity — the right choice depends on your account type and risk tolerance.
 
-**Bad years scale with portfolio size.** At V30+S&P600's ~$2.4M peak equity:
-- 2022 lost −$690k in a single year
-- 2025 lost −$276k
-- 2026 (partial year) lost −$471k
-- The −48.65% max drawdown means a potential ~$1.2M paper loss peak-to-trough
+**Bad years scale with portfolio size.** At V32e's ~$2.45M peak equity:
+- 2022 lost ~$691k in a single year
+- The −48.61% max drawdown means a potential ~$1.2M paper loss peak-to-trough
+- V32d's −39.21% max drawdown limits this to ~$950k on equivalent equity
 
-**The VIX sizing parameters are now very aggressive.** VIX < 25 → 9% positions. At 40 positions, theoretical maximum notional exposure is 360% of portfolio (though average simultaneous open positions is 8-15 in practice). This is a leveraged approach in all but name.
+**The VIX sizing parameters are aggressive.** VIX < 25 → 9% positions. At 40 positions, theoretical maximum notional exposure is 360% of portfolio (though average simultaneous open positions is 8–15 in practice).
 
 **Small-cap amplification cuts both ways.** The S&P 600 addition improved good years significantly but made bad years worse. W7 OOS (2021–22) went from −4% to −11.7% with S&P 600 included.
 
@@ -302,7 +322,7 @@ V30+S&P600's gains come entirely from **leverage amplification and universe expa
 
 ## Optimism Bias Warnings (Updated)
 
-V30+S&P600's reported 16.01% CAGR is the **in-sample ceiling**, not the live expectation.
+V32e's reported 16.10% CAGR is the **in-sample ceiling**, not the live expectation.
 
 | Source | Estimated CAGR Impact |
 |---|---|
@@ -313,20 +333,20 @@ V30+S&P600's reported 16.01% CAGR is the **in-sample ceiling**, not the live exp
 | VIX regime parameters tuned to history | −1 to −2% |
 | **Realistic live estimate** | **~7 to 11% CAGR gross** |
 
-The V30+S&P600 walk-forward showed 15.65% OOS avg CAGR vs 16.01% in-sample — only a 2.2% decay. This is unusually small and likely reflects the walk-forward's own IS/OOS limitations rather than the true live decay. Apply the same ~26% decay ratio observed in Run 5 to get a conservative estimate: 16.01% × 0.74 ≈ ~12% live gross. After short-term capital gains tax (32–37%), realistic net CAGR is likely 6–9%.
+The V30+S&P600 walk-forward showed 15.65% OOS avg CAGR vs 16.01% in-sample — only a 2.2% decay. This is unusually small and likely reflects the walk-forward's own IS/OOS limitations rather than the true live decay. Apply the same ~26% decay ratio observed in Run 5 to get a conservative estimate: 16.10% × 0.74 ≈ ~12% live gross. After short-term capital gains tax (32–37%), realistic net CAGR is likely 6–9%.
 
 ---
 
 ## SPY vs Strategy (Updated)
 
-| Metric | SPY B&H | Run 5 | V30 | V30 + S&P 600 |
-|---|---|---|---|---|
-| CAGR (gross, in-sample) | ~10.5% | 7.58% | 14.42% | 16.01% |
-| CAGR (gross, OOS avg) | ~10.5% | 5.58% | 13.69% | 15.65% |
-| CAGR (after tax, est.) | ~8.4% | ~3.5–5% | ~5–9% | ~6–9% |
-| Max Drawdown | −55% (2008) | −22.55% | −39.37% | −48.65% |
-| Sharpe Ratio | ~0.55 | 0.73 | 0.72 | 0.73 |
-| Worst single year | −55% (2008) | ~−25% | −$342k (2022) | −$690k (2022) |
+| Metric | SPY B&H | Run 5 | V30 | V30+S&P600 | V32e | V32d |
+|---|---|---|---|---|---|---|
+| CAGR (gross, in-sample) | ~10.5% | 7.58% | 14.42% | 16.01% | 16.10% | 15.37% |
+| CAGR (gross, OOS avg) | ~10.5% | 5.58% | 13.69% | 15.65% | TBD | TBD |
+| CAGR (after tax, est.) | ~8.4% | ~3.5–5% | ~5–9% | ~6–9% | ~6–9% | ~6–9% |
+| Max Drawdown | −55% (2008) | −22.55% | −39.37% | −48.65% | −48.61% | −39.21% |
+| Sharpe Ratio | ~0.55 | 0.73 | 0.72 | 0.73 | 0.73 | 0.77 |
+| Final Equity ($100k start) | ~$800k | $478k | $1,797k | $2,414k | $2,454k | $2,145k |
 
 **SPY comparison:** V30+S&P600 beats SPY on gross CAGR clearly. After tax in a taxable account the edge narrows — 872 trades/year means almost entirely short-term capital gains. In a tax-advantaged account (IRA), go all-in on the strategy. In a taxable account, the strategy still wins on gross but the tax drag is significant.
 
@@ -528,7 +548,7 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 | V19 | Uniform 2% target hypothesis test | 5.72% | $330k | Hypothesis disproved: target not the source of V7's $641k |
 | V20 | Bull block removed, crash limit removed | 5.68% | $327k | Bull trades (55.9% WR) added volume but hurt quality |
 
-### V21–V30+S&P600: The Breakthrough Sequence
+### V21–V32e: The Breakthrough Sequence
 
 | Version | Key Change | CAGR | Final Equity | Max DD | Sharpe |
 |---|---|---|---|---|---|
@@ -542,7 +562,26 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 | V28 | VIX_LOW 20→25 | 12.58% | $1,268k | −34.9% | 0.72 |
 | V29 | POSITION_SIZE_HIGH 7.5%→9% (from V27) | 12.60% | $1,274k | −38.5% | 0.68 |
 | V30 | V28 + V29 combined | 14.42% | $1,797k | −39.4% | 0.72 |
-| **V30+S&P600** | **+ S&P 600 SmallCap universe** | **16.01%** | **$2,414k** | **−48.65%** | **0.73** |
+| V30+S&P600 | + S&P 600 SmallCap universe | 16.01% | $2,414k | −48.65% | 0.73 |
+| V31 | VIX 10d trend filter + $10M floor + DD scaling | 11.03% | $938k | −35.92% | 0.64 |
+| V31b | $10M floor + DD scaling only (no VIX filter) | 13.17% | $1,419k | −39.16% | 0.68 |
+| V31c | VIX 5d trend filter only | — | — | — | — |
+| V32a | ATR-based position sizing | 15.98% | $2,403k | −48.61% | 0.73 |
+| V32b | Tier 3 hold window 8→6 days | 15.87% | $2,354k | −44.87% | 0.75 |
+| V32c | VIX 5d trend: 80% size when VIX falling | 15.28% | $2,111k | −44.30% | 0.74 |
+| V32d | V32b + V32c combined | 15.37% | $2,145k | −39.21% | 0.77 |
+| **V32e** | **Composite ranking: RSI(2)/ATR_pct** | **16.10%** | **$2,454k** | **−48.61%** | **0.73** |
+| V32f | V32d + V32e combined | 15.31% | $2,123k | −39.62% | 0.77 |
+
+**Key finding from V31/V32 series:**
+- V31 (binary VIX filter) proved regime filtering kills volume and CAGR — rejected
+- V31b showed $10M floor + DD scaling add cost without proportional benefit — rejected
+- V32a (ATR sizing) made no difference — VIX cap overrides ATR size on most trades
+- V32b (Tier 3 hold 6d) genuinely improved Sharpe and avg loss — good isolated change
+- V32c (VIX trend 80% size) improved drawdown at modest CAGR cost
+- V32d (V32b+V32c) is the best risk-adjusted version — recommended for Roth IRA
+- V32e (composite ranking) is a free +$40k with no downsides — current production version
+- V32f showed combining V32d+V32e adds nothing over V32d — improvements don't stack when regime sizing is present
 
 ---
 
@@ -550,7 +589,7 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 
 ```
 .
-├── backtest-nmr.py          # Main backtest (V30+S&P600 — STANDALONE, does not import lib)
+├── backtest-nmr.py          # Main backtest (V32e — STANDALONE, does not import lib)
 ├── backtest_nmr_lib.py      # Shared library (imported by walkforward.py — must match main script)
 ├── walkforward.py           # Walk-forward out-of-sample test framework
 ├── requirements.txt         # Python dependencies
@@ -583,9 +622,9 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 
 Optional workflow inputs: `start_date`, `end_date`, `initial_capital`, `run_walkforward`
 
-To run walk-forward, set `run_walkforward = true` in the workflow dispatch inputs. Walk-forward adds 6–8 hours on top of the 90–120 minute main backtest (longer now with S&P 600). The scheduled Sunday run only runs the main backtest. Walk-forward is manual-only.
+To run walk-forward, set `run_walkforward = true` in the workflow dispatch inputs. Walk-forward adds 6–8 hours on top of the 90–120 minute main backtest. The scheduled Sunday run only runs the main backtest. Walk-forward is manual-only.
 
-**If the git push step fails with "rejected (fetch first)":** The workflow's commit step runs `git pull --rebase origin main` before pushing. If this error persists, it means two runs completed and tried to push simultaneously. Re-run the workflow once — it will pull the previous run's results and push cleanly.
+**If the git push step fails with "unstaged changes" error:** The workflow's commit step runs `git stash` before `git pull --rebase` to handle changes made by the `sed` override commands. If this error persists after updating `backtest.yml`, re-run the workflow once — it will pull the previous run's results and push cleanly.
 
 ### Local
 ```bash
@@ -599,23 +638,23 @@ If results look wrong, check:
 - `[Universe] Total unique tickers` < 1800: S&P 600 fetch failed — check both `backtest-nmr.py` AND `backtest_nmr_lib.py` for the S&P 600 URL and `_extract_tickers_from_table` function
 - `time_stop_rate > 70%`: 8-day window may not be firing correctly — check tier constants
 - `win_rate < 55%`: verify uniform 8-day windows are in place; check SPY regime filter
-- `CAGR < 12%` with no code changes: check `backtest_nmr_lib.py` is in sync with `backtest-nmr.py`
+- `CAGR < 14%` with no code changes: check `backtest_nmr_lib.py` is in sync with `backtest-nmr.py`
 - `trades_per_year < 700`: Tier 3 may be disabled — check `MIN_CONSEC_DOWN = 4`
-- `version` in metrics.json shows old parameters: the workflow ran a cached/stale version of the code
+- `version` in metrics.json shows `V30` instead of `V32e`: workflow ran a stale cached version
 
 ---
 
 ## Output Metrics
 
-| Metric | Description | V30+S&P600 Target |
+| Metric | Description | V32e Target |
 |---|---|---|
-| `cagr_pct` | Compound Annual Growth Rate | >14% in-sample |
+| `cagr_pct` | Compound Annual Growth Rate | >15% in-sample |
 | `win_rate_pct` | % of profitable trades | 59–61% |
 | `profit_factor` | Gross profit ÷ gross loss | >1.05 |
 | `max_drawdown_pct` | Largest peak-to-trough decline | < −52% |
-| `sharpe_ratio` | Annualised Sharpe (monthly) | >0.68 |
-| `time_stop_rate_pct` | % exiting via time stop | ~60% |
-| `trades_per_year` | Annual trade count | 800–950 |
+| `sharpe_ratio` | Annualised Sharpe (monthly) | >0.70 |
+| `time_stop_rate_pct` | % exiting via time stop | ~59–61% |
+| `trades_per_year` | Annual trade count | 850–950 |
 
 ---
 
@@ -635,4 +674,4 @@ html5lib>=1.1
 
 ## Disclaimer
 
-Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. The aggressive position sizing in V30+S&P600 is suitable only for those who understand and accept the full risk of deep drawdowns (−48%+) as part of the strategy's long-term compounding profile.
+Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. The aggressive position sizing in V32e is suitable only for those who understand and accept the full risk of deep drawdowns (−48%+) as part of the strategy's long-term compounding profile. V32d is available as a lower-drawdown alternative (−39%) at a modest equity cost for those who prefer better risk-adjusted returns.
