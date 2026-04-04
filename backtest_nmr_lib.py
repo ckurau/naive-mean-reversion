@@ -623,11 +623,16 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
             if count_sector_positions(tkr, open_positions) >= MAX_SECTOR_POSITIONS:
                 continue
-            candidates.append((float(row["rsi2"]), tkr, int(row["consec_down"])))
+            rsi2 = float(row["rsi2"])
+            atr_pct = float(row["atr_pct"])
+            # [V32e] Composite ranking: RSI(2) / ATR_pct
+            # Lower = more oversold AND more volatile = stronger MR candidate
+            composite_score = rsi2 / atr_pct if atr_pct > 0 else rsi2 * 1000
+            candidates.append((composite_score, tkr, int(row["consec_down"]), rsi2))
 
-        candidates.sort(key=lambda x: x[0])   # most oversold first
+        candidates.sort(key=lambda x: x[0])   # lowest composite score = best candidate
 
-        for rsi_val, tkr, consec_val in candidates:
+        for composite_score, tkr, consec_val, rsi_val in candidates:
             if len(open_positions) >= MAX_POSITIONS:
                 break
             tkr_df = signals[tkr]
@@ -743,7 +748,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version": "V30",
+        "version": "V32e",
         "period_start": start_dt.date().isoformat(),
         "period_end": end_dt.date().isoformat(),
         "years_tested": round(years, 2),
@@ -767,13 +772,14 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "final_equity": round(equity, 2),
         "total_return_pct": round((equity / INITIAL_CAPITAL - 1) * 100, 2),
         "parameters": {
-            "version": "V30",
-            "base": "V28 ($1.27M, 12.58% CAGR) + V29 (9% HIGH size)",
+            "version": "V32e",
+            "base": "V30+S&P600 ($2.41M, 16.01% CAGR)",
             "universe": "S&P500 + S&P400 + S&P600",
             "min_consec_down": MIN_CONSEC_DOWN,
             "tier1_6plus": "2% target, 8d, partial at +1%",
             "tier2_5days": "2% target, 8d, no partial",
             "tier3_4days": "2% target, 8d, no partial",
+            "entry_ranking": "Composite RSI(2)/ATR_pct — most oversold + most volatile first [V32e]",
             "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]",
             "dd_scale_mild": "REMOVED [V22-1] — thresholds set unreachable",
             "dd_scale_severe": "REMOVED [V22-1] — thresholds set unreachable",
