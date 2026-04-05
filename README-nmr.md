@@ -118,7 +118,7 @@ Walk-forward confirmed V33d has genuine OOS edge. Results exceeded pass criteria
 
 ---
 
-## Walk-Forward Validation: V32e ✅ COMPLETE (reference — V33d pending)
+## Walk-Forward Validation: V32e ✅ COMPLETE (reference)
 
 ✅ Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-sample). Parameters fixed at Run 5 settings.
 
@@ -224,21 +224,21 @@ Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65%
 
 ### The core mechanism — unchanged across all versions
 
-**The uniform 8-day window is the single most important parameter.** All gains, regressions, and optimisations across 30+ versions left this intact. Win rate has been 60.18–60.28% in every version from Run 5 through V30+S&P600. The underlying edge has not changed — only the leverage and universe applied to it.
+**The uniform 8-day window is the single most important parameter.** All gains, regressions, and optimisations across 35+ versions left this intact. Win rate has been 60.18–60.28% in every version from Run 5 through V30+S&P600. The underlying edge has not changed — only the leverage and universe applied to it.
 
 **RSI(2) is always below 5 after 4+ consecutive down days.** Do not use RSI(2) to discriminate between tiers. Use consecutive down days instead. RSI(2) is only useful for ranking candidates (most oversold first).
 
 **Tier 3 (4-day setups) is essential.** Removing it (V10–V14) collapsed CAGR from ~7% to 1–1.65% and halved trade volume. Every version without Tier 3 underperformed dramatically. Never remove it.
 
-### The avg loss of −3.63% is not fixable through exit mechanics
+### The exit side is fully saturated — do not retry
 
-V34a and V34b tested the hypothesis that the payout asymmetry (avg win 3.11% vs avg loss 3.63%) could be reduced by trimming losing positions mid-trade. The result was definitive: **any mechanism that exits losing positions before the time stop destroys the win rate faster than it reduces avg loss.**
+Three separate exit-side experiments across V34a, V34b, and V35a have now closed every meaningful exit lever. The findings are definitive:
 
-The mechanism is not mysterious. Tier 1 (6+ consecutive down days) had a 70.1% win rate in V33d. After the day-4 partial loss exit was added, Tier 1 win rate collapsed to 52.3%. The positions that were down 2% at day 4 were disproportionately the ones that bounced on days 5–8. This is the same failure mode as the −3% hard stop (Run 3): the trim fires right before the mean reversion completes.
+**Cutting losers earlier (V34a/V34b):** A day-4 partial exit on positions down ≥2% collapsed Tier 1 win rate from 70.1% to 52.3% and cost −$926k equity vs V33d. The positions trimmed were disproportionately those about to bounce on days 5–8. The apparent profit factor improvement (1.06 → 1.81) was a measurement artifact — partial loss trades were excluded from the win rate denominator. The avg loss of −3.63% is the correct behaviour of the strategy. You must hold through temporary drawdowns to let mean reversion complete.
 
-**The avg loss of −3.63% is the correct behavior of the strategy.** You hold losers to the time stop because cutting them converts recoveries into realized losses. The 60% win rate IS the mechanism — you must hold through temporary drawdowns to let mean reversion complete. The profit factor of 1.06 at 60% WR is the math of this strategy and cannot be improved by adjusting when you exit losing positions.
+**Letting winners run more (V35a):** With a clean base (Tier 1 win rate intact at 69.6%), raising Tier 1 to 3% and Tier 2 to 2.5% produced: avg win +0.03% (3.11% → 3.14%), profit factor unchanged at 1.06, time-stop rate up 1.7pp (59.4% → 61.1%), CAGR −0.15%, equity −$86k. The mechanism is clear: trades that previously exited at 2% are now riding to the time stop, losing the locked-in gain. The 2% target is well-calibrated to the 8-day window — most winning trades that reach 2% do so mid-window without sufficient runway to reach a higher target before the stop fires.
 
-This generalizes the hard stop failure into a broader principle: **for mean reversion strategies, information about a losing position at day N does not predict that the position will continue losing to day 8. The bounce distribution is not time-ordered within the window.**
+**The conclusion is proven, not assumed:** The 2%/8d structure is the optimum for this strategy. PF 1.06 at 60% WR is the irreducible math of mean reversion with this setup. Do not retry exit-side changes in any form.
 
 ### What the second session proved
 
@@ -285,8 +285,9 @@ This generalizes the hard stop failure into a broader principle: **for mean reve
 | **Combining regime sizing + composite ranking** | V32f: V32d + V32e | V32e's equity benefit disappears when regime sizing reduces exposure. Use one or the other |
 | **Combining regime sizing + higher position count** | V33b-d: 50 pos + V32d controls | Same pattern — $2,119k equity at −47% DD, worse than either V33b alone or V32d alone |
 | **Testing 65 positions** | Not run — diminishing returns curve makes outcome predictable | At 55→60: +$142k equity, +0.25% CAGR, −1.5% DD. At 65→70 would yield ~+$100k at another DD cost — below meaningful threshold. 60 is the ceiling |
-| **Partial loss exit (day 4, −2% threshold, 50% trim)** | V34a: trim half the position if down ≥2% after 4 days | Tier 1 win rate collapsed 70.1% → 52.3%. Overall CAGR fell 17.4% → 15.5%, equity $3.12M → $2.20M. Positions that were down 2% at day 4 were disproportionately those about to bounce on days 5–8. Profit factor appeared to improve (1.06 → 1.81) but this was a measurement artifact — partial loss trades were excluded from the win rate denominator while their losses still hit P&L. The avg loss of −3.63% cannot be reduced by mid-trade trimming without destroying the win rate that drives the strategy |
-| **Tier 1 target raised 2% → 3% (with partial loss exit)** | V34b: V34a + Tier 1 profit target 3%, partial trigger 1% → 1.5% | Stacking a higher Tier 1 target on V34a produced negligible change (−$26k vs V34a, CAGR 15.44%). Tier 1 win rate remained at 52.1% — the partial loss exit had already neutralised Tier 1 before the higher target could fire. When Tier 1 is healthy (70.1% WR), raising its target may warrant isolated testing, but only without any mid-trade loss exit active |
+| **Partial loss exit (day 4, −2% threshold, 50% trim)** | V34a: trim half the position if down ≥2% after 4 days | Tier 1 win rate collapsed 70.1% → 52.3%. Overall CAGR fell 17.4% → 15.5%, equity $3.12M → $2.20M. Positions down 2% at day 4 were disproportionately those about to bounce on days 5–8. Profit factor appeared to improve (1.06 → 1.81) but was a measurement artifact |
+| **Tier 1 target raised 2% → 3% (with partial loss exit)** | V34b: V34a + Tier 1 profit target 3%, partial trigger 1% → 1.5% | Negligible change vs V34a (−$26k, CAGR 15.44%). Tier 1 was already broken by V34a before the target raise could fire. Invalid test of higher targets |
+| **Higher profit targets on clean base (V35a)** | Tier 1: 2%→3%, Tier 2: 2%→2.5%, no other changes, healthy 69.6% T1 win rate | Avg win +0.03% (3.11%→3.14%), PF unchanged at 1.06, time-stop rate +1.7pp, CAGR −0.15%, equity −$86k. Trades that hit 2% mid-window lack runway to reach higher targets before the time stop fires. **Exit side confirmed fully saturated — do not retry** |
 
 ### What works — confirmed positive contributions
 
@@ -348,7 +349,7 @@ V33d's reported 17.41% CAGR is the **in-sample ceiling**, not the live expectati
 |---|---|
 | Slippage on open prices (worse at 60 positions — more crowded MOO orders) | −2 to −3% |
 | Survivorship bias (incomplete historical universe) | −1 to −2% |
-| Overfitting across 30+ iterations on same dataset | −2 to −3% |
+| Overfitting across 35+ iterations on same dataset | −2 to −3% |
 | Earnings calendar lookahead (today's known dates used) | −0.3 to −0.5% |
 | VIX regime parameters tuned to history | −1 to −2% |
 | **Realistic live estimate** | **~8 to 12% CAGR gross** |
@@ -537,7 +538,7 @@ V32e walk-forward: OOS avg 15.65%, 7/8 positive windows. Identical OOS performan
 - **Note:** `trade.py` was written for V32e (MAX_POSITIONS=40). Update to 60 before going live with V33d
 
 ### Step 3 — Walk-Forward Validation: V33d ✅ COMPLETE
-OOS avg CAGR 18.37%, 7/8 positive windows. Pass criteria exceeded. The position count increase is confirmed genuine — OOS performance improved proportionally with IS improvement (consistent with V32e and V30+S&P600 precedents). V33d is confirmed as the production version.
+OOS avg CAGR 18.37%, 7/8 positive windows. Pass criteria exceeded. The position count increase is confirmed genuine. V33d is the confirmed production version.
 
 ### Step 4 — Go Live ⏳
 Only after paper trading passes all criteria:
@@ -546,13 +547,11 @@ Only after paper trading passes all criteria:
 - Switch Gateway from paper to live account
 - Monitor win rate over first 100 live trades before considering any sizing changes
 
-### Step 5 — Future Edge Improvements (not more leverage)
-Genuine improvements that would improve the strategy edge, not just sizing:
+### Step 5 — Future Edge Improvements (not more leverage, not exit-side)
+The exit side is fully saturated (V34a, V34b, V35a all confirmed). Remaining genuine improvements:
 - **Historical earnings database** — removes the lookahead bias in the current earnings calendar (yfinance uses today's known dates, not historical). Estimated impact: +0.3 to +0.5% CAGR
-- **Live OOS validation** — 6–12 months of paper trading is the only true out-of-sample test
+- **Live OOS validation** — 6–12 months of paper trading is the only true out-of-sample test remaining
 - **MOO slippage analysis** — once paper trading has 100+ trades, compare actual fill prices to prior-day close. If small-cap slippage exceeds 0.6% avg, the backtest assumptions need revisiting
-
-**Note on further optimisation:** V34a and V34b confirmed that the payout asymmetry (avg win 3.11% vs avg loss 3.63%) cannot be improved through exit mechanics without destroying the win rate. The edge is now fully extracted on the exit side. Do not retry mid-trade loss trimming in any form. The next genuine signal is live paper trading data.
 
 ---
 
@@ -574,7 +573,7 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 | V19 | Uniform 2% target hypothesis test | 5.72% | $330k | Hypothesis disproved: target not the source of V7's $641k |
 | V20 | Bull block removed, crash limit removed | 5.68% | $327k | Bull trades (55.9% WR) added volume but hurt quality |
 
-### V21–V34b: The Breakthrough Sequence
+### V21–V35a: The Breakthrough Sequence
 
 | Version | Key Change | CAGR | Final Equity | Max DD | Sharpe |
 |---|---|---|---|---|---|
@@ -603,20 +602,18 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 | V33c | MAX_POSITIONS raised 50→55 | 17.16% | $2,982k | −53.27% | 0.69 |
 | **V33d** | **MAX_POSITIONS raised 55→60** | **17.41%** | **$3,124k** | **−54.73%** | **0.68** |
 | V34a | Partial loss exit: day 4 if down ≥2%, trim 50% | 15.50% | $2,198k | −52.61% | 0.66 |
-| V34b | V34a + Tier 1 target 2% → 3% | 15.44% | $2,172k | −52.48% | 0.66 |
+| V34b | V34a + Tier 1 target 2% → 3% (contaminated) | 15.44% | $2,172k | −52.48% | 0.66 |
+| V35a | Tier 1: 2%→3%, Tier 2: 2%→2.5% (clean base) | 17.26% | $3,038k | −56.46% | 0.68 |
 
 **Key findings from V33 series:**
-- V33b/c/d confirmed the V24 precedent: adding positions at full size on high-signal days compounds returns significantly. Each +10 positions adds roughly +$350-400k equity at +0.7-0.8% CAGR cost of −3% drawdown and −0.03 Sharpe
-- Diminishing returns are clear — efficiency per position drops from +$35k at 40→50 to +$28k at 55→60
-- 60 positions is effectively the ceiling — testing 65 would yield ~+$100k at another −1.5% DD cost, below the meaningful threshold
-- V33b-d confirmed the pattern from V32f: regime sizing (VIX 80%) and position count improvements don't stack. Adding V32d controls to 50 positions gave V32d-level equity ($2,119k) with V33b-level drawdown (−47%) — worse than either alone
-- Close-based time stops (V33a) were identified as a potential improvement but were already implemented in the existing code — exits use row["Close"] on the day days_held >= hold_days
-- The Sharpe/equity tradeoff: for a taxable account with long horizon, V33d's +$670k equity over V32e outweighs the Sharpe drop from 0.73 → 0.68
+- V33b/c/d confirmed the V24 precedent: adding positions at full size compounds significantly. Each +10 positions adds roughly +$350-400k equity at +0.7-0.8% CAGR, −3% DD, −0.03 Sharpe cost
+- 60 positions is effectively the ceiling — testing 65 would yield ~+$100k at another −1.5% DD cost
+- V33b-d confirmed the pattern from V32f: regime sizing and position count improvements don't stack
 
-**Key findings from V34 series:**
-- V34a: partial loss trimming destroyed Tier 1 win rate (70.1% → 52.3%) and cost −$926k equity vs V33d. The positions trimmed at day 4 were disproportionately those about to bounce. The apparent PF improvement (1.06 → 1.81) was a measurement artifact from excluding partial loss trades from the denominator
-- V34b: raising the Tier 1 target to 3% on top of V34a had negligible effect (−$26k vs V34a). With Tier 1 already broken by the partial loss exit, the higher target had nothing to fire on
-- **Conclusion: the exit side of this strategy is fully optimised. The avg loss of −3.63% is not fixable without destroying win rate. Do not retry mid-trade loss trimming in any form.**
+**Key findings from V34/V35 series — exit side fully saturated:**
+- V34a: cutting losers earlier destroyed Tier 1 WR (70.1% → 52.3%), cost −$926k equity
+- V34b: raising T1 target on V34a's broken base was an invalid test, neutral vs V34a
+- V35a: raising targets on a healthy base (clean V33d) — PF unchanged at 1.06, avg win +0.03%, CAGR −0.15%. **The 2%/8d structure is confirmed optimal. Do not retry exit-side changes.**
 
 ---
 
@@ -646,7 +643,7 @@ Genuine improvements that would improve the strategy edge, not just sizing:
 - All parameters, logic, and metrics live in `backtest_nmr_lib.py` only
 - To change any parameter, edit `backtest_nmr_lib.py` — `backtest-nmr.py` does not need touching
 - `walkforward.py` also imports from `backtest_nmr_lib.py`
-- The silent divergence risk from previous sessions (where both files had to be kept in sync manually) is eliminated
+- The silent divergence risk from previous sessions is eliminated
 
 ---
 
@@ -677,7 +674,7 @@ If results look wrong, check:
 - `win_rate < 55%`: verify uniform 8-day windows are in place; check SPY regime filter
 - `CAGR < 15%` with no code changes: check `backtest_nmr_lib.py` has `MAX_POSITIONS = 60` and version is V33d
 - `trades_per_year < 700`: Tier 3 may be disabled — check `MIN_CONSEC_DOWN = 4`
-- `version` in metrics.json shows `V30` or `V32e` instead of `V33d`: workflow ran a stale cached version of backtest_nmr_lib.py
+- `version` in metrics.json shows `V30` or `V32e` instead of `V33d`: workflow ran a stale cached version
 
 ---
 
