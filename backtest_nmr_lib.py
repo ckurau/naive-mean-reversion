@@ -1,45 +1,41 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V35a
+""" Enhanced Naive Mean Reversion (MR) Backtest — V33d
 ==================================================
-Base: V33d — $3,124,041 final equity, 17.41% CAGR. Current best.
+Base: V28 — $1,267,897 final equity, 12.58% CAGR. Current best.
+Combines V28 and V29: VIX_LOW=25 AND POSITION_SIZE_HIGH=9%.
 
-V35a CHANGES vs V33d (2 constants only — no logic changes):
-  [V35a-1] TIER1_TARGET raised 2% → 3%
-           Partial trigger unchanged at 1% (partial-then-full structure preserved)
-  [V35a-2] TIER2_TARGET raised 2% → 2.5%
+V28 vs V29 comparison (both from V27 base):
+  V28 (VIX_LOW=25): $1,267,897 | CAGR 12.58% | DD –34.9% | Sharpe 0.72
+  V29 (9% boost):   $1,274,287 | CAGR 12.60% | DD –38.5% | Sharpe 0.68
+V28 wins on all quality metrics despite nearly identical equity.
+V29 hurt 2020 badly (–$67k vs V28's +$110k) because VIX stayed above 20 during
+recovery — the 9% boost didn't fire when most needed.
 
-RATIONALE:
-  V34b tested a higher Tier 1 target but with a contaminated base — the partial
-  loss exit had collapsed Tier 1 win rate from 70.1% to 52.1% before the target
-  raise was applied, making V34b an invalid test of whether higher targets work
-  when win rate is healthy.
+V30 COMBINED MECHANISM:
+  VIX < 20  → 9%   position size (V29: boost calm-VIX days harder)
+  VIX 20-25 → 7.5% position size (V28: capture recovery/moderate days)
+  VIX > 25  → 5%   base (unchanged)
+  No high-VIX penalty (V26)
 
-  V35a is the clean test: no mid-trade trimming, no logic changes, no new filters.
-  Same 8-day windows. Same partial structure. Only the right-tail targets move.
+V30 CHANGES from V28 (1 only):
+  [V30-1] POSITION_SIZE_HIGH raised 7.5% → 9%
 
-  Hypothesis: ~40% of winning trades currently exit above 2.5-3% within 8 days
-  (implied by avg win of 3.11% on a 2% target with partial structure). Raising
-  the target converts some of these to time-stops but captures more from those
-  that would have continued. Net effect on PF is the open question.
+UNIVERSE CHANGE (V30 + S&P 600):
+  Added S&P SmallCap 600 to universe alongside S&P 500 + S&P 400.
 
-WHAT TO LOOK FOR:
-  Pass criteria (improvement):
-    Win rate stays 57-60% (target raise should not collapse WR — no loss trimming)
-    Avg win rises from 3.11% toward 3.3-3.5%
-    PF moves from 1.06 toward 1.09+
-    CAGR flat or higher
-  Fail criteria (saturated exit side):
-    Win rate drops below 57% (time-stops replacing 2%+ wins)
-    Avg win barely moves (most wins were below new targets)
-    PF stays ~1.06
-    CAGR drops more than 0.5%
-  If fail: exit-side optimisation is confirmed saturated. Do not retry.
+V32e CHANGE:
+  [V32e-1] Composite ranking: RSI(2) / ATR_pct instead of RSI(2) alone.
 
-EXIT-SIDE NOTE (V34a/V34b — tested and rejected):
-  Mid-trade partial loss trimming (exit 50% if down ≥2% after 4 days) was
-  tested as V34a. Tier 1 win rate collapsed 70.1% → 52.3%. CAGR fell to 15.5%.
-  The positions trimmed were disproportionately those about to bounce. The avg
-  loss of −3.63% is the correct behaviour of this strategy — do not retry any
-  form of mid-trade loss trimming. See README-nmr.md "What doesn't work" table.
+V33d CHANGE:
+  [V33d-1] MAX_POSITIONS raised 40 → 60 (via V33b=50, V33c=55, V33d=60).
+
+EXIT-SIDE NOTE (V34a/V34b/V35a — all tested and rejected):
+  All exit-side optimisation attempts failed. The 2%/8d structure is confirmed
+  optimal. See README-nmr.md "What doesn't work" table for full details.
+  - V34a: mid-trade loss trimming → Tier 1 WR 70.1% → 52.3%, CAGR −1.9%
+  - V34b: V34a + higher T1 target → contaminated test, neutral vs V34a
+  - V35a: higher targets (T1 3%, T2 2.5%), clean base → PF unchanged at 1.06,
+          avg win +0.03%, CAGR −0.15%. Exit side is fully saturated.
+  Do not retry exit-side changes. The avg loss of −3.63% is structural.
 
 RESULTS HISTORY:
   Run 5:   CAGR 7.58%  | $478k
@@ -89,26 +85,23 @@ ATR_MIN_PCT            = 0.01
 VOL_MA_PERIOD          = 20
 MIN_HOLD_BEFORE_EXIT   = 2
 
-# ── Tier system ───────────────────────────────────────────────────────────────
-# [V35a-1] TIER1_TARGET raised 2% → 3%. Partial trigger unchanged at 1%.
-# [V35a-2] TIER2_TARGET raised 2% → 2.5%.
-# Tier 3 unchanged at 2%. All hold windows unchanged at 8d.
+# ── Tier system — uniform 2%/8d (Run 5 mechanism) ────────────────────────────
 TIER1_MIN_DOWN        = 6
-TIER1_TARGET          = 0.030        # [V35a-1] raised from 0.020
+TIER1_TARGET          = 0.020
 TIER1_HOLD_DAYS       = 8
 TIER1_PARTIAL         = True
 TIER1_PARTIAL_FRAC    = 0.50
-TIER1_PARTIAL_TRIGGER = 0.010        # unchanged — partial at +1%, remainder at +3%
+TIER1_PARTIAL_TRIGGER = 0.010
 
 TIER2_MIN_DOWN        = 5
-TIER2_TARGET          = 0.025        # [V35a-2] raised from 0.020
+TIER2_TARGET          = 0.020
 TIER2_HOLD_DAYS       = 8
 TIER2_PARTIAL         = False
 TIER2_PARTIAL_FRAC    = 0.0
 TIER2_PARTIAL_TRIGGER = 0.0
 
 TIER3_MIN_DOWN        = 4
-TIER3_TARGET          = 0.020        # unchanged
+TIER3_TARGET          = 0.020
 TIER3_HOLD_DAYS       = 8
 TIER3_PARTIAL         = False
 TIER3_PARTIAL_FRAC    = 0.0
@@ -132,13 +125,13 @@ GAP_DOWN_MAX         = -0.015
 GAP_UP_MAX           = 0.020
 SECTOR_MA_WINDOW     = 20
 MAX_SECTOR_POSITIONS = 3
-VIX_HIGH             = 999           # effectively disabled
+VIX_HIGH             = 999           # effectively disabled [V26-1]
 VIX_LOW              = 25            # [V28-1]
 VIX_SPIKE_PCT        = 0.30
-VIX_SPIKE_PAUSE_DAYS = 0             # VIX spike pause REMOVED
+VIX_SPIKE_PAUSE_DAYS = 0             # VIX spike pause REMOVED [V22-3]
 REENTRY_COOLDOWN_DAYS = 5
 COMMISSION_RATE      = 0.005
-COMMISSION_MIN       = 0.35
+COMMISSION_MIN       = 0.35          # [V22-2]
 EARNINGS_MONTHS      = {1, 4, 7, 10}
 
 OUTPUT_DIR = Path("results")
@@ -482,7 +475,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V35a simulation ...")
+    print("\n[Backtest] Running V33d simulation (Run 5 + velocity crash pause) ...")
     spy_regime  = spy_df["spy_ok"].to_dict()
     all_dates: set = set()
     for df in price_data.values():
@@ -552,7 +545,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             time_stop   = days_held >= pos["hold_days"]
             profit_hit  = (not early) and pos_pct >= pos["profit_target"]
 
-            # Partial exit (Tier 1 only — fires at +1%, remainder targets +3%)
+            # Partial exit (Tier 1 only)
             if (pos["partial_enabled"]
                     and not pos["partial_done"]
                     and not early
@@ -810,7 +803,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":         "V35a",
+        "version":         "V33d",
         "period_start":    start_dt.date().isoformat(),
         "period_end":      end_dt.date().isoformat(),
         "years_tested":    round(years, 2),
@@ -844,16 +837,14 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "tier_stats":           tier_stats,
         "year_stats":           year_stats,
         "parameters": {
-            "version":        "V35a",
-            "base":           "V33d (17.41% CAGR, $3.12M) + higher profit targets",
+            "version":        "V33d",
+            "base":           "V32e ($2.454M, 16.10% CAGR) + MAX_POSITIONS 40→60",
             "universe":       "S&P500 + S&P400 + S&P600",
             "min_consec_down": MIN_CONSEC_DOWN,
             "max_positions":  MAX_POSITIONS,
-            "tier1_target":   f"{TIER1_TARGET*100:.0f}% [V35a-1, was 2%]",
-            "tier1_partial":  f"50% at {TIER1_PARTIAL_TRIGGER*100:.0f}%, remainder at {TIER1_TARGET*100:.0f}%",
-            "tier2_target":   f"{TIER2_TARGET*100:.1f}% [V35a-2, was 2%]",
-            "tier3_target":   f"{TIER3_TARGET*100:.0f}% [unchanged]",
-            "hold_days_all":  "8d [unchanged]",
+            "tier1_6plus":    "2% target, 8d, partial at +1%",
+            "tier2_5days":    "2% target, 8d, no partial",
+            "tier3_4days":    "2% target, 8d, no partial",
             "entry_ranking":  "Composite RSI(2)/ATR_pct [V32e]",
             "velocity_crash_pause": (
                 f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → "
@@ -877,7 +868,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V35a (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V33d (S&P 500 + 400 + 600)")
     print("=" * 70)
 
     core_keys = ["version","period_start","period_end","years_tested",
