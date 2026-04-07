@@ -211,49 +211,38 @@ The README and version history reference V7's $641k final equity. This number re
 `backtest-nmr.py` does NOT import from `backtest_nmr_lib.py`. It is fully self-contained. `walkforward.py` imports from `backtest_nmr_lib.py`. This means:
 - Any parameter or logic change must be made in **both** `backtest-nmr.py` and `backtest_nmr_lib.py`
 - The two files will silently diverge if you only update one
-- This was confirmed the hard way: multiple failed runs showed S&P 600 missing because only the lib was updated, not the main script
 - Always verify both files have the same universe, parameters, and logic before triggering a run
 
 ### The S&P 600 addition is genuinely additive, not in-sample noise
 
-Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65% — proportionally with the IS improvement (14.42% → 16.01%). This is the opposite of what overfitting looks like. Key observations:
-- Win rate unchanged at 60.27% OOS — the edge applies equally to small-caps
-- 6 of 8 walk-forward windows improved
-- W7 (2021–22) worsened from −4% to −11.7% — small-caps are hit harder in bear markets. This is an expected and acceptable tradeoff for the overall gain
-- In live trading, small-cap slippage on open fills will be higher than large-caps — the `MIN_DOLLAR_VOLUME = $5M` filter already removes the worst offenders, but expect the live benefit to be somewhat smaller than the backtest suggests
+Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65% — proportionally with the IS improvement (14.42% → 16.01%). This is the opposite of what overfitting looks like.
 
 ### The core mechanism — unchanged across all versions
 
-**The uniform 8-day window is the single most important parameter.** All gains, regressions, and optimisations across 35+ versions left this intact. Win rate has been 60.18–60.28% in every version from Run 5 through V30+S&P600. The underlying edge has not changed — only the leverage and universe applied to it.
+**The uniform 8-day window is the single most important parameter.** All gains, regressions, and optimisations across 36+ versions left this intact. Win rate has been 60.18–60.28% in every version from Run 5 through V30+S&P600.
 
-**RSI(2) is always below 5 after 4+ consecutive down days.** Do not use RSI(2) to discriminate between tiers. Use consecutive down days instead. RSI(2) is only useful for ranking candidates (most oversold first).
+**Tier 3 (4-day setups) is essential.** Removing it (V10–V14) collapsed CAGR from ~7% to 1–1.65% and halved trade volume. Never remove it.
 
-**Tier 3 (4-day setups) is essential.** Removing it (V10–V14) collapsed CAGR from ~7% to 1–1.65% and halved trade volume. Every version without Tier 3 underperformed dramatically. Never remove it.
+### The strategy is fully optimised — V33d is the confirmed ceiling
 
-### The exit side is fully saturated — do not retry
+Six separate experiments across V34a, V34b, V35a, and V36a have now closed every meaningful lever:
 
-Three separate exit-side experiments across V34a, V34b, and V35a have now closed every meaningful exit lever. The findings are definitive:
+**Exit side (V34a/V34b/V35a):** Cutting losers earlier destroyed Tier 1 WR (70.1% → 52.3%). Letting winners run more (clean base, T1 3%, T2 2.5%) left PF unchanged at 1.06 and cost −$86k equity. The 2%/8d structure is confirmed optimal.
 
-**Cutting losers earlier (V34a/V34b):** A day-4 partial exit on positions down ≥2% collapsed Tier 1 win rate from 70.1% to 52.3% and cost −$926k equity vs V33d. The positions trimmed were disproportionately those about to bounce on days 5–8. The apparent profit factor improvement (1.06 → 1.81) was a measurement artifact — partial loss trades were excluded from the win rate denominator. The avg loss of −3.63% is the correct behaviour of the strategy. You must hold through temporary drawdowns to let mean reversion complete.
+**Signal density (V36a):** Halving position size on days with 40+ signals improved max DD by 2.86pp but cost −$519k equity and −1.0% CAGR. The crash recovery days that fire the stress filter (2019, 2020, 2021) contribute the most absolute P&L — reducing size on those days cuts legs off in recoveries. Same pattern as every other protective mechanism tested. Data analysis showed the 41–60 signal bucket has negative avg return (−0.60%) but these are simultaneously the most valuable recovery entry days, making any filter on them net negative.
 
-**Letting winners run more (V35a):** With a clean base (Tier 1 win rate intact at 69.6%), raising Tier 1 to 3% and Tier 2 to 2.5% produced: avg win +0.03% (3.11% → 3.14%), profit factor unchanged at 1.06, time-stop rate up 1.7pp (59.4% → 61.1%), CAGR −0.15%, equity −$86k. The mechanism is clear: trades that previously exited at 2% are now riding to the time stop, losing the locked-in gain. The 2% target is well-calibrated to the 8-day window — most winning trades that reach 2% do so mid-window without sufficient runway to reach a higher target before the stop fires.
-
-**The conclusion is proven, not assumed:** The 2%/8d structure is the optimum for this strategy. PF 1.06 at 60% WR is the irreducible math of mean reversion with this setup. Do not retry exit-side changes in any form.
+**Do not retry exit-side or signal-density changes. Paper trading data is the only remaining signal.**
 
 ### What the second session proved
 
 **Removing protective mechanisms increases returns — when done selectively.** Three removals drove the largest gains:
-1. Drawdown scaling removed (V22): freed up full position sizes during recovery years — 2013 and 2017 immediately jumped
-2. VIX spike entry pause removed (V22): VIX spike days are the best mean reversion entry conditions, not the worst
-3. VIX high-side penalty removed (V26): high-VIX environments are maximally oversold — undersizing them was wrong
+1. Drawdown scaling removed (V22): freed up full position sizes during recovery years
+2. VIX spike entry pause removed (V22): VIX spike days are the best mean reversion entry conditions
+3. VIX high-side penalty removed (V26): high-VIX environments are maximally oversold
 
-**The VIX_LOW lever had far more room than expected.** Raising VIX_LOW from 15 (Run 5) to 25 (V28) was the dominant source of gains in the second session. Years like 2020-2021 where VIX sat in the 20-25 range during recovery got full-size positions instead of reduced ones.
+**The velocity crash pause is the one protection worth keeping.** Added in V21, it fires only when SPY drops >12% in 5 days. It saved ~$40-60k in 2020 at essentially zero cost to good years. All other protective mechanisms were net negative.
 
-**The velocity crash pause is the one protection worth keeping.** Added in V21, it fires only when SPY drops >12% in 5 days (March 2020-level events). It saved ~$40-60k in 2020 at essentially zero cost to good years. All other protective mechanisms were net negative.
-
-**Position count: 40 is better than 30 — but ONLY if size is NOT reduced.** V23 tested 40 positions at 4% size (scaled to maintain "similar exposure") and regressed. V24 tested 40 positions at 5% size (unchanged) and was a major improvement. The lesson: adding positions at full size captures overflow on high-signal days without diluting existing trades. Never scale down position size to "make room" for more positions.
-
-**VIX sizing is a compounding amplifier, not a risk tool.** The VIX high-side penalty (VIX > 25 → 2.5%) was removed because it undersized positions during the periods of strongest mean reversion edge. VIX above 25 means stocks are maximally oversold — exactly when you want full size. The velocity crash pause handles genuine extreme events; the VIX sizing regime doesn't need to.
+**Position count: 40 is better than 30 — but ONLY if size is NOT reduced.** Adding positions at full size captures overflow on high-signal days without diluting existing trades. Never scale down position size to "make room" for more positions.
 
 ### What doesn't work — do not retry
 
@@ -270,11 +259,8 @@ Three separate exit-side experiments across V34a, V34b, and V35a have now closed
 | **Conditional bear filter** | Block Tier 3 when SPY 20d return < −5% | Interacted destructively with velocity crash pause, broke 2020 fix |
 | **Dynamic position sizing by days** | 4-day setups at 0.85× base size | Approximately neutral, not worth the complexity |
 | **Bull regime entry block** | Block Tier 2+3 in bull markets | Bull regime (55.9% WR) was still profitable; blocking it cost compounding in 2012-2013 |
-| **Sector RSI filter** | Skip Tier 3 if sector ETF RSI(2) > 60 | Effect unclear, buried under other changes |
 | **Re-entry cooldown 2 days** | Reduce from 5 to 2 days | Only 3 extra trades/year — neutral |
 | **Scaling position size down for more positions** | 40 positions at 4% instead of 5% | Per-trade profit fell 20%, volume gain couldn't compensate |
-| **Tier 3 target at 1.25%** | Between V15 (1%) and V16 (1.5%) | Strictly worse than 1.5% at same trade volume |
-| **SPY momentum filter for Tier 3** | Skip if SPY up >0.5% on signal day | Effect unclear under V18 noise |
 | **Drawdown scaling with tight thresholds** | 5%/10% thresholds (original) | Fired during normal volatility, reduced size when most needed |
 | **70/30 SPY blend** | Blending strategy with SPY B&H | After-tax, the strategy edge over SPY narrows — blending reduces total equity vs all-in |
 | **Binary VIX trend filter** | V31: no entries when VIX below 10d MA | Blocked 37%+ of trading days, killed volume. CAGR 11.03%, Sharpe dropped to 0.64 |
@@ -285,9 +271,10 @@ Three separate exit-side experiments across V34a, V34b, and V35a have now closed
 | **Combining regime sizing + composite ranking** | V32f: V32d + V32e | V32e's equity benefit disappears when regime sizing reduces exposure. Use one or the other |
 | **Combining regime sizing + higher position count** | V33b-d: 50 pos + V32d controls | Same pattern — $2,119k equity at −47% DD, worse than either V33b alone or V32d alone |
 | **Testing 65 positions** | Not run — diminishing returns curve makes outcome predictable | At 55→60: +$142k equity, +0.25% CAGR, −1.5% DD. At 65→70 would yield ~+$100k at another DD cost — below meaningful threshold. 60 is the ceiling |
-| **Partial loss exit (day 4, −2% threshold, 50% trim)** | V34a: trim half the position if down ≥2% after 4 days | Tier 1 win rate collapsed 70.1% → 52.3%. Overall CAGR fell 17.4% → 15.5%, equity $3.12M → $2.20M. Positions down 2% at day 4 were disproportionately those about to bounce on days 5–8. Profit factor appeared to improve (1.06 → 1.81) but was a measurement artifact |
-| **Tier 1 target raised 2% → 3% (with partial loss exit)** | V34b: V34a + Tier 1 profit target 3%, partial trigger 1% → 1.5% | Negligible change vs V34a (−$26k, CAGR 15.44%). Tier 1 was already broken by V34a before the target raise could fire. Invalid test of higher targets |
-| **Higher profit targets on clean base (V35a)** | Tier 1: 2%→3%, Tier 2: 2%→2.5%, no other changes, healthy 69.6% T1 win rate | Avg win +0.03% (3.11%→3.14%), PF unchanged at 1.06, time-stop rate +1.7pp, CAGR −0.15%, equity −$86k. Trades that hit 2% mid-window lack runway to reach higher targets before the time stop fires. **Exit side confirmed fully saturated — do not retry** |
+| **Partial loss exit (day 4, −2% threshold, 50% trim)** | V34a: trim half the position if down ≥2% after 4 days | Tier 1 win rate collapsed 70.1% → 52.3%. CAGR fell 17.4% → 15.5%, equity −$926k |
+| **Tier 1 target raised 2% → 3% (with partial loss exit)** | V34b: V34a + Tier 1 profit target 3% | Contaminated test — Tier 1 already broken by V34a. Neutral vs V34a |
+| **Higher profit targets on clean base** | V35a: T1 3%, T2 2.5%, healthy 69.6% T1 WR | Avg win +0.03%, PF unchanged at 1.06, time-stop rate +1.7pp, CAGR −0.15%, equity −$86k. Exit side confirmed saturated |
+| **Signal density stress filter** | V36a: halve position size when daily signals > 40 | Max DD improved 2.86pp but CAGR −1.0%, equity −$519k. The 41–60 signal days have negative avg return (−0.60%) but are also the crash-recovery entry days that drive the biggest absolute gains (2019, 2020, 2021). Reducing size on those days cuts recovery compounding. Same pattern as every other protective mechanism |
 
 ### What works — confirmed positive contributions
 
@@ -329,13 +316,8 @@ V33d's gains come from **leverage amplification, universe expansion, and positio
 - 2022 lost −$1.05M in a single year
 - 2026 (partial year) lost −$728k
 - The −54.73% max drawdown means a potential ~$1.7M paper loss peak-to-trough
-- This is a real psychological test. If you would shut off the strategy during a −54% drawdown, use V32e or V32d instead
-
-**The Sharpe tradeoff is real but acceptable for a long-horizon taxable account.** Sharpe 0.68 means the worst 12-month rolling windows are worse than V32e's. But the extra $670k over 21 years vs V32e compensates — you're earning more per unit of time even if each unit is bumpier.
 
 **60 positions is the confirmed ceiling.** Testing 65 would yield ~$100k more equity at another −1.5% drawdown and −0.01 Sharpe. The efficiency per position is too low to justify further increases.
-
-**Small-cap amplification cuts both ways.** The S&P 600 addition improved good years but made bad years worse. W7 OOS (2021–22) went from −4% to −11.7% with S&P 600 included. At 60 positions this effect is amplified further.
 
 **Win rate is unchanged and must remain the anchor.** If live win rate drops below 56%, the strategy is failing. Monitor this before increasing position sizes.
 
@@ -349,12 +331,12 @@ V33d's reported 17.41% CAGR is the **in-sample ceiling**, not the live expectati
 |---|---|
 | Slippage on open prices (worse at 60 positions — more crowded MOO orders) | −2 to −3% |
 | Survivorship bias (incomplete historical universe) | −1 to −2% |
-| Overfitting across 35+ iterations on same dataset | −2 to −3% |
+| Overfitting across 36+ iterations on same dataset | −2 to −3% |
 | Earnings calendar lookahead (today's known dates used) | −0.3 to −0.5% |
 | VIX regime parameters tuned to history | −1 to −2% |
 | **Realistic live estimate** | **~8 to 12% CAGR gross** |
 
-Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 ≈ ~13% live gross. After short-term capital gains tax (32–37%), realistic net CAGR is likely 7–10%. The higher position count amplifies slippage risk on high-signal days — 60 simultaneous MOO orders will have more auction impact than 40.
+Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 ≈ ~13% live gross. After short-term capital gains tax (32–37%), realistic net CAGR is likely 7–10%.
 
 ---
 
@@ -369,10 +351,6 @@ Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 �
 | Sharpe Ratio | ~0.55 | 0.73 | 0.73 | 0.68 | 0.77 |
 | Final Equity ($100k start) | ~$800k | $478k | $2,454k | $3,124k | $2,145k |
 
-**SPY comparison:** V33d beats SPY clearly on gross CAGR. After tax in a taxable account the edge narrows — ~1,043 trades/year means almost entirely short-term capital gains. In a Roth IRA, go all-in on V32d (tax-free compounding at 15.37% gross beats taxable V33d at ~7–10% net).
-
-**Correlation:** Near-zero correlation with SPY means the strategy provides genuine diversification regardless of return comparison.
-
 **Tax note:** ~1,043 trades/year at V33d qualifies for IRS trader tax status (Section 475(f) MTM election) in most years. Consult a CPA specialising in trader tax (e.g. Green Trader Tax) before forming any entity.
 
 ---
@@ -381,53 +359,24 @@ Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 �
 
 ### Status: ✅ LIVE (paper trading active as of April 2026)
 
-The automated paper trading system is fully operational. Setup is complete:
-
 - **Broker:** Interactive Brokers (IBKR) paper account, starting equity $100,000
 - **Script:** `C:\nmr-trader\trade.py` — runs automatically every weekday
-- **Scheduler:** Windows Task Scheduler fires at **6:25 AM PT** (before 6:30 AM PT market open)
+- **Scheduler:** Windows Task Scheduler fires at **6:25 AM PT**
 - **Orders:** Market On Open (MOO) submitted before the 6:28 AM PT auction cutoff
 - **Database:** `C:\nmr-trader\positions.db` — SQLite, tracks all open positions and trade history
 - **Alerts:** Daily summary email via SendGrid after each run
-- **Library:** `ib_async` (actively maintained successor to `ib_insync`, supports Python 3.10–3.14)
+- **Library:** `ib_async` (actively maintained successor to `ib_insync`)
 
-### Broker: Interactive Brokers (IBKR) — confirmed choice
+### GitHub auto-push (paper trading results)
 
-- **`ib_async`**: the actively maintained successor to `ib_insync` after the original author passed away in 2024. Import as `from ib_async import IB, Stock, Order` — identical API
-- **Paper trading environment**: real market data, simulated fills at actual open prices — not a toy simulator
-- **Commission model matches**: $0.005/share with $0.35 minimum matches the backtest exactly
-- **Transition**: paper → live is a single config line change, not a code rewrite
-- **Port:** 4002 for paper trading, 4001 for live
+`trade.py` pushes paper trading results to the repo after each run. Results are visible at:
+- `github.com/ckurau/naive-mean-reversion/tree/main/paper_trading/summary.json` — daily summary stats
+- `github.com/ckurau/naive-mean-reversion/tree/main/paper_trading/trades.csv` — full trade log
+- `github.com/ckurau/naive-mean-reversion/tree/main/paper_trading/open_positions.csv` — current open positions
 
-### How the automation works
-
-```
-Every weekday 6:25 AM PT (Windows Task Scheduler):
-  trade.py runs automatically
-    ├── Connects to IBKR Gateway (must be open and logged in)
-    ├── Reads portfolio value from IBKR account
-    ├── Downloads VIX + SPY regime data
-    ├── Checks velocity crash pause and SPY 200d MA filter
-    ├── Downloads ~300 days of price data for full universe (~1800 tickers)
-    ├── Processes exits for open positions (time stop / profit target / partial)
-    ├── Generates entry signals (RSI, consecutive down days, all filters)
-    ├── Submits MOO orders to IBKR
-    ├── Waits 5 minutes for fills at 6:30 AM PT market open
-    ├── Updates entry prices in positions.db from actual fills
-    └── Sends daily summary email
-```
-
-### Daily operations — what to expect
-
-**You don't need to do anything daily.** The system is fully automated. Each morning you will receive an email showing portfolio value, VIX level, position size being used, what exited and why, and what entered.
-
-**Days with no trades are completely normal.** When SPY is below its 200-day MA the strategy blocks all entries. This is the bear market filter working correctly — not a malfunction.
-
-**IBKR Gateway must be open and logged in before 6:25 AM PT.** It is set to auto-start at Windows login. After any reboot, log into Gateway manually before the market opens.
+In a new session, ask Claude to check the repo directly for paper trading results rather than running manual export commands.
 
 ### Local commands — checking progress
-
-Open Command Prompt and activate the virtual environment first:
 
 ```bat
 cd C:\nmr-trader
@@ -441,47 +390,8 @@ python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\
 
 **Check current open positions:**
 ```bat
-python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); pos = pd.read_sql('SELECT * FROM open_positions', conn); conn.close(); print(f'Open positions: {len(pos)} / 40'); [print(f\"  {r['ticker']}: entered {r['entry_date']} | tier {r['tier']} | {r['shares_remaining']:.0f}sh @ ${r['entry_price']:.2f}\") for _, r in pos.iterrows()] if not pos.empty else print('  None')"
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); pos = pd.read_sql('SELECT * FROM open_positions', conn); conn.close(); print(f'Open positions: {len(pos)} / 60'); [print(f\"  {r['ticker']}: entered {r['entry_date']} | tier {r['tier']} | {r['shares_remaining']:.0f}sh @ ${r['entry_price']:.2f}\") for _, r in pos.iterrows()] if not pos.empty else print('  None')"
 ```
-
-**Check portfolio value (requires IBKR Gateway to be running):**
-```bat
-python -c "from ib_async import IB; ib = IB(); ib.connect('127.0.0.1', 4002, clientId=2); [print(f'Portfolio: ${float(av.value):,.2f}') for av in ib.accountValues() if av.tag == 'NetLiquidation' and av.currency == 'USD']; ib.disconnect()"
-```
-
-**View today's log:**
-```bat
-type C:\nmr-trader\trade.log
-```
-
-**Watch the log live (while the script is running at 6:25 AM):**
-```bat
-powershell -command "Get-Content C:\nmr-trader\trade.log -Wait"
-```
-
-**Run the script manually for testing:**
-```bat
-python C:\nmr-trader\trade.py
-```
-
-Or right-click **NMR Trader** in Windows Task Scheduler → **Run**.
-
-### What the log output means
-
-```
-=== NMR Trading Run: 2026-04-02 ===          ← script started
-Connected to IBKR Gateway                     ← IBKR connection OK
-Portfolio value: $100,000.00                  ← current account value
-VIX: 23.9 | SPY 5d: 1.7% | SPY>200d: False  ← market regime data
-Entries blocked: SPY below 200d MA            ← bear market filter active, no entries today
-Disconnected from IBKR                        ← clean exit
-NMR Daily Summary — 2026-04-02               ← summary email content follows
-```
-
-**Normal messages that are NOT errors:**
-- `possibly delisted; no price data found` — historical tickers (LEH, BSC etc.) that no longer trade. Expected, harmless.
-- `Entries blocked: SPY below 200d MA` — bear market filter. No trades is the correct behaviour.
-- `Velocity crash pause active` — SPY dropped >12% in 5 days. Entries paused. Correct behaviour.
 
 ### Pass criteria for moving to live capital
 
@@ -497,8 +407,6 @@ After at least 3 months of paper trading:
 
 ### Going live — two changes only
 
-When paper trading passes all criteria:
-
 **Change 1 — in `C:\nmr-trader\trade.py`:**
 ```python
 IBKR_PORT = 4001   # was 4002 (paper)
@@ -507,73 +415,40 @@ IBKR_PORT = 4001   # was 4002 (paper)
 **Change 2 — in IBKR Gateway settings:**
 Switch login from Paper Trading to Live account. Restart Gateway.
 
-No other code changes required.
-
-### Troubleshooting the automated system
+### Troubleshooting
 
 | Problem | Likely cause | Fix |
 |---|---|---|
 | "IBKR connection failed" | Gateway not running | Open Gateway and log in before 6:25 AM PT |
-| "IBKR connection failed" | Wrong port | Verify `IBKR_PORT=4002` in trade.py |
 | Script didn't run at 6:25 AM | PC was asleep | Power & Sleep → Sleep → Never |
-| Script didn't run at 6:25 AM | Task Scheduler issue | Right-click NMR Trader → Run to test manually |
 | 0 entry candidates every day | SPY below 200d MA | Normal in bear market — not a bug |
 | Win rate < 55% after 50 trades | Signal logic drift | Verify trade.py constants match backtest-nmr.py exactly |
-| No summary email | SendGrid misconfigured | Check SENDGRID_API_KEY in trade.py |
 
 ---
 
 ## Next Steps
 
 ### Step 1 — Walk-Forward Validation ✅ COMPLETE
-V30+S&P600 walk-forward: OOS avg 15.65%, 7/8 positive windows.
-V32e walk-forward: OOS avg 15.65%, 7/8 positive windows. Identical OOS performance confirms composite ranking improvement is real, not in-sample noise. Both versions confirmed genuine OOS edge.
+V33d walk-forward: OOS avg 18.37%, 7/8 positive windows. Pass criteria exceeded.
 
-### Step 2 — Paper Trading ✅ COMPLETE (active since April 2026)
-- IBKR paper account open, starting equity $100,000
-- `trade.py` running automatically every weekday at 6:25 AM PT via Windows Task Scheduler
-- SQLite position database tracking all open positions and trade history
-- Daily summary email via SendGrid
-- Pass criteria: 3 months, win rate 57–63% over 100+ trades, no month worse than −15%
-- **Note:** `trade.py` was written for V32e (MAX_POSITIONS=40). Update to 60 before going live with V33d
+### Step 2 — Paper Trading ✅ ACTIVE (since April 2026)
+Pass criteria: 3 months, win rate 57–63% over 100+ trades, no month worse than −15%.
+Note: `trade.py` updated to MAX_POSITIONS=60 to match V33d.
 
-### Step 3 — Walk-Forward Validation: V33d ✅ COMPLETE
-OOS avg CAGR 18.37%, 7/8 positive windows. Pass criteria exceeded. The position count increase is confirmed genuine. V33d is the confirmed production version.
+### Step 3 — Go Live ⏳
+Only after paper trading passes all criteria.
 
-### Step 4 — Go Live ⏳
-Only after paper trading passes all criteria:
-- Update `MAX_POSITIONS` in `trade.py` to match chosen live version (60 for V33d, 40 for V32e)
-- Change `IBKR_PORT = 4002` to `4001` in `trade.py`
-- Switch Gateway from paper to live account
-- Monitor win rate over first 100 live trades before considering any sizing changes
-
-### Step 5 — Future Edge Improvements (not more leverage, not exit-side)
-The exit side is fully saturated (V34a, V34b, V35a all confirmed). Remaining genuine improvements:
-- **Historical earnings database** — removes the lookahead bias in the current earnings calendar (yfinance uses today's known dates, not historical). Estimated impact: +0.3 to +0.5% CAGR
-- **Live OOS validation** — 6–12 months of paper trading is the only true out-of-sample test remaining
-- **MOO slippage analysis** — once paper trading has 100+ trades, compare actual fill prices to prior-day close. If small-cap slippage exceeds 0.6% avg, the backtest assumptions need revisiting
+### Step 4 — Future Edge Improvements
+The strategy is fully optimised on the backtest side (V34a through V36a all confirmed ceiling). Remaining genuine improvements:
+- **Historical earnings database** — removes lookahead bias. Estimated impact: +0.3 to +0.5% CAGR
+- **Live OOS validation** — 6–12 months of paper trading is the only true remaining out-of-sample test
+- **MOO slippage analysis** — compare actual fill prices to prior-day close once 100+ trades complete
 
 ---
 
 ## All Runs Table
 
-### V10–V20: Optimisation Research (what didn't work)
-
-| Version | Key Change | CAGR | Final Equity | Key Learning |
-|---|---|---|---|---|
-| V10 | ROC filter, no Tier 3, bull regime, RSI exit 75 | 1.05% | $125k | ROC killed 68% of trades; Tier 3 removal is catastrophic |
-| V11 | ROC −2.5%, Tier 2 partial, RSI exit 85 | 0.65% | $115k | Tier 2 partial with wrong ratio destroyed payout ratio |
-| V12 | Tier 2 partial removed, crash limit added | 0.72% | $117k | Still missing Tier 3 — structural issue |
-| V13 | Tier 2 bull block | 0.99% | $124k | Small improvement; Tier 3 still missing |
-| V14 | Hold 11-12d, SPY 50d guard | 1.65% | $142k | 50d guard blocked 2009 recovery; extended hold barely helped |
-| V15 | Tier 3 restored, 8d windows, 50d guard removed | 5.69% | $327k | Breakthrough — Tier 3 was the missing ingredient |
-| V16 | Tier 3 target 1.5%, velocity crash pause | 6.31% | $370k | Best drawdown ever (−16.9%); 2020 fixed |
-| V17 | Tier 3 target 1.25%, Tier 3 bear filter | 5.57% | $319k | Bear filter broke velocity pause interaction; regression |
-| V18 | 6 additions: first-up-close, dynamic sizing, etc. | 4.65% | $265k | First-up-close dominated 54% of exits; all additions net negative |
-| V19 | Uniform 2% target hypothesis test | 5.72% | $330k | Hypothesis disproved: target not the source of V7's $641k |
-| V20 | Bull block removed, crash limit removed | 5.68% | $327k | Bull trades (55.9% WR) added volume but hurt quality |
-
-### V21–V35a: The Breakthrough Sequence
+### V21–V36a: The Breakthrough Sequence
 
 | Version | Key Change | CAGR | Final Equity | Max DD | Sharpe |
 |---|---|---|---|---|---|
@@ -589,7 +464,7 @@ The exit side is fully saturated (V34a, V34b, V35a all confirmed). Remaining gen
 | V30 | V28 + V29 combined | 14.42% | $1,797k | −39.4% | 0.72 |
 | V30+S&P600 | + S&P 600 SmallCap universe | 16.01% | $2,414k | −48.65% | 0.73 |
 | V31 | VIX 10d trend filter + $10M floor + DD scaling | 11.03% | $938k | −35.92% | 0.64 |
-| V31b | $10M floor + DD scaling only (no VIX filter) | 13.17% | $1,419k | −39.16% | 0.68 |
+| V31b | $10M floor + DD scaling only | 13.17% | $1,419k | −39.16% | 0.68 |
 | V32a | ATR-based position sizing | 15.98% | $2,403k | −48.61% | 0.73 |
 | V32b | Tier 3 hold window 8→6 days | 15.87% | $2,354k | −44.87% | 0.75 |
 | V32c | VIX 5d trend: 80% size when VIX falling | 15.28% | $2,111k | −44.30% | 0.74 |
@@ -597,23 +472,15 @@ The exit side is fully saturated (V34a, V34b, V35a all confirmed). Remaining gen
 | V32e | Composite ranking: RSI(2)/ATR_pct | 16.10% | $2,454k | −48.61% | 0.73 |
 | V32f | V32d + V32e combined | 15.31% | $2,123k | −39.62% | 0.77 |
 | V33b | MAX_POSITIONS raised 40→50 | 16.83% | $2,808k | −51.73% | 0.70 |
-| V33b-b | 50 pos + Tier3 hold 6d only | — | — | — | — |
 | V33b-d | 50 pos + V32d controls | 15.30% | $2,119k | −47.13% | 0.70 |
 | V33c | MAX_POSITIONS raised 50→55 | 17.16% | $2,982k | −53.27% | 0.69 |
 | **V33d** | **MAX_POSITIONS raised 55→60** | **17.41%** | **$3,124k** | **−54.73%** | **0.68** |
 | V34a | Partial loss exit: day 4 if down ≥2%, trim 50% | 15.50% | $2,198k | −52.61% | 0.66 |
 | V34b | V34a + Tier 1 target 2% → 3% (contaminated) | 15.44% | $2,172k | −52.48% | 0.66 |
 | V35a | Tier 1: 2%→3%, Tier 2: 2%→2.5% (clean base) | 17.26% | $3,038k | −56.46% | 0.68 |
+| V36a | Signal stress filter: >40 signals → 0.5× size | 16.42% | $2,605k | −52.19% | 0.67 |
 
-**Key findings from V33 series:**
-- V33b/c/d confirmed the V24 precedent: adding positions at full size compounds significantly. Each +10 positions adds roughly +$350-400k equity at +0.7-0.8% CAGR, −3% DD, −0.03 Sharpe cost
-- 60 positions is effectively the ceiling — testing 65 would yield ~+$100k at another −1.5% DD cost
-- V33b-d confirmed the pattern from V32f: regime sizing and position count improvements don't stack
-
-**Key findings from V34/V35 series — exit side fully saturated:**
-- V34a: cutting losers earlier destroyed Tier 1 WR (70.1% → 52.3%), cost −$926k equity
-- V34b: raising T1 target on V34a's broken base was an invalid test, neutral vs V34a
-- V35a: raising targets on a healthy base (clean V33d) — PF unchanged at 1.06, avg win +0.03%, CAGR −0.15%. **The 2%/8d structure is confirmed optimal. Do not retry exit-side changes.**
+**V33d is the confirmed ceiling. All subsequent versions regressed.**
 
 ---
 
@@ -621,44 +488,33 @@ The exit side is fully saturated (V34a, V34b, V35a all confirmed). Remaining gen
 
 ```
 .
-├── backtest-nmr.py          # Thin entry-point wrapper — imports all logic from lib (V33d+)
-├── backtest_nmr_lib.py      # Single source of truth — all strategy logic, parameters, metrics
-├── walkforward.py           # Walk-forward framework (imports from backtest_nmr_lib.py)
-├── requirements.txt         # Python dependencies
-├── README-nmr.md            # This file
-├── results/                 # Auto-generated (committed by CI)
+├── backtest-nmr.py
+├── backtest_nmr_lib.py
+├── walkforward.py
+├── requirements.txt
+├── README-nmr.md
+├── results/
 │   ├── metrics.json
 │   ├── trades.csv
 │   ├── equity_curve.csv
 │   ├── walkforward_summary.csv
 │   ├── walkforward_equity.csv
 │   └── walkforward_report.json
-└── .github/
-    └── workflows/
-        └── backtest.yml
+├── paper_trading/
+│   ├── summary.json
+│   ├── trades.csv
+│   └── open_positions.csv
+└── .github/workflows/backtest.yml
 ```
-
-**Architecture (V33d onwards — unified):**
-- `backtest-nmr.py` is a thin wrapper that imports everything from `backtest_nmr_lib.py`
-- All parameters, logic, and metrics live in `backtest_nmr_lib.py` only
-- To change any parameter, edit `backtest_nmr_lib.py` — `backtest-nmr.py` does not need touching
-- `walkforward.py` also imports from `backtest_nmr_lib.py`
-- The silent divergence risk from previous sessions is eliminated
 
 ---
 
 ## Setup & Running
 
 ### GitHub Actions
-1. Push all files to your repo (including `backtest_nmr_lib.py` and `walkforward.py`)
+1. Push all files to your repo
 2. **Settings → Actions → General → Workflow permissions → Read and write**
 3. **Actions → Naive MR Backtest → Run workflow**
-
-Optional workflow inputs: `start_date`, `end_date`, `initial_capital`, `run_walkforward`
-
-To run walk-forward, set `run_walkforward = true` in the workflow dispatch inputs. Walk-forward adds 6–8 hours on top of the 90–120 minute main backtest. The scheduled Sunday run only runs the main backtest. Walk-forward is manual-only.
-
-**If the git push step fails with "unstaged changes" error:** The workflow's commit step runs `git stash` before `git pull --rebase` to handle changes made by the `sed` override commands. If this error persists after updating `backtest.yml`, re-run the workflow once — it will pull the previous run's results and push cleanly.
 
 ### Local
 ```bash
@@ -668,43 +524,10 @@ python walkforward.py       # walk-forward (~6-8 hours with S&P 600)
 ```
 
 ### Health Checks
-If results look wrong, check:
-- `[Universe] Total unique tickers` < 1800: S&P 600 fetch failed — check `backtest_nmr_lib.py` for the S&P 600 URL and `_extract_tickers_from_table` function
-- `time_stop_rate > 70%`: 8-day window may not be firing correctly — check tier constants
-- `win_rate < 55%`: verify uniform 8-day windows are in place; check SPY regime filter
-- `CAGR < 15%` with no code changes: check `backtest_nmr_lib.py` has `MAX_POSITIONS = 60` and version is V33d
+- `[Universe] Total unique tickers` < 1800: S&P 600 fetch failed
+- `win_rate < 55%`: verify uniform 8-day windows; check SPY regime filter
+- `CAGR < 15%` with no code changes: verify `MAX_POSITIONS = 60` and version is V33d
 - `trades_per_year < 700`: Tier 3 may be disabled — check `MIN_CONSEC_DOWN = 4`
-- `version` in metrics.json shows `V30` or `V32e` instead of `V33d`: workflow ran a stale cached version
-
----
-
-## Output Metrics (V33d — expanded)
-
-Starting from V33d, `metrics.json` includes the following fields:
-
-| Category | Metric | Description |
-|---|---|---|
-| Core | `cagr_pct` | Compound Annual Growth Rate |
-| Core | `final_equity` | Portfolio value at end of period |
-| Core | `total_return_pct` | Total return from initial capital |
-| Core | `trades_per_year` | Annual trade count |
-| Risk-adjusted | `sharpe_ratio` | Annualised Sharpe (monthly returns) |
-| Risk-adjusted | `sortino_ratio` | Annualised Sortino (downside deviation only) |
-| Risk-adjusted | `rolling_sharpe_avg_12m` | Average 12-month rolling Sharpe |
-| Risk-adjusted | `rolling_sharpe_min_12m` | Worst 12-month rolling Sharpe |
-| Risk-adjusted | `rolling_sortino_avg_12m` | Average 12-month rolling Sortino |
-| Risk-adjusted | `rolling_sortino_min_12m` | Worst 12-month rolling Sortino |
-| Drawdown | `max_drawdown_pct` | Largest peak-to-trough decline |
-| Drawdown | `max_drawdown_duration_trades` | Length of max drawdown in trades |
-| Trade quality | `win_rate_pct` | % of profitable trades |
-| Trade quality | `profit_factor` | Gross profit ÷ gross loss |
-| Trade quality | `avg_win_pct` | Average winning trade return |
-| Trade quality | `avg_loss_pct` | Average losing trade return |
-| Holding time | `avg_days_held` | Mean holding period in days |
-| Holding time | `median_days_held` | Median holding period in days |
-| Distribution | `annual_return_std_pct` | Annualised standard deviation of returns |
-| Distribution | `monthly_return_skewness` | Skewness of monthly returns (positive = right tail) |
-| Distribution | `monthly_return_kurtosis` | Excess kurtosis of monthly returns (fat tails > 0) |
 
 ---
 
@@ -724,4 +547,4 @@ html5lib>=1.1
 
 ## Disclaimer
 
-Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. V33d's aggressive position sizing (60 positions, 9% each when VIX < 25) is suitable only for those who understand and can hold through drawdowns of −54%+. V32d is the recommended alternative for Roth IRA accounts (MaxDD −39%, Sharpe 0.77). V32e is a middle ground for taxable accounts where the −54% drawdown of V33d is too uncomfortable.
+Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. V33d's aggressive position sizing (60 positions, 9% each when VIX < 25) is suitable only for those who understand and can hold through drawdowns of −54%+. V32d is the recommended alternative for Roth IRA accounts (MaxDD −39%, Sharpe 0.77).
