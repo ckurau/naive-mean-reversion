@@ -1,4 +1,4 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V36a
+""" Enhanced Naive Mean Reversion (MR) Backtest — V33d
 ==================================================
 Base: V28 — $1,267,897 final equity, 12.58% CAGR. Current best.
 Combines V28 and V29: VIX_LOW=25 AND POSITION_SIZE_HIGH=9%.
@@ -6,21 +6,11 @@ Combines V28 and V29: VIX_LOW=25 AND POSITION_SIZE_HIGH=9%.
 V28 vs V29 comparison (both from V27 base):
   V28 (VIX_LOW=25): $1,267,897 | CAGR 12.58% | DD –34.9% | Sharpe 0.72
   V29 (9% boost):   $1,274,287 | CAGR 12.60% | DD –38.5% | Sharpe 0.68
-V28 wins on all quality metrics despite nearly identical equity.
-V29 hurt 2020 badly (–$67k vs V28's +$110k) because VIX stayed above 20 during
-recovery — the 9% boost didn't fire when most needed.
 
 V30 COMBINED MECHANISM:
-  VIX < 20  → 9%   position size (V29: boost calm-VIX days harder)
-  VIX 20-25 → 7.5% position size (V28: capture recovery/moderate days)
-  VIX > 25  → 5%   base (unchanged)
+  VIX < 25 → 9% position size
+  VIX ≥ 25 → 5% base
   No high-VIX penalty (V26)
-
-V30 CHANGES from V28 (1 only):
-  [V30-1] POSITION_SIZE_HIGH raised 7.5% → 9%
-
-UNIVERSE CHANGE (V30 + S&P 600):
-  Added S&P SmallCap 600 to universe alongside S&P 500 + S&P 400.
 
 V32e CHANGE:
   [V32e-1] Composite ranking: RSI(2) / ATR_pct instead of RSI(2) alone.
@@ -28,14 +18,18 @@ V32e CHANGE:
 V33d CHANGE:
   [V33d-1] MAX_POSITIONS raised 40 → 60 (via V33b=50, V33c=55, V33d=60).
 
-EXIT-SIDE NOTE (V34a/V34b/V35a — all tested and rejected):
-  All exit-side optimisation attempts failed. The 2%/8d structure is confirmed
-  optimal. See README-nmr.md "What doesn't work" table for full details.
+ALL OPTIMISATION ATTEMPTS — TESTED AND REJECTED:
+  Exit side (V34a/V34b/V35a):
   - V34a: mid-trade loss trimming → Tier 1 WR 70.1% → 52.3%, CAGR −1.9%
   - V34b: V34a + higher T1 target → contaminated test, neutral vs V34a
   - V35a: higher targets (T1 3%, T2 2.5%), clean base → PF unchanged at 1.06,
           avg win +0.03%, CAGR −0.15%. Exit side is fully saturated.
-  Do not retry exit-side changes. The avg loss of −3.63% is structural.
+  Signal density (V36a):
+  - V36a: halve position size when daily signals > 40 → CAGR −1.0%, equity
+          −$519k. Max DD improved 2.86pp but crash recovery days (2019, 2020,
+          2021) were cut exactly when full size was needed. Same pattern as
+          every protective mechanism. Do not retry.
+  V33d is the confirmed ceiling. Do not retry exit-side or density changes.
 
 RESULTS HISTORY:
   Run 5:   CAGR 7.58%  | $478k
@@ -73,7 +67,7 @@ END_DATE    = datetime.date.today().isoformat()
 MIN_DOLLAR_VOLUME      = 5_000_000
 MAX_POSITIONS          = 60          # [V33d] raised 40→60 across V33b/c/d series
 POSITION_SIZE          = 0.05
-POSITION_SIZE_HIGH     = 0.09        # [V30-1] raised 7.5%→9% for VIX<20 calm days
+POSITION_SIZE_HIGH     = 0.09        # [V30-1] raised 7.5%→9% for VIX<25 days
 POSITION_SIZE_LOW      = 0.025       # VIX > 25
 POSITION_SIZE_EARNINGS = 0.03
 MA_WINDOW              = 200
@@ -132,9 +126,6 @@ VIX_SPIKE_PAUSE_DAYS = 0             # VIX spike pause REMOVED [V22-3]
 REENTRY_COOLDOWN_DAYS = 5
 COMMISSION_RATE      = 0.005
 COMMISSION_MIN       = 0.35          # [V22-2]
-# ── [V36a] Signal density stress filter ──────────────────────────────────────
-SIGNAL_STRESS_THRESHOLD = 40         # days with more signals than this get reduced sizing
-SIGNAL_STRESS_SIZE_MULT = 0.50       # halve position size on stress days
 EARNINGS_MONTHS      = {1, 4, 7, 10}
 
 OUTPUT_DIR = Path("results")
@@ -662,8 +653,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
             tier_cfg   = get_tier(consec_val)
             pos_size   = get_position_size(today, vix_df, current_drawdown)
-            if len(candidates) > SIGNAL_STRESS_THRESHOLD:  # [V36a] stress filter
-                pos_size *= SIGNAL_STRESS_SIZE_MULT
             shares     = (portfolio_value * pos_size) / entry_price
             entry_comm = calc_commission(shares, entry_price)
             open_positions[tkr] = {
@@ -808,7 +797,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":         "V36a",
+        "version":         "V33d",
         "period_start":    start_dt.date().isoformat(),
         "period_end":      end_dt.date().isoformat(),
         "years_tested":    round(years, 2),
@@ -842,8 +831,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "tier_stats":           tier_stats,
         "year_stats":           year_stats,
         "parameters": {
-            "version": "V36a",
-            "base":    "V33d (17.41% CAGR, $3.12M) + signal stress filter >40 signals → 0.5x size",
+            "version":        "V33d",
+            "base":           "V32e ($2.454M, 16.10% CAGR) + MAX_POSITIONS 40→60",
             "universe":       "S&P500 + S&P400 + S&P600",
             "min_consec_down": MIN_CONSEC_DOWN,
             "max_positions":  MAX_POSITIONS,
@@ -873,7 +862,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V36a (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V33d (S&P 500 + 400 + 600)")
     print("=" * 70)
 
     core_keys = ["version","period_start","period_end","years_tested",
