@@ -1,4 +1,4 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V33d
+""" Enhanced Naive Mean Reversion (MR) Backtest — V36a
 ==================================================
 Base: V28 — $1,267,897 final equity, 12.58% CAGR. Current best.
 Combines V28 and V29: VIX_LOW=25 AND POSITION_SIZE_HIGH=9%.
@@ -132,6 +132,9 @@ VIX_SPIKE_PAUSE_DAYS = 0             # VIX spike pause REMOVED [V22-3]
 REENTRY_COOLDOWN_DAYS = 5
 COMMISSION_RATE      = 0.005
 COMMISSION_MIN       = 0.35          # [V22-2]
+# ── [V36a] Signal density stress filter ──────────────────────────────────────
+SIGNAL_STRESS_THRESHOLD = 40         # days with more signals than this get reduced sizing
+SIGNAL_STRESS_SIZE_MULT = 0.50       # halve position size on stress days
 EARNINGS_MONTHS      = {1, 4, 7, 10}
 
 OUTPUT_DIR = Path("results")
@@ -659,6 +662,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 continue
             tier_cfg   = get_tier(consec_val)
             pos_size   = get_position_size(today, vix_df, current_drawdown)
+            if len(candidates) > SIGNAL_STRESS_THRESHOLD:  # [V36a] stress filter
+                pos_size *= SIGNAL_STRESS_SIZE_MULT
             shares     = (portfolio_value * pos_size) / entry_price
             entry_comm = calc_commission(shares, entry_price)
             open_positions[tkr] = {
@@ -803,7 +808,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":         "V33d",
+        "version":         "V36a",
         "period_start":    start_dt.date().isoformat(),
         "period_end":      end_dt.date().isoformat(),
         "years_tested":    round(years, 2),
@@ -837,8 +842,8 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "tier_stats":           tier_stats,
         "year_stats":           year_stats,
         "parameters": {
-            "version":        "V33d",
-            "base":           "V32e ($2.454M, 16.10% CAGR) + MAX_POSITIONS 40→60",
+            "version": "V36a",
+            "base":    "V33d (17.41% CAGR, $3.12M) + signal stress filter >40 signals → 0.5x size",
             "universe":       "S&P500 + S&P400 + S&P600",
             "min_consec_down": MIN_CONSEC_DOWN,
             "max_positions":  MAX_POSITIONS,
@@ -868,7 +873,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V33d (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V36a (S&P 500 + 400 + 600)")
     print("=" * 70)
 
     core_keys = ["version","period_start","period_end","years_tested",
