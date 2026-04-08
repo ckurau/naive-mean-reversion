@@ -1,35 +1,35 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V37d
+""" Enhanced Naive Mean Reversion (MR) Backtest — V33d
 ==================================================
-Base: V33d — $3,124,041 final equity, 17.41% CAGR. Current best.
+Base: V28 — $1,267,897 final equity, 12.58% CAGR. Current best.
+Combines V28 and V29: VIX_LOW=25 AND POSITION_SIZE_HIGH=9%.
 
-V37d CHANGE vs V33d (1 addition — no other changes):
-  [V37d-1] Friday entry filter: skip all new entries on Fridays.
-           Day-of-week analysis showed Friday is the only day with
-           negative avg return (−0.01%) and lowest win rate (54.65%)
-           vs Wednesday best (+0.34% avg return, 57.68% WR).
-           Existing positions continue to their normal exits unchanged.
+V32e CHANGE:
+  [V32e-1] Composite ranking: RSI(2) / ATR_pct instead of RSI(2) alone.
 
-RATIONALE:
-  Friday entries systematically underperform across 21 years of data.
-  This likely reflects weekend risk — positions entered Friday must be
-  held over 2 days of news flow before the next exit opportunity.
-  The filter is structural (calendar-based), not outcome-based, so it
-  avoids the pattern of every previous protective mechanism that failed
-  by reacting to P&L or drawdown.
+V33d CHANGE:
+  [V33d-1] MAX_POSITIONS raised 40 → 60 (via V33b=50, V33c=55, V33d=60).
 
-WHAT TO LOOK FOR:
-  Pass criteria:
-    CAGR stays within 0.5% of V33d (17.41%) — Friday is ~20% of trading days
-    but only ~20% of trades, so impact should be modest
-    Sharpe improves slightly (removing worst-quality entries)
-    Win rate rises slightly
-    2022 P&L may improve marginally
-  Fail criteria:
-    CAGR drops >1% (too many good trades on Fridays)
-    Win rate unchanged (day-of-week effect was noise)
+ALL OPTIMISATION ATTEMPTS — TESTED AND REJECTED (V34a through V37d):
+  Exit side (V34a/V34b/V35a): fully saturated. 2%/8d is confirmed optimal.
+  Signal density (V36a): −$519k. Crash recovery days are both worst avg return
+    AND best absolute P&L contributors. Any filter on them is net negative.
+  Breadth filter (V37a): −$2,899k. Fired on ~50% of days including 2009/2013/2019.
+  Divergence filter (V37b): −$455k. Only fired 68 days (1.2%) — too loose to matter.
+  MFE pause V37c: miscalibrated (fired 54.8% of days), broke mid-run.
+  Friday filter (V37d): −$1,340k. Friday trades lower quality but volume loss
+    overwhelms quality gain. Friday avg return −0.01% is barely negative.
+  V33d is the confirmed ceiling. Paper trading data is the only remaining signal.
 
-  Key diagnostic: check trades/year. Should drop from 1,043 to ~835
-  (removing ~20% of entries). If less than 800, the filter is too broad.
+RESULTS HISTORY:
+  Run 5:   CAGR 7.58%  | $478k
+  V22:     CAGR 9.14%  | $652k
+  V24:     CAGR 10.64% | $875k
+  V28:     CAGR 12.58% | $1.27M
+  V30:     CAGR 14.42% | $1.80M
+  V30+600: CAGR 16.01% | $2.41M
+  V32e:    CAGR 16.10% | $2.45M
+  V33d:    CAGR 17.41% | $3.12M  ← current best (taxable account)
+  V32d:    CAGR 15.37% | $2.14M  ← best risk-adjusted (Roth IRA)
 """
 import io
 import warnings
@@ -46,7 +46,7 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Config — identical to V33d
+# Config
 # ─────────────────────────────────────────────────────────────────────────────
 START_DATE  = "2004-01-01"
 END_DATE    = datetime.date.today().isoformat()
@@ -66,7 +66,7 @@ ATR_MIN_PCT            = 0.01
 VOL_MA_PERIOD          = 20
 MIN_HOLD_BEFORE_EXIT   = 2
 
-# ── Tier system ───────────────────────────────────────────────────────────────
+# ── Tier system — uniform 2%/8d ───────────────────────────────────────────────
 TIER1_MIN_DOWN        = 6
 TIER1_TARGET          = 0.020
 TIER1_HOLD_DAYS       = 8
@@ -90,14 +90,17 @@ TIER3_PARTIAL_TRIGGER = 0.0
 
 MIN_CONSEC_DOWN = TIER3_MIN_DOWN
 
+# ── [V22-1] Drawdown scaling REMOVED ─────────────────────────────────────────
 DD_SCALE_MILD          = 9.99
 DD_SCALE_SEVERE        = 9.99
 POSITION_SIZE_DD_MILD  = 0.03
 POSITION_SIZE_DD_SEVERE = 0.02
 
+# ── [V21] Velocity crash pause ────────────────────────────────────────────────
 VELOCITY_CRASH_5D_THRESHOLD = -0.12
 VELOCITY_CRASH_PAUSE_DAYS   = 5
 
+# ── Filters ───────────────────────────────────────────────────────────────────
 EARNINGS_BLACKOUT    = 3
 GAP_DOWN_MAX         = -0.015
 GAP_UP_MAX           = 0.020
@@ -111,10 +114,6 @@ REENTRY_COOLDOWN_DAYS = 5
 COMMISSION_RATE      = 0.005
 COMMISSION_MIN       = 0.35
 EARNINGS_MONTHS      = {1, 4, 7, 10}
-
-# ── [V37d] Friday filter ──────────────────────────────────────────────────────
-# weekday() == 4 is Friday (0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri)
-SKIP_FRIDAY_ENTRIES = True
 
 OUTPUT_DIR = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -440,7 +439,7 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V37d simulation (V33d + Friday filter) ...")
+    print("\n[Backtest] Running V33d simulation (Run 5 + velocity crash pause) ...")
     spy_regime  = spy_df["spy_ok"].to_dict()
     all_dates: set = set()
     for df in price_data.values():
@@ -461,7 +460,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     cooldown_map: dict = {}
     last_vix_spike      = None
     last_velocity_crash = None
-    friday_blocked      = 0
 
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok = spy_regime.get(today, True)
@@ -480,12 +478,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         except Exception:
             pass
 
-        # [V37d] Friday check — signal day is today, entry is next day (Saturday is impossible
-        # so entries on Friday signal = Monday open). The signal fires today (Friday) but
-        # the actual entry open is Monday. We block Friday signals so Monday entries don't occur.
-        is_friday = pd.Timestamp(today).weekday() == 4
-
-        # Drawdown tracking
         if portfolio_peak is None:
             if portfolio_value != INITIAL_CAPITAL:
                 portfolio_peak   = portfolio_value
@@ -497,7 +489,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             else:
                 current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
-        # ── Exits (unchanged) ──────────────────────────────────────────────────
+        # ── Exits ──────────────────────────────────────────────────────────────
         to_close = []
         for tkr, pos in open_positions.items():
             if tkr not in signals:
@@ -563,16 +555,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        # [V37d] Block entries on Fridays (signal day) — entry would be Monday open
         if not spy_ok or paused or velocity_paused:
-            continue
-        if SKIP_FRIDAY_ENTRIES and is_friday:
-            friday_blocked += 1
             continue
         if len(open_positions) >= MAX_POSITIONS:
             continue
 
-        # ── Entries (unchanged) ────────────────────────────────────────────────
+        # ── Entries ────────────────────────────────────────────────────────────
         candidates = []
         for tkr, tkr_df in signals.items():
             if tkr in open_positions or today not in tkr_df.index:
@@ -628,7 +616,6 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             }
 
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
-    print(f"[V37d] Friday entry blocks: {friday_blocked} days")
     return pd.DataFrame(trades)
 
 
@@ -680,14 +667,17 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     pf = gp / gl if gl > 0 else float("inf")
 
     eq_df_dt = eq_df.copy()
-    eq_df_dt["date"] = pd.to_datetime(eq_df_dt["date"] if "date" in eq_df_dt.columns else eq_df_dt.index)
+    eq_df_dt["date"] = pd.to_datetime(
+        eq_df_dt["date"] if "date" in eq_df_dt.columns else eq_df_dt.index)
     eq_df_dt    = eq_df_dt.set_index("date")
     monthly_ret = eq_df_dt["equity"].resample("ME").last().ffill().pct_change().dropna()
 
-    sharpe = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12) if monthly_ret.std() > 0 else 0)
+    sharpe = (monthly_ret.mean() / monthly_ret.std() * np.sqrt(12)
+              if monthly_ret.std() > 0 else 0)
     downside     = monthly_ret[monthly_ret < 0]
     downside_std = downside.std() if len(downside) > 1 else 0
-    sortino      = (monthly_ret.mean() / downside_std * np.sqrt(12) if downside_std > 0 else 0)
+    sortino      = (monthly_ret.mean() / downside_std * np.sqrt(12)
+                    if downside_std > 0 else 0)
     ret_std  = monthly_ret.std() * np.sqrt(12) * 100
     ret_skew = float(monthly_ret.skew()) if len(monthly_ret) > 3 else 0
     ret_kurt = float(monthly_ret.kurt()) if len(monthly_ret) > 3 else 0
@@ -743,7 +733,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":         "V37d",
+        "version":         "V33d",
         "period_start":    start_dt.date().isoformat(),
         "period_end":      end_dt.date().isoformat(),
         "years_tested":    round(years, 2),
@@ -777,20 +767,21 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "tier_stats":           tier_stats,
         "year_stats":           year_stats,
         "parameters": {
-            "version":           "V37d",
-            "base":              "V33d + Friday entry filter",
-            "universe":          "S&P500 + S&P400 + S&P600",
-            "skip_friday":       "Yes — no new entries on Fridays (signal day)",
-            "min_consec_down":   MIN_CONSEC_DOWN,
-            "max_positions":     MAX_POSITIONS,
-            "tier1_6plus":       "2% target, 8d, partial at +1%",
-            "tier2_5days":       "2% target, 8d, no partial",
-            "tier3_4days":       "2% target, 8d, no partial",
-            "entry_ranking":     "Composite RSI(2)/ATR_pct [V32e]",
-            "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d",
-            "vix_sizing":        f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
-            "commission":        f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
-            "dd_scale":          "REMOVED — thresholds set unreachable [V22]",
+            "version":        "V33d",
+            "base":           "V32e ($2.454M, 16.10% CAGR) + MAX_POSITIONS 40→60",
+            "universe":       "S&P500 + S&P400 + S&P600",
+            "min_consec_down": MIN_CONSEC_DOWN,
+            "max_positions":  MAX_POSITIONS,
+            "tier1_6plus":    "2% target, 8d, partial at +1%",
+            "tier2_5days":    "2% target, 8d, no partial",
+            "tier3_4days":    "2% target, 8d, no partial",
+            "entry_ranking":  "Composite RSI(2)/ATR_pct [V32e]",
+            "velocity_crash_pause": (
+                f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → "
+                f"pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]"),
+            "vix_sizing":  f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
+            "commission":  f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
+            "dd_scale":    "REMOVED — thresholds set unreachable [V22]",
         },
     }
     return metrics, eq_df_dt.reset_index()
@@ -806,7 +797,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V37d (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V33d (S&P 500 + 400 + 600)")
     print("=" * 70)
 
     for section, keys in [
