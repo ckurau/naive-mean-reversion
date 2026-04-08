@@ -12,9 +12,9 @@ The current script (`backtest-nmr.py`) is **V33d — V32e base + MAX_POSITIONS r
 Push `backtest-nmr.py` and `backtest_nmr_lib.py` to GitHub and run the workflow.
 
 **ARCHITECTURE (V33d onwards — unified codebase):**
-`backtest-nmr.py` is now a **thin wrapper** that imports all logic from `backtest_nmr_lib.py`. There is a single source of truth. The silent divergence risk from previous sessions (where both files had to be kept in sync manually) is eliminated. To change any parameter or logic, edit `backtest_nmr_lib.py` only. `walkforward.py` also imports from `backtest_nmr_lib.py`.
+`backtest-nmr.py` is a **thin wrapper** that imports all logic from `backtest_nmr_lib.py`. To change any parameter or logic, edit `backtest_nmr_lib.py` only. `walkforward.py` also imports from `backtest_nmr_lib.py`.
 
-**Session objective: maximize total equity (taxable account).** V33d is recommended for a taxable account. V32d is recommended for a Roth IRA. See the "Why V33d for taxable accounts" section below.
+**Session objective: maximize total equity (taxable account).** V33d is recommended for a taxable account. V32d is recommended for a Roth IRA.
 
 ### Best Confirmed Results: V33d
 
@@ -55,17 +55,11 @@ Push `backtest-nmr.py` and `backtest_nmr_lib.py` to GitHub and run the workflow.
 
 ### Why V33d is best for a taxable account despite the lower Sharpe
 
-Sharpe dropped from 0.73 (V32e) to 0.68 (V33d) as positions increased from 40 to 60. This looks like a regression but is not, for a taxable account with a long time horizon.
+Sharpe dropped from 0.73 (V32e) to 0.68 (V33d) as positions increased from 40 to 60. This looks like a regression but is not, for a taxable account with a long time horizon. The position count increase captures overflow on high-signal days — episodic bursts of alpha when many stocks simultaneously oversold in crash-recovery conditions. These are exactly the days you want maximum exposure.
 
-Sharpe penalises all volatility equally — upside bursts count against you as much as downside losses. The position count increase captures overflow on high-signal days, which are episodic bursts of alpha (many stocks simultaneously oversold in crash-recovery conditions), not persistent volatility. These are exactly the days you want maximum exposure. Sharpe treats them as "bad". Long-term compounding does not.
-
-The result: +$670k final equity over V32e, with the Sharpe penalty coming mostly from larger gains in recovery years (2019: +$1.4M, 2017: +$820k) rather than from larger drawdowns in bad years. The bad years did get worse proportionally (2022: −$1.05M vs −$691k), but they're the same 2022 that every mean-reversion strategy suffers.
-
-**The right question for a taxable account is not "smoothest ride" but "most wealth after 20 years."** V33d answers that question better. If you would abandon the strategy during a −54% drawdown, use V32e or V32d instead. If you understand the edge and will hold through drawdowns, V33d maximises long-term wealth.
+The result: +$670k final equity over V32e. The right question for a taxable account is not "smoothest ride" but "most wealth after 20 years." V33d answers that better. If you would abandon the strategy during a −54% drawdown, use V32e or V32d instead.
 
 ### Walk-Forward Validation: V33d ✅ COMPLETE
-
-Walk-forward confirmed V33d has genuine OOS edge. Results exceeded pass criteria (7/8 positive, OOS avg CAGR > 13%).
 
 | Window | OOS Period | CAGR | WinRate | PF | MaxDD | Sharpe | Trades | IS/OOS |
 |---|---|---|---|---|---|---|---|---|
@@ -80,10 +74,6 @@ Walk-forward confirmed V33d has genuine OOS edge. Results exceeded pass criteria
 
 **OOS Positive CAGR windows: 7/8 — PASS**
 **OOS Avg CAGR: 18.37% | OOS Median CAGR: 19.38%**
-
-**Interpretation:** IS/OOS > 0.5 = genuine edge (normal decay). 0.3–0.5 = marginal. < 0.3 = likely overfitted. Negative = strategy fails OOS.
-
-**Notable:** W7 (2021–22) and W8 (2023–25) are the persistent weak windows across all versions. W7 failed at −10.7% (worse than V32e's −5.8% — small-caps amplify bear market losses as expected). W8 delivered only 5.5% CAGR at −52.4% max DD, meaning the recent 2022–2025 period is genuinely hostile to mean reversion. This is a regime risk, not a strategy defect — the 7/8 OOS pass and 18.37% avg CAGR confirm the underlying edge is real.
 
 ---
 
@@ -101,14 +91,14 @@ Walk-forward confirmed V33d has genuine OOS edge. Results exceeded pass criteria
 | **Tier 2** | 5 down days: 2% target, 8-day window, no partial |
 | **Tier 3** | 4 down days: 2% target, 8-day window, no partial |
 | **Min hold** | 2 calendar days before profit exit allowed |
-| **Max positions** | 60 simultaneous holdings [V33d — raised from 40] |
+| **Max positions** | 60 simultaneous holdings [V33d] |
 | **Position size** | VIX < 25 → 9%, VIX ≥ 25 → 5% base |
-| **VIX high-side penalty** | REMOVED — high-VIX environments are best for mean reversion |
-| **Drawdown scaling** | REMOVED — costs too much in recovery years |
-| **VIX spike pause** | REMOVED — VIX spike days are best entry conditions |
+| **VIX high-side penalty** | REMOVED |
+| **Drawdown scaling** | REMOVED |
+| **VIX spike pause** | REMOVED |
 | **Velocity crash pause** | SPY 5-day return < −12% → pause all entries for 5 days |
 | **Earnings month cap** | Position size capped at 2.4% in Jan/Apr/Jul/Oct |
-| **Signal ranking** | Composite score: RSI(2) / ATR_pct — most oversold AND most volatile first [V32e] |
+| **Signal ranking** | Composite score: RSI(2) / ATR_pct [V32e] |
 | **Sector filter** | Skip entry if stock's sector ETF is below its 20-day MA |
 | **Correlation cap** | Max 3 open positions in same sector |
 | **Earnings blackout** | Skip entries within ±3 days of earnings announcement |
@@ -118,9 +108,9 @@ Walk-forward confirmed V33d has genuine OOS edge. Results exceeded pass criteria
 
 ---
 
-## Walk-Forward Validation: V32e ✅ COMPLETE (reference)
+## Walk-Forward Reference (V32e and V30)
 
-✅ Walk-forward was run using 8 rolling windows (5-year in-sample / 2-year out-of-sample). Parameters fixed at Run 5 settings.
+### V32e Walk-Forward ✅ COMPLETE
 
 | Window | OOS Period | OOS CAGR | Win Rate | Max DD | Sharpe | IS/OOS | Verdict |
 |---|---|---|---|---|---|---|---|
@@ -133,148 +123,80 @@ Walk-forward confirmed V33d has genuine OOS edge. Results exceeded pass criteria
 | W7 | 2021–2022 | −5.8% | 53.0% | −20.7% | −0.59 | −1.07x | Fail |
 | W8 | 2023–2025 | 3.1% | 60.1% | −17.1% | 0.25 | −3.22x | Caution |
 
-**OOS Positive CAGR windows: 6/8 — PASS**
-**OOS Avg CAGR: 5.58% | OOS Median CAGR: 5.01%**
-
-### Walk-Forward Validation Results (V30, S&P 500+400 only — historical reference)
-
-| Window | OOS Period | CAGR | WinRate | PF | MaxDD | Sharpe | IS/OOS |
-|---|---|---|---|---|---|---|---|
-| W1 | 2009–2010 | 20.2% | 60.6% | 1.35 | −13.0% | 1.31 | 0.61x |
-| W2 | 2011–2012 | 24.5% | 63.5% | 1.33 | −19.8% | 0.97 | 1.52x |
-| W3 | 2013–2014 | 27.0% | 59.8% | 1.26 | −22.2% | 1.24 | 1.21x |
-| W4 | 2015–2016 | 2.9% | 55.9% | 1.05 | −18.3% | 0.27 | 0.10x |
-| W5 | 2017–2018 | 6.0% | 57.1% | 1.05 | −23.8% | 0.35 | 0.37x |
-| W6 | 2019–2020 | 27.4% | 62.7% | 1.35 | −28.9% | 0.94 | 5.15x |
-| W7 | 2021–2022 | −4.0% | 54.5% | 0.96 | −29.1% | −0.12 | −0.26x |
-| W8 | 2023–2025 | 5.5% | 60.5% | 1.05 | −35.3% | 0.32 | 0.56x |
-
-**OOS Positive CAGR windows: 7/8 — PASS**
-**OOS Avg CAGR: 13.69% | OOS Median CAGR: 13.12%**
+**OOS Positive CAGR windows: 6/8 — PASS | OOS Avg CAGR: 5.58%**
 
 ---
 
-## Complete Version History
-
-### Original Session (V1–Run 7) — Pre-V10
-
-| Run | Change | CAGR | Win Rate | Max DD | Sharpe | Final Equity |
-|---|---|---|---|---|---|---|
-| V7 original | RSI bug, no DD scaling | 9.05%* | 69.72%* | −28.94% | 0.74 | $641k |
-| Run 1 | DD scaling (broken tier windows) | 1.73% | 57.37% | −22.13% | 0.26 | $144k |
-| Run 2 | Uniform 8d windows | 6.85% | 60.24% | −19.57% | 0.73 | $414k |
-| Run 3 | + Partial exits on all tiers | 6.77% | 71.59% | −18.94% | 0.73 | $407k |
-| Run 4 | − Partial exits on Tier 2/3 | 6.83% | 60.24% | −19.57% | 0.73 | $413k |
-| **Run 5** | **DD thresholds loosened 8%/15%** | **7.58%** | **60.28%** | **−22.55%** | **0.73** | **$478k** |
-| Run 6 | SPY same-day entry filter (failed) | 4.40% | 59.44% | −23.73% | 0.50 | $252k |
-| Run 7 | VIX spike exit on losing positions (failed) | 6.99% | 58.43% | −25.58% | 0.70 | $425k |
-
-*V7 original numbers inflated by RSI routing bug. Run 5 is the legitimate confirmed baseline.
-
-### Second Session (V10–V30) — Optimisation Research
-
-| Version | Key Change | CAGR | Final Equity | Max DD | Sharpe | Verdict |
-|---|---|---|---|---|---|---|
-| V10 | ROC filter, bull regime, RSI exit 75, no Tier 3 | 1.05% | $125k | −21% | 0.20 | Regression — ROC killed 68% of trades |
-| V11 | Loosened ROC, RSI exit 85, Tier 2 partial | 0.65% | $115k | — | — | Regression — partials destroyed payout |
-| V12 | Tier 2 partial removed, crash position limit | 0.72% | $117k | — | — | Regression — still missing Tier 3 |
-| V13 | Tier 2 bull block, target 1.5% | 0.99% | $124k | — | — | Regression |
-| V14 | Hold 11-12d, SPY 50d guard, ROC disabled | 1.65% | $142k | −19.7% | 0.30 | Regression — 50d guard hurt 2009 |
-| V15 | **Tier 3 restored**, 8d windows, 50d guard removed | 5.69% | $327k | −26.0% | 0.61 | Breakthrough — Tier 3 is essential |
-| V16 | Tier 3 target 1.5%, velocity crash pause | 6.31% | $370k | −16.9% | 0.63 | Best drawdown, strong result |
-| V17 | Tier 3 target 1.25%, Tier 3 bear filter | 5.57% | $319k | −26.4% | 0.58 | Regression — bear filter broke 2020 |
-| V18 | 6 additions on V16 base | 4.65% | $265k | −16.9% | 0.60 | Regression — first-up-close exit dominated |
-| V19 | V7 uniform 2% target + 4 protections | 5.72% | $330k | −27.1% | 0.59 | Hypothesis disproved: targets not the key |
-| V20 | V7 exits, bull block removed, crash limit removed | 5.68% | $327k | −20.6% | 0.55 | Bull regime (55.9% WR) destroyed value |
-| V21 | Run 5 exact + velocity crash pause only | 7.55% | $476k | −22.6% | 0.72 | Clean Run 5 + one good addition |
-| V22 | – DD scaling, – commission floor $0.35, – VIX pause | 9.14% | $652k | −26.3% | 0.71 | **Major breakthrough** |
-| V23 | 40 pos ×4% (wrong scaling), VIX_LOW 18 | 8.65% | $592k | −26.7% | 0.68 | Regression — sizing down cost more than volume gained |
-| V24 | **40 pos ×5% (size unchanged)**, VIX_LOW 18 | 10.64% | $875k | −32.5% | 0.68 | **First above 10%** |
-| V25 | VIX_HIGH 25→30, cooldown 2d | 10.94% | $926k | −34.5% | 0.69 | Good — VIX_HIGH lever works |
-| V26 | VIX high-side penalty **removed entirely** | 11.28% | $990k | −32.3% | 0.70 | DD improved while returns rose |
-| V27 | VIX_LOW raised 18→20 | 11.43% | $1,019k | −33.9% | 0.70 | Crossed $1M |
-| V28 | **VIX_LOW raised 20→25** | 12.58% | $1,268k | −34.9% | 0.72 | Huge jump — recovery years captured |
-| V29 | POSITION_SIZE_HIGH 7.5%→9% (from V27 base) | 12.60% | $1,274k | −38.5% | 0.68 | Tied with V28, worse Sharpe and DD |
-| **V30** | **V28 + V29 combined: VIX_LOW=25 + 9% boost** | **14.42%** | **$1,797k** | **−39.4%** | **0.72** | **S&P 500+400 best** |
-| **V30+600** | **+ S&P 600 SmallCap universe** | **16.01%** | **$2,414k** | **−48.65%** | **0.73** | **Current best — 24× from $100k** |
-
----
-
-## Key Insights (Updated)
-
-### V7's $641k is not a reproducible target from a fresh $100k start
-
-The README and version history reference V7's $641k final equity. This number reflected a specific compounding path — the 2012-2013 gains happened when the portfolio had already grown large through earlier years. Multiple direct attempts to reproduce it from a $100k start (V19, V20) produced $320-330k. The $641k should not be used as a benchmark. V30+S&P600's $2,414k is the legitimate current best from a confirmed $100k starting position.
-
-### backtest-nmr.py is standalone — changes must be made in both files
-
-`backtest-nmr.py` does NOT import from `backtest_nmr_lib.py`. It is fully self-contained. `walkforward.py` imports from `backtest_nmr_lib.py`. This means:
-- Any parameter or logic change must be made in **both** `backtest-nmr.py` and `backtest_nmr_lib.py`
-- The two files will silently diverge if you only update one
-- Always verify both files have the same universe, parameters, and logic before triggering a run
-
-### The S&P 600 addition is genuinely additive, not in-sample noise
-
-Adding the S&P SmallCap 600 universe improved OOS avg CAGR from 13.69% to 15.65% — proportionally with the IS improvement (14.42% → 16.01%). This is the opposite of what overfitting looks like.
-
-### The core mechanism — unchanged across all versions
-
-**The uniform 8-day window is the single most important parameter.** All gains, regressions, and optimisations across 36+ versions left this intact. Win rate has been 60.18–60.28% in every version from Run 5 through V30+S&P600.
-
-**Tier 3 (4-day setups) is essential.** Removing it (V10–V14) collapsed CAGR from ~7% to 1–1.65% and halved trade volume. Never remove it.
+## Key Insights
 
 ### The strategy is fully optimised — V33d is the confirmed ceiling
 
-Six separate experiments across V34a, V34b, V35a, and V36a have now closed every meaningful lever:
+After 40+ versions tested, every meaningful lever has been exhausted. The consistent finding across all failed experiments (V34a through V37d) is:
 
-**Exit side (V34a/V34b/V35a):** Cutting losers earlier destroyed Tier 1 WR (70.1% → 52.3%). Letting winners run more (clean base, T1 3%, T2 2.5%) left PF unchanged at 1.06 and cost −$86k equity. The 2%/8d structure is confirmed optimal.
+**The strategy must be fully exposed during panic to capture recovery. Any mechanism that reduces this exposure — regardless of how it's framed — costs more in recovery years than it saves in bad years.**
 
-**Signal density (V36a):** Halving position size on days with 40+ signals improved max DD by 2.86pp but cost −$519k equity and −1.0% CAGR. The crash recovery days that fire the stress filter (2019, 2020, 2021) contribute the most absolute P&L — reducing size on those days cuts legs off in recoveries. Same pattern as every other protective mechanism tested. Data analysis showed the 41–60 signal bucket has negative avg return (−0.60%) but these are simultaneously the most valuable recovery entry days, making any filter on them net negative.
+This is structural, not a calibration problem. The days with the worst avg return (high signal count, crash days, Fridays) are simultaneously the days that set up the best recovery compounding. Every filter that avoids bad days also blocks the recovery that follows.
 
-**Do not retry exit-side or signal-density changes. Paper trading data is the only remaining signal.**
+### The exit side is fully saturated
+
+Three experiments closed every exit-side lever:
+- **V34a** (cut losers day 4): Tier 1 WR 70.1% → 52.3%, equity −$926k
+- **V35a** (higher targets, clean base): PF unchanged at 1.06, equity −$86k
+- **V34b** (contaminated test): neutral vs V34a
+
+The 2%/8d structure is confirmed optimal. The avg loss of −3.63% is structural and cannot be reduced without destroying win rate.
+
+### The entry filter side is fully saturated
+
+Five structural entry filters all failed:
+- **V36a** (signal density >40 → 0.5× size): equity −$519k
+- **V37a** (breadth filter 40% threshold): equity −$2,899k, fired ~50% of days
+- **V37b** (index vs constituents divergence): equity −$455k, fired only 1.2% of days
+- **V37c** (MFE pause, miscalibrated): fired 54.8% of days, broke mid-run
+- **V37d** (Friday filter): equity −$1,340k, volume loss overwhelmed quality gain
+
+**Do not retry structural entry filters.** The next real signal is live paper trading data.
 
 ### What the second session proved
 
-**Removing protective mechanisms increases returns — when done selectively.** Three removals drove the largest gains:
-1. Drawdown scaling removed (V22): freed up full position sizes during recovery years
-2. VIX spike entry pause removed (V22): VIX spike days are the best mean reversion entry conditions
-3. VIX high-side penalty removed (V26): high-VIX environments are maximally oversold
+**Removing protective mechanisms increases returns — when done selectively.** Three removals drove the largest gains: DD scaling removed (V22), VIX spike pause removed (V22), VIX high-side penalty removed (V26). The velocity crash pause is the one protection worth keeping.
 
-**The velocity crash pause is the one protection worth keeping.** Added in V21, it fires only when SPY drops >12% in 5 days. It saved ~$40-60k in 2020 at essentially zero cost to good years. All other protective mechanisms were net negative.
-
-**Position count: 40 is better than 30 — but ONLY if size is NOT reduced.** Adding positions at full size captures overflow on high-signal days without diluting existing trades. Never scale down position size to "make room" for more positions.
+**Position count: 40 is better than 30 — but ONLY if size is NOT reduced.** Adding positions at full size captures overflow on high-signal days. Never scale down position size to "make room."
 
 ### What doesn't work — do not retry
 
 | Approach | What Was Tested | Why It Failed |
 |---|---|---|
-| **Price-based stop-losses** | −3% stop (V3) | 22.6% of trades hit the stop then bounced. Every stop converted a win to a loss |
-| **Circuit breakers** | Portfolio-level entry halt at −10% DD | Fired permanently in 2004-2006. Never reset. Blocked 89.3% of trading days |
-| **ROC entry filter** | Stock must be down 4%+ from streak start | Killed 68% of trades. Removed the fast-bounce setups that are most profitable |
-| **SPY 50d guard** | No entries when SPY below 50d SMA | Blocked 2009 recovery trades. The 200d guard is sufficient |
-| **SPY same-day entry filter** | Skip entries when SPY down >0.5% on signal day | Filtered trades had higher EV (0.79%/trade) than kept trades (0.45%/trade) |
-| **VIX spike exit** | Exit losing positions during VIX spike pause | Fired 1,476 times vs expected ~50/year. Cut positions before VIX-spike bounces |
-| **First-up-close exit** | Exit on first up-day after 4 days held | Dominated 54% of exits (V18), cut winners short, lower avg win |
-| **Tier 3 target differentiation** | Lower target (1%, 1.25%, 1.5%) for 4-day setups | Every version with differentiated Tier 3 target underperformed uniform 2% |
-| **Conditional bear filter** | Block Tier 3 when SPY 20d return < −5% | Interacted destructively with velocity crash pause, broke 2020 fix |
-| **Dynamic position sizing by days** | 4-day setups at 0.85× base size | Approximately neutral, not worth the complexity |
-| **Bull regime entry block** | Block Tier 2+3 in bull markets | Bull regime (55.9% WR) was still profitable; blocking it cost compounding in 2012-2013 |
-| **Re-entry cooldown 2 days** | Reduce from 5 to 2 days | Only 3 extra trades/year — neutral |
-| **Scaling position size down for more positions** | 40 positions at 4% instead of 5% | Per-trade profit fell 20%, volume gain couldn't compensate |
-| **Drawdown scaling with tight thresholds** | 5%/10% thresholds (original) | Fired during normal volatility, reduced size when most needed |
-| **70/30 SPY blend** | Blending strategy with SPY B&H | After-tax, the strategy edge over SPY narrows — blending reduces total equity vs all-in |
-| **Binary VIX trend filter** | V31: no entries when VIX below 10d MA | Blocked 37%+ of trading days, killed volume. CAGR 11.03%, Sharpe dropped to 0.64 |
-| **$10M dollar volume floor** | V31b: raised MIN_DOLLAR_VOLUME $5M→$10M | PF improved only +0.01, Sharpe dropped. Marginal quality gain, real volume cost |
-| **DD scaling at 20% threshold** | V31b: >20% DD → 30% size reduction | Same pattern as original DD scaling removal — reduces size during best recovery periods |
-| **ATR-based position sizing** | V32a: size = fixed dollar risk / ATR | VIX cap (9%/5%) overrides ATR size on majority of trades. No net effect |
-| **VIX trend continuous sizing alone** | V32c: VIX falling → 80% size | Improved DD slightly but cost $300k equity vs baseline. V32d is better combined version |
-| **Combining regime sizing + composite ranking** | V32f: V32d + V32e | V32e's equity benefit disappears when regime sizing reduces exposure. Use one or the other |
-| **Combining regime sizing + higher position count** | V33b-d: 50 pos + V32d controls | Same pattern — $2,119k equity at −47% DD, worse than either V33b alone or V32d alone |
-| **Testing 65 positions** | Not run — diminishing returns curve makes outcome predictable | At 55→60: +$142k equity, +0.25% CAGR, −1.5% DD. At 65→70 would yield ~+$100k at another DD cost — below meaningful threshold. 60 is the ceiling |
-| **Partial loss exit (day 4, −2% threshold, 50% trim)** | V34a: trim half the position if down ≥2% after 4 days | Tier 1 win rate collapsed 70.1% → 52.3%. CAGR fell 17.4% → 15.5%, equity −$926k |
-| **Tier 1 target raised 2% → 3% (with partial loss exit)** | V34b: V34a + Tier 1 profit target 3% | Contaminated test — Tier 1 already broken by V34a. Neutral vs V34a |
-| **Higher profit targets on clean base** | V35a: T1 3%, T2 2.5%, healthy 69.6% T1 WR | Avg win +0.03%, PF unchanged at 1.06, time-stop rate +1.7pp, CAGR −0.15%, equity −$86k. Exit side confirmed saturated |
-| **Signal density stress filter** | V36a: halve position size when daily signals > 40 | Max DD improved 2.86pp but CAGR −1.0%, equity −$519k. The 41–60 signal days have negative avg return (−0.60%) but are also the crash-recovery entry days that drive the biggest absolute gains (2019, 2020, 2021). Reducing size on those days cuts recovery compounding. Same pattern as every other protective mechanism |
+| **Price-based stop-losses** | −3% stop (V3) | 22.6% hit stop then bounced |
+| **Circuit breakers** | Portfolio-level halt at −10% DD | Fired permanently 2004-2006 |
+| **ROC entry filter** | Stock must be down 4%+ from streak start | Killed 68% of trades |
+| **SPY 50d guard** | No entries when SPY below 50d SMA | Blocked 2009 recovery |
+| **SPY same-day entry filter** | Skip entries when SPY down >0.5% | Filtered trades had higher EV |
+| **VIX spike exit** | Exit losing positions during VIX spike | Cut positions before bounces |
+| **First-up-close exit** | Exit on first up-day after 4 days | Dominated 54% of exits (V18) |
+| **Tier 3 target differentiation** | Lower target for 4-day setups | Every variant underperformed uniform 2% |
+| **Conditional bear filter** | Block Tier 3 when SPY 20d return < −5% | Broke 2020 velocity pause interaction |
+| **Bull regime entry block** | Block Tier 2+3 in bull markets | 55.9% WR was still profitable |
+| **Re-entry cooldown 2 days** | Reduce from 5 to 2 days | +3 trades/year — neutral |
+| **Scaling position size down for more positions** | 40 positions at 4% | Per-trade profit fell 20% |
+| **Drawdown scaling with tight thresholds** | 5%/10% thresholds | Fires during normal volatility |
+| **70/30 SPY blend** | Blending with SPY B&H | After-tax edge narrows |
+| **Binary VIX trend filter** | No entries when VIX below 10d MA | Blocked 37%+ of days (V31) |
+| **$10M dollar volume floor** | Raised MIN_DOLLAR_VOLUME $5M→$10M | PF +0.01, volume cost too high |
+| **DD scaling at 20% threshold** | >20% DD → 30% size reduction | Reduces size during recovery |
+| **ATR-based position sizing** | size = fixed dollar risk / ATR | VIX cap overrides on most trades |
+| **VIX trend continuous sizing** | VIX falling → 80% size | Cost $300k equity vs baseline |
+| **Combining regime sizing + composite ranking** | V32f | Benefits cancel |
+| **Combining regime sizing + higher position count** | V33b-d | Worse than either alone |
+| **65 positions** | Not run — diminishing returns confirmed | ~+$100k at −1.5% DD cost |
+| **Partial loss exit (day 4, −2%, trim 50%)** | V34a | Tier 1 WR 70.1% → 52.3%, −$926k equity |
+| **Higher Tier 1 target with partial loss (V34b)** | T1 3% on broken base | Contaminated test, neutral |
+| **Higher targets on clean base (V35a)** | T1 3%, T2 2.5%, healthy WR | PF unchanged at 1.06, −$86k |
+| **Signal density stress filter (V36a)** | >40 signals → 0.5× size | −$519k. Crash recovery days both worst avg return AND best absolute P&L |
+| **Breadth filter (V37a)** | <40% stocks above 20d AND 50d MA | −$2,899k. Fired ~50% of days including 2009/2013/2019 |
+| **Index vs constituents divergence (V37b)** | SPY vs median stock 20d return >5% gap | −$455k. Only fired 68 days (1.2%) — threshold too loose |
+| **MFE-based entry pause (V37c)** | Avg MFE <0.5% in last 20 trades → pause | Fired 54.8% of days, ran out of non-paused days before 2026. Miscalibrated |
+| **Friday entry filter (V37d)** | Skip all Friday signal entries | −$1,340k. Friday avg return −0.01% — barely negative. Volume loss overwhelmed quality gain |
 
 ### What works — confirmed positive contributions
 
@@ -282,8 +204,8 @@ Six separate experiments across V34a, V34b, V35a, and V36a have now closed every
 |---|---|---|---|
 | Uniform 8-day window | Run 2 | Core mechanism | ✅ Kept |
 | Tier 1 partial exit (50% at +1%) | Run 3 | Small positive | ✅ Kept |
-| S&P 400 universe expansion | V4 | +35% more trades/year | ✅ Kept |
-| RSI(2) signal ranking | V4 | Better quality trades at zero cost | ✅ Kept |
+| S&P 400 + S&P 600 universe | V4 / V30+600 | +35% trades, OOS confirmed | ✅ Kept |
+| RSI(2) signal ranking | V4 | Better quality at zero cost | ✅ Kept |
 | Sector ETF MA filter | V4 | Removes low-quality entries | ✅ Kept |
 | Earnings blackout ±3 days | V4 | Removes gap-down risk | ✅ Kept |
 | Sector correlation cap (max 3) | V4 | Prevents hidden concentration | ✅ Kept |
@@ -292,55 +214,50 @@ Six separate experiments across V34a, V34b, V35a, and V36a have now closed every
 | Gap filters | V4 | Reduces adverse open fills | ✅ Kept |
 | Re-entry cooldown (5 days) | V4 | Prevents re-chasing losses | ✅ Kept |
 | Tier 3 (4-day setups) | V15 | Essential — highest trade volume | ✅ Kept |
-| Velocity crash pause | V21 | Fixed 2020; +$40-60k at near-zero cost | ✅ Kept |
-| DD scaling removed | V22 | Full size during recovery years | ✅ Applied |
-| VIX spike pause removed | V22 | VIX spikes = best entry conditions | ✅ Applied |
+| Velocity crash pause | V21 | +$40-60k at near-zero cost | ✅ Kept |
+| DD scaling removed | V22 | Full size during recovery | ✅ Applied |
+| VIX spike pause removed | V22 | Spikes = best entry conditions | ✅ Applied |
 | Commission floor $0.35 | V22 | Matches IB tiered reality | ✅ Applied |
 | 40 positions at full 5% size | V24 | Captures overflow on high-signal days | ✅ Applied |
 | VIX_LOW raised to 25 | V28 | Recovery years get full 9% size | ✅ Applied |
 | VIX high-side penalty removed | V26 | High-VIX = strongest MR conditions | ✅ Applied |
-| 9% boost for VIX < 25 | V30 | Bull/recovery years get larger positions | ✅ Applied |
-| S&P 600 SmallCap universe | V30+600 | +1.59% CAGR, +$617k equity, OOS confirmed | ✅ Applied |
-| Composite ranking (RSI2/ATR_pct) | V32e | +$40k equity, +0.09% CAGR, no downsides | ✅ Applied |
-| Tier 3 hold 6d (was 8d) | V32b | Sharpe 0.75, Avg Loss −3.12% — risk-adjusted improvement | ✅ In V32d only |
-| VIX 5d trend 80% sizing | V32c | MaxDD −44.30%, trades continue at reduced size | ✅ In V32d only |
-| **MAX_POSITIONS raised 40→60** | **V33b/c/d** | **+$670k equity, +1.31% CAGR vs V32e — diminishing but positive to 60** | **✅ Applied** |
+| 9% boost for VIX < 25 | V30 | Bull/recovery years larger positions | ✅ Applied |
+| Composite ranking (RSI2/ATR_pct) | V32e | +$40k equity, +0.09% CAGR | ✅ Applied |
+| Tier 3 hold 6d (was 8d) | V32b | Sharpe 0.75, Avg Loss −3.12% | ✅ In V32d only |
+| VIX 5d trend 80% sizing | V32c | MaxDD −44.30% | ✅ In V32d only |
+| **MAX_POSITIONS raised 40→60** | **V33b/c/d** | **+$670k equity, +1.31% CAGR vs V32e** | **✅ Applied** |
 
 ---
 
 ## The Honest Risk Picture for V33d
 
-V33d's gains come from **leverage amplification, universe expansion, and position count maximisation on the same edge** — not from finding a new edge. The win rate (60%) and profit factor (1.06) are essentially unchanged from V30. Every dollar of additional return came with proportional additional risk.
-
-**Bad years scale dramatically with portfolio size.** At V33d's ~$3.1M peak equity:
+V33d's gains come from leverage amplification, universe expansion, and position count maximisation on the same edge — not a new edge. At ~$3.1M peak equity:
 - 2022 lost −$1.05M in a single year
 - 2026 (partial year) lost −$728k
 - The −54.73% max drawdown means a potential ~$1.7M paper loss peak-to-trough
 
-**60 positions is the confirmed ceiling.** Testing 65 would yield ~$100k more equity at another −1.5% drawdown and −0.01 Sharpe. The efficiency per position is too low to justify further increases.
-
-**Win rate is unchanged and must remain the anchor.** If live win rate drops below 56%, the strategy is failing. Monitor this before increasing position sizes.
+**60 positions is the confirmed ceiling.** Win rate is the anchor — if live win rate drops below 56%, the strategy is failing.
 
 ---
 
-## Optimism Bias Warnings (Updated)
+## Optimism Bias Warnings
 
-V33d's reported 17.41% CAGR is the **in-sample ceiling**, not the live expectation.
+V33d's 17.41% CAGR is the **in-sample ceiling**, not the live expectation.
 
 | Source | Estimated CAGR Impact |
 |---|---|
-| Slippage on open prices (worse at 60 positions — more crowded MOO orders) | −2 to −3% |
-| Survivorship bias (incomplete historical universe) | −1 to −2% |
-| Overfitting across 36+ iterations on same dataset | −2 to −3% |
-| Earnings calendar lookahead (today's known dates used) | −0.3 to −0.5% |
+| Slippage on open prices | −2 to −3% |
+| Survivorship bias | −1 to −2% |
+| Overfitting across 40+ iterations | −2 to −3% |
+| Earnings calendar lookahead | −0.3 to −0.5% |
 | VIX regime parameters tuned to history | −1 to −2% |
 | **Realistic live estimate** | **~8 to 12% CAGR gross** |
 
-Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 ≈ ~13% live gross. After short-term capital gains tax (32–37%), realistic net CAGR is likely 7–10%.
+Apply ~26% walk-forward decay: 17.41% × 0.74 ≈ ~13% live gross. After short-term capital gains tax (32–37%), realistic net CAGR is likely 7–10%.
 
 ---
 
-## SPY vs Strategy (Updated)
+## SPY vs Strategy
 
 | Metric | SPY B&H | Run 5 | V32e | V33d | V32d (Roth) |
 |---|---|---|---|---|---|
@@ -351,7 +268,7 @@ Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 �
 | Sharpe Ratio | ~0.55 | 0.73 | 0.73 | 0.68 | 0.77 |
 | Final Equity ($100k start) | ~$800k | $478k | $2,454k | $3,124k | $2,145k |
 
-**Tax note:** ~1,043 trades/year at V33d qualifies for IRS trader tax status (Section 475(f) MTM election) in most years. Consult a CPA specialising in trader tax (e.g. Green Trader Tax) before forming any entity.
+**Tax note:** ~1,043 trades/year qualifies for IRS trader tax status (Section 475(f) MTM election). Consult a CPA (e.g. Green Trader Tax).
 
 ---
 
@@ -363,111 +280,100 @@ Apply the ~26% decay ratio observed in walk-forward validation: 17.41% × 0.74 �
 - **Script:** `C:\nmr-trader\trade.py` — runs automatically every weekday
 - **Scheduler:** Windows Task Scheduler fires at **6:25 AM PT**
 - **Orders:** Market On Open (MOO) submitted before the 6:28 AM PT auction cutoff
-- **Database:** `C:\nmr-trader\positions.db` — SQLite, tracks all open positions and trade history
-- **Alerts:** Daily summary email via SendGrid after each run
-- **Library:** `ib_async` (actively maintained successor to `ib_insync`)
+- **Database:** `C:\nmr-trader\positions.db` — SQLite
+- **Alerts:** Daily summary email via SendGrid
+- **MAX_POSITIONS in trade.py:** Updated to 60 to match V33d
 
-### GitHub auto-push (paper trading results)
+### GitHub auto-push
 
-`trade.py` pushes paper trading results to the repo after each run. Results are visible at:
-- `github.com/ckurau/naive-mean-reversion/tree/main/paper_trading/summary.json` — daily summary stats
-- `github.com/ckurau/naive-mean-reversion/tree/main/paper_trading/trades.csv` — full trade log
-- `github.com/ckurau/naive-mean-reversion/tree/main/paper_trading/open_positions.csv` — current open positions
+`trade.py` pushes paper trading results to the repo after each run:
+- `paper_trading/summary.json` — daily summary stats
+- `paper_trading/trades.csv` — full trade log
+- `paper_trading/open_positions.csv` — current open positions
 
-In a new session, ask Claude to check the repo directly for paper trading results rather than running manual export commands.
+In a new session, ask Claude to check the repo directly for paper trading results.
 
-### Local commands — checking progress
+### Local commands
 
 ```bat
 cd C:\nmr-trader
 venv\Scripts\activate
 ```
 
-**Check win rate and total P&L:**
+**Check win rate:**
 ```bat
 python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); trades = pd.read_sql(\"SELECT * FROM trade_log WHERE exit_reason != 'partial_exit'\", conn); conn.close(); total = len(trades); wr = len(trades[trades['pnl_usd']>0])/total*100 if total else 0; pnl = trades['pnl_usd'].sum() if total else 0; print(f'Completed trades: {total}'); print(f'Win rate: {wr:.1f}%  (target: 57-63%)'); print(f'Total P&L: ${pnl:,.2f}'); print('WARNING: win rate below 55%' if total >= 30 and wr < 55 else 'CAUTION: below 57%' if total >= 30 and wr < 57 else 'Win rate OK' if total >= 30 else f'({total}/30 trades before win rate is meaningful)')"
 ```
 
-**Check current open positions:**
-```bat
-python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); pos = pd.read_sql('SELECT * FROM open_positions', conn); conn.close(); print(f'Open positions: {len(pos)} / 60'); [print(f\"  {r['ticker']}: entered {r['entry_date']} | tier {r['tier']} | {r['shares_remaining']:.0f}sh @ ${r['entry_price']:.2f}\") for _, r in pos.iterrows()] if not pos.empty else print('  None')"
-```
-
 ### Pass criteria for moving to live capital
-
-After at least 3 months of paper trading:
 
 | Check | Target | Action if failing |
 |---|---|---|
-| Win rate | 57–63% over 100+ trades | Stop — review signal logic vs backtest parameters |
+| Win rate | 57–63% over 100+ trades | Stop — review signal logic |
 | Trades per month | 65–90 | Check universe fetch and signal parameters |
-| Worst single month | Better than −15% | Acceptable if isolated; review if repeated |
-| Script ran every trading day | 100% | Fix Gateway startup or Task Scheduler issue |
-| Slippage vs prior close | Under 0.6% avg | Higher for small-caps is expected |
+| Worst single month | Better than −15% | Review if repeated |
+| Script ran every trading day | 100% | Fix Gateway startup |
+| Slippage vs prior close | Under 0.6% avg | Higher for small-caps expected |
 
 ### Going live — two changes only
 
-**Change 1 — in `C:\nmr-trader\trade.py`:**
 ```python
 IBKR_PORT = 4001   # was 4002 (paper)
 ```
-
-**Change 2 — in IBKR Gateway settings:**
-Switch login from Paper Trading to Live account. Restart Gateway.
+Switch Gateway from Paper to Live account. No other changes.
 
 ### Troubleshooting
 
 | Problem | Likely cause | Fix |
 |---|---|---|
 | "IBKR connection failed" | Gateway not running | Open Gateway and log in before 6:25 AM PT |
-| Script didn't run at 6:25 AM | PC was asleep | Power & Sleep → Sleep → Never |
-| 0 entry candidates every day | SPY below 200d MA | Normal in bear market — not a bug |
-| Win rate < 55% after 50 trades | Signal logic drift | Verify trade.py constants match backtest-nmr.py exactly |
+| Script didn't run | PC was asleep | Power & Sleep → Sleep → Never |
+| 0 entry candidates | SPY below 200d MA | Normal in bear market |
+| Win rate < 55% after 50 trades | Signal logic drift | Verify trade.py constants match backtest-nmr.py |
 
 ---
 
 ## Next Steps
 
 ### Step 1 — Walk-Forward Validation ✅ COMPLETE
-V33d walk-forward: OOS avg 18.37%, 7/8 positive windows. Pass criteria exceeded.
+V33d: OOS avg 18.37%, 7/8 positive. V32e: OOS avg 5.58%, 6/8 positive.
 
 ### Step 2 — Paper Trading ✅ ACTIVE (since April 2026)
 Pass criteria: 3 months, win rate 57–63% over 100+ trades, no month worse than −15%.
-Note: `trade.py` updated to MAX_POSITIONS=60 to match V33d.
 
 ### Step 3 — Go Live ⏳
 Only after paper trading passes all criteria.
 
-### Step 4 — Future Edge Improvements
-The strategy is fully optimised on the backtest side (V34a through V36a all confirmed ceiling). Remaining genuine improvements:
-- **Historical earnings database** — removes lookahead bias. Estimated impact: +0.3 to +0.5% CAGR
-- **Live OOS validation** — 6–12 months of paper trading is the only true remaining out-of-sample test
-- **MOO slippage analysis** — compare actual fill prices to prior-day close once 100+ trades complete
+### Step 4 — Future improvements
+The strategy is fully optimised through V37d. Do not retry entry filters or exit mechanics. Remaining genuine improvements:
+- **Historical earnings database** — removes lookahead bias. Est. +0.3 to +0.5% CAGR
+- **Live OOS validation** — paper trading is the only true remaining out-of-sample test
+- **MOO slippage analysis** — compare fill prices to prior close once 100+ trades complete
 
 ---
 
 ## All Runs Table
 
-### V21–V36a: The Breakthrough Sequence
+### V21–V37d: Complete Sequence
 
 | Version | Key Change | CAGR | Final Equity | Max DD | Sharpe |
 |---|---|---|---|---|---|
-| V21 | Run 5 exact + velocity crash pause | 7.55% | $476k | −22.6% | 0.72 |
+| V21 | Run 5 + velocity crash pause | 7.55% | $476k | −22.6% | 0.72 |
 | V22 | − DD scaling, − comm floor, − VIX pause | 9.14% | $652k | −26.3% | 0.71 |
 | V23 | 40 pos ×4% scaled (regression) | 8.65% | $592k | −26.7% | 0.68 |
-| V24 | 40 pos ×5% unchanged, VIX_LOW 18 | 10.64% | $875k | −32.5% | 0.68 |
+| V24 | 40 pos ×5% unchanged | 10.64% | $875k | −32.5% | 0.68 |
 | V25 | VIX_HIGH 25→30, cooldown 2d | 10.94% | $926k | −34.5% | 0.69 |
 | V26 | VIX high-side penalty removed | 11.28% | $990k | −32.3% | 0.70 |
 | V27 | VIX_LOW 18→20 | 11.43% | $1,019k | −33.9% | 0.70 |
 | V28 | VIX_LOW 20→25 | 12.58% | $1,268k | −34.9% | 0.72 |
-| V29 | POSITION_SIZE_HIGH 7.5%→9% (from V27) | 12.60% | $1,274k | −38.5% | 0.68 |
+| V29 | POSITION_SIZE_HIGH 7.5%→9% | 12.60% | $1,274k | −38.5% | 0.68 |
 | V30 | V28 + V29 combined | 14.42% | $1,797k | −39.4% | 0.72 |
 | V30+S&P600 | + S&P 600 SmallCap universe | 16.01% | $2,414k | −48.65% | 0.73 |
-| V31 | VIX 10d trend filter + $10M floor + DD scaling | 11.03% | $938k | −35.92% | 0.64 |
+| V31 | VIX 10d trend + $10M floor + DD scaling | 11.03% | $938k | −35.92% | 0.64 |
 | V31b | $10M floor + DD scaling only | 13.17% | $1,419k | −39.16% | 0.68 |
 | V32a | ATR-based position sizing | 15.98% | $2,403k | −48.61% | 0.73 |
-| V32b | Tier 3 hold window 8→6 days | 15.87% | $2,354k | −44.87% | 0.75 |
-| V32c | VIX 5d trend: 80% size when VIX falling | 15.28% | $2,111k | −44.30% | 0.74 |
+| V32b | Tier 3 hold 8→6 days | 15.87% | $2,354k | −44.87% | 0.75 |
+| V32c | VIX 5d trend: 80% size when falling | 15.28% | $2,111k | −44.30% | 0.74 |
 | V32d | V32b + V32c combined | 15.37% | $2,145k | −39.21% | **0.77** |
 | V32e | Composite ranking: RSI(2)/ATR_pct | 16.10% | $2,454k | −48.61% | 0.73 |
 | V32f | V32d + V32e combined | 15.31% | $2,123k | −39.62% | 0.77 |
@@ -475,12 +381,18 @@ The strategy is fully optimised on the backtest side (V34a through V36a all conf
 | V33b-d | 50 pos + V32d controls | 15.30% | $2,119k | −47.13% | 0.70 |
 | V33c | MAX_POSITIONS raised 50→55 | 17.16% | $2,982k | −53.27% | 0.69 |
 | **V33d** | **MAX_POSITIONS raised 55→60** | **17.41%** | **$3,124k** | **−54.73%** | **0.68** |
-| V34a | Partial loss exit: day 4 if down ≥2%, trim 50% | 15.50% | $2,198k | −52.61% | 0.66 |
-| V34b | V34a + Tier 1 target 2% → 3% (contaminated) | 15.44% | $2,172k | −52.48% | 0.66 |
-| V35a | Tier 1: 2%→3%, Tier 2: 2%→2.5% (clean base) | 17.26% | $3,038k | −56.46% | 0.68 |
-| V36a | Signal stress filter: >40 signals → 0.5× size | 16.42% | $2,605k | −52.19% | 0.67 |
+| V34a | Partial loss exit: day 4, ≥−2%, trim 50% | 15.50% | $2,198k | −52.61% | 0.66 |
+| V34b | V34a + Tier 1 target 2%→3% (contaminated) | 15.44% | $2,172k | −52.48% | 0.66 |
+| V35a | T1 3%, T2 2.5% (clean base) | 17.26% | $3,038k | −56.46% | 0.68 |
+| V36a | Signal stress: >40 signals → 0.5× size | 16.42% | $2,605k | −52.19% | 0.67 |
+| V37a | Breadth filter: <40% stocks above 20d+50d | 3.86% | $225k | −48.06% | 0.27 |
+| V37b | Index vs constituents divergence >5% | 16.55% | $2,669k | −56.04% | 0.66 |
+| V37c | MFE pause 0.5%/3d/20 trades (miscalibrated) | ~28%* | ~$1,047k* | −33.82%* | 1.17* |
+| V37d | Friday entry filter | 14.38% | $1,784k | −59.82% | 0.63 |
 
-**V33d is the confirmed ceiling. All subsequent versions regressed.**
+*V37c ran only to 2014 due to miscalibration (fired 54.8% of days). Numbers not comparable.
+
+**V33d is the confirmed ceiling. All subsequent versions regressed. Optimisation is complete.**
 
 ---
 
@@ -516,17 +428,19 @@ The strategy is fully optimised on the backtest side (V34a through V36a all conf
 2. **Settings → Actions → General → Workflow permissions → Read and write**
 3. **Actions → Naive MR Backtest → Run workflow**
 
+Walk-forward: set `run_walkforward = true` in workflow dispatch inputs. Adds 6–8 hours.
+
 ### Local
 ```bash
 pip install -r requirements.txt
-python backtest-nmr.py      # main backtest (~90-120 min with S&P 600)
-python walkforward.py       # walk-forward (~6-8 hours with S&P 600)
+python backtest-nmr.py      # ~90-120 min with S&P 600
+python walkforward.py       # ~6-8 hours with S&P 600
 ```
 
 ### Health Checks
 - `[Universe] Total unique tickers` < 1800: S&P 600 fetch failed
 - `win_rate < 55%`: verify uniform 8-day windows; check SPY regime filter
-- `CAGR < 15%` with no code changes: verify `MAX_POSITIONS = 60` and version is V33d
+- `CAGR < 15%` with no changes: verify `MAX_POSITIONS = 60` and version V33d
 - `trades_per_year < 700`: Tier 3 may be disabled — check `MIN_CONSEC_DOWN = 4`
 
 ---
