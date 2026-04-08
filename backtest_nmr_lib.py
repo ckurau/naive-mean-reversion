@@ -1,43 +1,36 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V37a
+""" Enhanced Naive Mean Reversion (MR) Backtest — V37b
 ==================================================
 Base: V33d — $3,124,041 final equity, 17.41% CAGR. Current best.
 
-V37a CHANGE vs V33d (1 addition — no other changes):
-  [V37a-1] Breadth filter: block new entries when market breadth is weak.
-           Breadth = % of S&P 500 stocks simultaneously above their 20d MA
-           AND above their 50d MA.
-           If breadth < BREADTH_THRESHOLD (40%), no new entries that day.
-           Existing positions continue to their normal exits unchanged.
+V37b CHANGE vs V33d (1 addition — no other changes):
+  [V37b-1] Index vs constituents divergence filter.
+           Each day, compare SPY's N-day return vs the median N-day return
+           of stocks in the universe. If internals are much weaker than the
+           index (divergence exceeds threshold), block new entries.
+           This detects "stealth bear markets" where SPY looks okay but
+           individual stocks are quietly breaking down.
 
 RATIONALE:
-  In grind-down regimes, market breadth collapses before SPY hits its 200d MA.
-  The 200d filter is too slow — it blocks entries only after significant damage.
-  Breadth measures internals directly: if fewer than 40% of stocks are above
-  both their 20d and 50d MA simultaneously, the market is in broad deterioration,
-  not a temporary dislocation. Mean reversion edge degrades in this environment.
+  In genuine panics (2020 crash), SPY and constituents fall together and
+  recover together — mean reversion works. In stealth bears (2022 grind),
+  the index drifts down while individual stocks break more severely.
+  SPY's 200d MA filter misses the early stages of this deterioration.
+  Internal divergence (index vs median stock) detects it earlier and
+  with a completely different signal class than price-level filters.
 
-  This is different from all previous failed filters because:
-  - It does NOT react to P&L, drawdown, or win rate (outcome-based)
-  - It reacts to market structure (orthogonal signal class)
-  - It does NOT exit existing positions (no cutting winners)
-  - It only gates new entries
+  Key distinction from previous failed filters:
+  - NOT outcome-based (not P&L, drawdown, or win rate triggered)
+  - NOT a lagging price-level filter (not 200d or 50d on SPY)
+  - Measures the RELATIONSHIP between index and internals
+  - Only blocks new entries; existing positions continue normally
 
 WHAT TO LOOK FOR:
-  Pass (improvement):
-    Max DD improves meaningfully (>3pp)
-    CAGR drops less than 1% (breadth filter should rarely fire in good regimes)
-    Win rate unchanged or slightly higher (fewer bad entries)
-    Check 2022 P&L specifically — should improve
-  Fail (not worth keeping):
-    CAGR drops >1.5% (filter firing too often in good regimes)
-    2019/2020 P&L damaged (filter blocking recovery entries)
-    Win rate unchanged and DD unchanged (filter not firing when needed)
+  Pass: Max DD improves, CAGR drops <1%, 2022 P&L specifically improves
+  Fail: CAGR drops >1.5% (blocking too many good days),
+        2019/2020 P&L damaged (blocking recovery entries)
 
-RESULTS HISTORY:
-  V33d:    CAGR 17.41% | $3.12M  ← baseline
-  V34a:    CAGR 15.50% | $2.20M  ← partial loss exit (rejected)
-  V35a:    CAGR 17.26% | $3.04M  ← higher targets (rejected)
-  V36a:    CAGR 16.42% | $2.60M  ← signal density filter (rejected)
+  Key diagnostic: check what % of trading days the filter fires.
+  If >20%, threshold is too tight. If <3%, threshold too loose.
 """
 import io
 import warnings
@@ -98,17 +91,14 @@ TIER3_PARTIAL_TRIGGER = 0.0
 
 MIN_CONSEC_DOWN = TIER3_MIN_DOWN
 
-# ── [V22-1] Drawdown scaling REMOVED ─────────────────────────────────────────
 DD_SCALE_MILD          = 9.99
 DD_SCALE_SEVERE        = 9.99
 POSITION_SIZE_DD_MILD  = 0.03
 POSITION_SIZE_DD_SEVERE = 0.02
 
-# ── [V21] Velocity crash pause ────────────────────────────────────────────────
 VELOCITY_CRASH_5D_THRESHOLD = -0.12
 VELOCITY_CRASH_PAUSE_DAYS   = 5
 
-# ── Filters ───────────────────────────────────────────────────────────────────
 EARNINGS_BLACKOUT    = 3
 GAP_DOWN_MAX         = -0.015
 GAP_UP_MAX           = 0.020
@@ -123,12 +113,14 @@ COMMISSION_RATE      = 0.005
 COMMISSION_MIN       = 0.35
 EARNINGS_MONTHS      = {1, 4, 7, 10}
 
-# ── [V37a] Breadth filter ─────────────────────────────────────────────────────
-# Block new entries when fewer than BREADTH_THRESHOLD of S&P 500 stocks
-# are simultaneously above their 20d MA AND 50d MA.
-BREADTH_THRESHOLD    = 0.40   # 40% of stocks must be above both MAs
-BREADTH_MA_SHORT     = 20     # short MA window for breadth
-BREADTH_MA_LONG      = 50     # long MA window for breadth
+# ── [V37b] Index vs constituents divergence filter ────────────────────────────
+# Block entries when median universe stock return is significantly weaker
+# than SPY return over the same lookback period.
+# Divergence = SPY_return - median_stock_return
+# If divergence > DIVERGENCE_THRESHOLD, internals are breaking while
+# index looks relatively better — classic stealth bear signal.
+DIVERGENCE_LOOKBACK   = 20    # days to measure returns over
+DIVERGENCE_THRESHOLD  = 0.05  # 5%: if median stock underperforms SPY by >5% → block
 
 OUTPUT_DIR = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -291,39 +283,37 @@ def _compute_rsi(series: pd.Series, period: int) -> pd.Series:
     return 100 - (100 / (1 + rs))
 
 
-def build_breadth_series(price_data: dict[str, pd.DataFrame]) -> pd.Series:
+def build_divergence_series(price_data: dict[str, pd.DataFrame],
+                             spy_df: pd.DataFrame) -> pd.Series:
     """
-    [V37a] Compute daily breadth: fraction of stocks simultaneously above
-    their BREADTH_MA_SHORT (20d) AND BREADTH_MA_LONG (50d) moving averages.
-    Uses only S&P 500 tickers (sp500_tickers) to keep breadth measurement
-    consistent — breadth of the S&P 500 is a well-established market indicator.
-    Falls back to all available tickers if S&P 500 subset is too small.
+    [V37b] Compute daily divergence: SPY N-day return minus median stock N-day return.
+    Positive divergence = index stronger than internals = stealth bear signal.
     """
-    print("[Breadth] Computing breadth series ...")
+    print("[Divergence] Computing index vs constituents divergence ...")
 
-    # Collect close prices for all tickers into a single DataFrame
     closes = {}
     for tkr, df in price_data.items():
         if "Close" in df.columns:
             closes[tkr] = df["Close"].squeeze()
 
     if not closes:
-        print("[Breadth] WARNING: no close data available, breadth disabled")
+        print("[Divergence] WARNING: no close data, divergence disabled")
         return pd.Series(dtype=float)
 
-    close_df = pd.DataFrame(closes)
+    close_df    = pd.DataFrame(closes)
+    stock_ret   = close_df.pct_change(DIVERGENCE_LOOKBACK)
+    median_ret  = stock_ret.median(axis=1)
 
-    # Compute 20d and 50d MAs, then check if price > both
-    ma_short = close_df.rolling(BREADTH_MA_SHORT).mean()
-    ma_long  = close_df.rolling(BREADTH_MA_LONG).mean()
-    above_both = (close_df > ma_short) & (close_df > ma_long)
+    spy_close   = spy_df["Close"].squeeze()
+    spy_ret     = spy_close.pct_change(DIVERGENCE_LOOKBACK)
 
-    # Daily breadth = fraction of stocks above both MAs
-    breadth = above_both.mean(axis=1)
-    print(f"[Breadth] Computed {len(breadth)} days. "
-          f"Avg breadth: {breadth.mean():.2%}, "
-          f"Min: {breadth.min():.2%}, Max: {breadth.max():.2%}")
-    return breadth
+    # Align on common dates
+    divergence  = spy_ret.reindex(median_ret.index) - median_ret
+
+    print(f"[Divergence] Computed {divergence.dropna().__len__()} days. "
+          f"Avg: {divergence.mean():.3f}, "
+          f"Days above threshold: {(divergence > DIVERGENCE_THRESHOLD).sum()}")
+    return divergence
 
 
 def download_reference_data() -> tuple:
@@ -489,11 +479,11 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V37a simulation (V33d + breadth filter) ...")
+    print("\n[Backtest] Running V37b simulation (V33d + divergence filter) ...")
 
-    # [V37a] Build breadth series from price data
-    breadth_series = build_breadth_series(price_data)
-    breadth_dict   = breadth_series.to_dict() if not breadth_series.empty else {}
+    # [V37b] Build divergence series
+    divergence_series = build_divergence_series(price_data, spy_df)
+    divergence_dict   = divergence_series.to_dict() if not divergence_series.empty else {}
 
     spy_regime  = spy_df["spy_ok"].to_dict()
     all_dates: set = set()
@@ -515,8 +505,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     cooldown_map: dict = {}
     last_vix_spike      = None
     last_velocity_crash = None
-
-    breadth_blocked_days = 0  # diagnostic counter
+    divergence_blocked_days = 0
 
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok = spy_regime.get(today, True)
@@ -535,13 +524,13 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         except Exception:
             pass
 
-        # [V37a] Breadth check
-        breadth_ok = True
-        if breadth_dict:
-            b = breadth_dict.get(today, None)
-            if b is not None and not np.isnan(b) and b < BREADTH_THRESHOLD:
-                breadth_ok = False
-                breadth_blocked_days += 1
+        # [V37b] Divergence check
+        divergence_ok = True
+        if divergence_dict:
+            d = divergence_dict.get(today, None)
+            if d is not None and not np.isnan(d) and d > DIVERGENCE_THRESHOLD:
+                divergence_ok = False
+                divergence_blocked_days += 1
 
         # Drawdown tracking
         if portfolio_peak is None:
@@ -621,8 +610,8 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        # [V37a] Block entries if breadth weak (in addition to existing filters)
-        if not spy_ok or paused or velocity_paused or not breadth_ok:
+        # [V37b] Block entries if divergence exceeds threshold
+        if not spy_ok or paused or velocity_paused or not divergence_ok:
             continue
         if len(open_positions) >= MAX_POSITIONS:
             continue
@@ -683,13 +672,13 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             }
 
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
-    print(f"[V37a] Breadth blocked entry on {breadth_blocked_days} days "
-          f"({breadth_blocked_days/len(trading_dates)*100:.1f}% of trading days)")
+    print(f"[V37b] Divergence blocked entry on {divergence_blocked_days} days "
+          f"({divergence_blocked_days/len(trading_dates)*100:.1f}% of trading days)")
     return pd.DataFrame(trades)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. Metrics
+# 7. Metrics (identical to V33d)
 # ─────────────────────────────────────────────────────────────────────────────
 def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     if trades_df.empty:
@@ -726,8 +715,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
                 cur_dur = 0; prev_peak = row["equity"]
             else:
                 cur_dur += 1
-                if cur_dur > max_dur:
-                    max_dur = cur_dur
+                if cur_dur > max_dur: max_dur = cur_dur
         max_dd_duration_days = max_dur
     except Exception:
         pass
@@ -755,8 +743,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
             window = monthly_ret.iloc[i-11:i+1]
             ws  = window.mean() / window.std() * np.sqrt(12) if window.std() > 0 else 0
             rolling_sharpe_vals.append(ws)
-            wd  = window[window < 0]
-            wds = wd.std() if len(wd) > 1 else 0
+            wd  = window[window < 0]; wds = wd.std() if len(wd) > 1 else 0
             wso = window.mean() / wds * np.sqrt(12) if wds > 0 else 0
             rolling_sortino_vals.append(wso)
 
@@ -774,8 +761,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     if "tier" in trades_df.columns:
         for t in sorted(trades_df["tier"].unique()):
             t_df  = trades_df[trades_df["tier"] == t]
-            t_win = t_df[t_df["pnl_usd"] > 0]
-            t_los = t_df[t_df["pnl_usd"] <= 0]
+            t_win = t_df[t_df["pnl_usd"] > 0]; t_los = t_df[t_df["pnl_usd"] <= 0]
             tier_stats[f"tier_{t}"] = {
                 "trades":   len(t_df),
                 "win_rate": round((t_df["pnl_usd"] > 0).mean() * 100, 1),
@@ -802,7 +788,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":         "V37a",
+        "version":         "V37b",
         "period_start":    start_dt.date().isoformat(),
         "period_end":      end_dt.date().isoformat(),
         "years_tested":    round(years, 2),
@@ -836,22 +822,21 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "tier_stats":           tier_stats,
         "year_stats":           year_stats,
         "parameters": {
-            "version":            "V37a",
-            "base":               "V33d + breadth filter (20d AND 50d MA, threshold 40%)",
-            "universe":           "S&P500 + S&P400 + S&P600",
-            "breadth_threshold":  f"{BREADTH_THRESHOLD:.0%}",
-            "breadth_ma_short":   BREADTH_MA_SHORT,
-            "breadth_ma_long":    BREADTH_MA_LONG,
-            "min_consec_down":    MIN_CONSEC_DOWN,
-            "max_positions":      MAX_POSITIONS,
-            "tier1_6plus":        "2% target, 8d, partial at +1%",
-            "tier2_5days":        "2% target, 8d, no partial",
-            "tier3_4days":        "2% target, 8d, no partial",
-            "entry_ranking":      "Composite RSI(2)/ATR_pct [V32e]",
+            "version":              "V37b",
+            "base":                 "V33d + index vs constituents divergence filter",
+            "universe":             "S&P500 + S&P400 + S&P600",
+            "divergence_lookback":  DIVERGENCE_LOOKBACK,
+            "divergence_threshold": f"{DIVERGENCE_THRESHOLD:.0%}",
+            "min_consec_down":      MIN_CONSEC_DOWN,
+            "max_positions":        MAX_POSITIONS,
+            "tier1_6plus":          "2% target, 8d, partial at +1%",
+            "tier2_5days":          "2% target, 8d, no partial",
+            "tier3_4days":          "2% target, 8d, no partial",
+            "entry_ranking":        "Composite RSI(2)/ATR_pct [V32e]",
             "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d",
-            "vix_sizing":         f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
-            "commission":         f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
-            "dd_scale":           "REMOVED — thresholds set unreachable [V22]",
+            "vix_sizing":           f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
+            "commission":           f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
+            "dd_scale":             "REMOVED — thresholds set unreachable [V22]",
         },
     }
     return metrics, eq_df_dt.reset_index()
@@ -867,7 +852,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V37a (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V37b (S&P 500 + 400 + 600)")
     print("=" * 70)
 
     for section, keys in [
