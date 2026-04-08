@@ -1,37 +1,35 @@
-""" Enhanced Naive Mean Reversion (MR) Backtest — V37c
+""" Enhanced Naive Mean Reversion (MR) Backtest — V37d
 ==================================================
 Base: V33d — $3,124,041 final equity, 17.41% CAGR. Current best.
 
-V37c CHANGE vs V33d (1 addition — no other changes):
-  [V37c-1] MFE (Maximum Favorable Excursion) entry pause.
-           After each trade entry, track the maximum gain the position
-           achieved within the first MFE_LOOKBACK_DAYS days.
-           If the rolling average MFE of the last MFE_WINDOW trades is
-           below MFE_THRESHOLD, pause new entries.
-
-           This answers: "Are oversold bounces actually happening right now?"
-           In grind-downs, trades stay flat or fall further in days 1-3.
-           In genuine panics, positions see violent snapbacks almost immediately.
-           That separation is the signal.
+V37d CHANGE vs V33d (1 addition — no other changes):
+  [V37d-1] Friday entry filter: skip all new entries on Fridays.
+           Day-of-week analysis showed Friday is the only day with
+           negative avg return (−0.01%) and lowest win rate (54.65%)
+           vs Wednesday best (+0.34% avg return, 57.68% WR).
+           Existing positions continue to their normal exits unchanged.
 
 RATIONALE:
-  This is fundamentally different from everything previously tested:
-  - NOT drawdown-based (not reacting to portfolio P&L)
-  - NOT win-rate-based (not reacting to trade outcomes)
-  - NOT price-level-based (not SPY 200d or similar)
-  - Measures BOUNCE BEHAVIOR of recent positions in days 1-3
-  - Only pauses new entries; existing positions continue normally
-  - Does NOT cut winners
-
-  Implementation uses daily High as proxy for MFE (max intraday gain
-  vs entry price over first MFE_LOOKBACK_DAYS days), which is available
-  in the existing price data.
+  Friday entries systematically underperform across 21 years of data.
+  This likely reflects weekend risk — positions entered Friday must be
+  held over 2 days of news flow before the next exit opportunity.
+  The filter is structural (calendar-based), not outcome-based, so it
+  avoids the pattern of every previous protective mechanism that failed
+  by reacting to P&L or drawdown.
 
 WHAT TO LOOK FOR:
-  Pass: Max DD improves, CAGR drops <1%, 2022 P&L improves
-        Check % of days paused — should be 5-15% to be meaningful
-  Fail: CAGR drops >1.5%, 2019/2020 damaged (blocking recovery entries)
-        Or pause rate <2% (filter never fires) / >25% (too aggressive)
+  Pass criteria:
+    CAGR stays within 0.5% of V33d (17.41%) — Friday is ~20% of trading days
+    but only ~20% of trades, so impact should be modest
+    Sharpe improves slightly (removing worst-quality entries)
+    Win rate rises slightly
+    2022 P&L may improve marginally
+  Fail criteria:
+    CAGR drops >1% (too many good trades on Fridays)
+    Win rate unchanged (day-of-week effect was noise)
+
+  Key diagnostic: check trades/year. Should drop from 1,043 to ~835
+  (removing ~20% of entries). If less than 800, the filter is too broad.
 """
 import io
 import warnings
@@ -48,7 +46,7 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Config
+# Config — identical to V33d
 # ─────────────────────────────────────────────────────────────────────────────
 START_DATE  = "2004-01-01"
 END_DATE    = datetime.date.today().isoformat()
@@ -114,12 +112,9 @@ COMMISSION_RATE      = 0.005
 COMMISSION_MIN       = 0.35
 EARNINGS_MONTHS      = {1, 4, 7, 10}
 
-# ── [V37c] MFE-based entry pause ──────────────────────────────────────────────
-# Track max gain (using daily High as proxy) achieved in first N days after entry.
-# If rolling avg MFE of last M completed trades is below threshold, pause entries.
-MFE_LOOKBACK_DAYS = 3      # days after entry to measure max favorable move
-MFE_WINDOW        = 20     # rolling window of recent trades to average over
-MFE_THRESHOLD     = 0.005  # 0.5%: if avg MFE below this → bounces are weak → pause
+# ── [V37d] Friday filter ──────────────────────────────────────────────────────
+# weekday() == 4 is Friday (0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri)
+SKIP_FRIDAY_ENTRIES = True
 
 OUTPUT_DIR = Path("results")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -441,43 +436,11 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
     return False, last_spike_date
 
 
-def compute_mfe(tkr: str, entry_price: float, entry_date,
-                signals: dict, lookback_days: int) -> float:
-    """
-    [V37c] Compute max favorable excursion for a trade.
-    Uses daily High as proxy for intraday MFE over first lookback_days days.
-    Returns the maximum (High - entry_price) / entry_price seen in that window.
-    Returns 0.0 if data not available.
-    """
-    if tkr not in signals:
-        return 0.0
-    tkr_df = signals[tkr]
-    try:
-        entry_ts  = pd.Timestamp(entry_date)
-        entry_loc = tkr_df.index.get_loc(entry_ts) if entry_ts in tkr_df.index else None
-        if entry_loc is None:
-            # Find nearest date at or after entry
-            future = tkr_df.index[tkr_df.index >= entry_ts]
-            if len(future) == 0:
-                return 0.0
-            entry_loc = tkr_df.index.get_loc(future[0])
-        end_loc   = min(entry_loc + lookback_days, len(tkr_df) - 1)
-        window_df = tkr_df.iloc[entry_loc:end_loc + 1]
-        if window_df.empty or "High" not in window_df.columns:
-            return 0.0
-        max_high  = float(window_df["High"].max())
-        mfe       = (max_high - entry_price) / entry_price
-        return max(mfe, 0.0)
-    except Exception:
-        return 0.0
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. Backtest simulation
 # ─────────────────────────────────────────────────────────────────────────────
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
-    print("\n[Backtest] Running V37c simulation (V33d + MFE entry pause) ...")
-
+    print("\n[Backtest] Running V37d simulation (V33d + Friday filter) ...")
     spy_regime  = spy_df["spy_ok"].to_dict()
     all_dates: set = set()
     for df in price_data.values():
@@ -498,13 +461,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
     cooldown_map: dict = {}
     last_vix_spike      = None
     last_velocity_crash = None
-
-    # [V37c] MFE tracking
-    # Store (entry_date, entry_price, ticker) for positions entered in last MFE_WINDOW trades
-    # We compute MFE lazily when the position has been held long enough
-    recent_mfe_buffer: list[dict] = []   # holds pending MFE calculations
-    completed_mfe:     list[float] = []  # rolling window of computed MFEs
-    mfe_paused_days    = 0
+    friday_blocked      = 0
 
     for today in tqdm(trading_dates, desc="Simulating"):
         spy_ok = spy_regime.get(today, True)
@@ -523,31 +480,10 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         except Exception:
             pass
 
-        # [V37c] Update MFE buffer: compute MFE for positions that have been
-        # held long enough (>= MFE_LOOKBACK_DAYS since entry)
-        still_pending = []
-        for pending in recent_mfe_buffer:
-            days_since_entry = (pd.Timestamp(today) - pd.Timestamp(pending["entry_date"])).days
-            if days_since_entry >= MFE_LOOKBACK_DAYS:
-                mfe_val = compute_mfe(
-                    pending["ticker"], pending["entry_price"],
-                    pending["entry_date"], signals, MFE_LOOKBACK_DAYS
-                )
-                completed_mfe.append(mfe_val)
-                # Keep only last MFE_WINDOW values
-                if len(completed_mfe) > MFE_WINDOW:
-                    completed_mfe.pop(0)
-            else:
-                still_pending.append(pending)
-        recent_mfe_buffer = still_pending
-
-        # [V37c] Check if MFE signal is weak — only if we have enough history
-        mfe_ok = True
-        if len(completed_mfe) >= MFE_WINDOW:
-            avg_mfe = np.mean(completed_mfe)
-            if avg_mfe < MFE_THRESHOLD:
-                mfe_ok = False
-                mfe_paused_days += 1
+        # [V37d] Friday check — signal day is today, entry is next day (Saturday is impossible
+        # so entries on Friday signal = Monday open). The signal fires today (Friday) but
+        # the actual entry open is Monday. We block Friday signals so Monday entries don't occur.
+        is_friday = pd.Timestamp(today).weekday() == 4
 
         # Drawdown tracking
         if portfolio_peak is None:
@@ -627,8 +563,11 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
         for tkr in to_close:
             del open_positions[tkr]
 
-        # [V37c] Block entries if MFE signal is weak
-        if not spy_ok or paused or velocity_paused or not mfe_ok:
+        # [V37d] Block entries on Fridays (signal day) — entry would be Monday open
+        if not spy_ok or paused or velocity_paused:
+            continue
+        if SKIP_FRIDAY_ENTRIES and is_friday:
+            friday_blocked += 1
             continue
         if len(open_positions) >= MAX_POSITIONS:
             continue
@@ -672,13 +611,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
             gap_pct    = (entry_price - prev_close) / prev_close
             if gap_pct < GAP_DOWN_MAX or gap_pct > GAP_UP_MAX:
                 continue
-            tier_cfg    = get_tier(consec_val)
-            pos_size    = get_position_size(today, vix_df, current_drawdown)
-            shares      = (portfolio_value * pos_size) / entry_price
-            entry_comm  = calc_commission(shares, entry_price)
-            entry_date  = tkr_df.index[today_idx + 1]
+            tier_cfg   = get_tier(consec_val)
+            pos_size   = get_position_size(today, vix_df, current_drawdown)
+            shares     = (portfolio_value * pos_size) / entry_price
+            entry_comm = calc_commission(shares, entry_price)
             open_positions[tkr] = {
-                "entry_date": entry_date, "entry_price": entry_price,
+                "entry_date": tkr_df.index[today_idx + 1], "entry_price": entry_price,
                 "shares": shares, "shares_remaining": shares,
                 "rsi2_at_entry": rsi_val, "consec_down_at_entry": consec_val,
                 "profit_target": tier_cfg["profit_target"], "hold_days": tier_cfg["hold_days"],
@@ -688,21 +626,14 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.Da
                 "partial_done": False, "tier": tier_cfg["tier"],
                 "entry_commission": entry_comm,
             }
-            # [V37c] Add to MFE tracking buffer
-            recent_mfe_buffer.append({
-                "ticker":       tkr,
-                "entry_date":   entry_date,
-                "entry_price":  entry_price,
-            })
 
     print(f"[Backtest] Complete — {len(trades)} trades executed.")
-    print(f"[V37c] MFE pause fired on {mfe_paused_days} days "
-          f"({mfe_paused_days/len(trading_dates)*100:.1f}% of trading days)")
+    print(f"[V37d] Friday entry blocks: {friday_blocked} days")
     return pd.DataFrame(trades)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. Metrics (identical to V33d)
+# 7. Metrics
 # ─────────────────────────────────────────────────────────────────────────────
 def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     if trades_df.empty:
@@ -812,7 +743,7 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
     time_stop_rt = round(time_stop_n / len(full_exits) * 100, 1) if len(full_exits) else 0
 
     metrics = {
-        "version":         "V37c",
+        "version":         "V37d",
         "period_start":    start_dt.date().isoformat(),
         "period_end":      end_dt.date().isoformat(),
         "years_tested":    round(years, 2),
@@ -846,22 +777,20 @@ def compute_metrics(trades_df: pd.DataFrame) -> tuple:
         "tier_stats":           tier_stats,
         "year_stats":           year_stats,
         "parameters": {
-            "version":          "V37c",
-            "base":             "V33d + MFE-based entry pause",
-            "universe":         "S&P500 + S&P400 + S&P600",
-            "mfe_lookback_days": MFE_LOOKBACK_DAYS,
-            "mfe_window":       MFE_WINDOW,
-            "mfe_threshold":    f"{MFE_THRESHOLD:.1%}",
-            "min_consec_down":  MIN_CONSEC_DOWN,
-            "max_positions":    MAX_POSITIONS,
-            "tier1_6plus":      "2% target, 8d, partial at +1%",
-            "tier2_5days":      "2% target, 8d, no partial",
-            "tier3_4days":      "2% target, 8d, no partial",
-            "entry_ranking":    "Composite RSI(2)/ATR_pct [V32e]",
+            "version":           "V37d",
+            "base":              "V33d + Friday entry filter",
+            "universe":          "S&P500 + S&P400 + S&P600",
+            "skip_friday":       "Yes — no new entries on Fridays (signal day)",
+            "min_consec_down":   MIN_CONSEC_DOWN,
+            "max_positions":     MAX_POSITIONS,
+            "tier1_6plus":       "2% target, 8d, partial at +1%",
+            "tier2_5days":       "2% target, 8d, no partial",
+            "tier3_4days":       "2% target, 8d, no partial",
+            "entry_ranking":     "Composite RSI(2)/ATR_pct [V32e]",
             "velocity_crash_pause": f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → pause {VELOCITY_CRASH_PAUSE_DAYS}d",
-            "vix_sizing":       f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
-            "commission":       f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
-            "dd_scale":         "REMOVED — thresholds set unreachable [V22]",
+            "vix_sizing":        f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
+            "commission":        f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
+            "dd_scale":          "REMOVED — thresholds set unreachable [V22]",
         },
     }
     return metrics, eq_df_dt.reset_index()
@@ -877,7 +806,7 @@ def save_outputs(trades_df, metrics, eq_df):
         json.dump(metrics, f, indent=2, default=str)
 
     print("\n" + "=" * 70)
-    print("  NAIVE MR BACKTEST — V37c (S&P 500 + 400 + 600)")
+    print("  NAIVE MR BACKTEST — V37d (S&P 500 + 400 + 600)")
     print("=" * 70)
 
     for section, keys in [
