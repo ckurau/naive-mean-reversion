@@ -1,6 +1,6 @@
-# “”” Enhanced Naive Mean Reversion (MR) Backtest — V34
+# “”” Enhanced Naive Mean Reversion (MR) Backtest – V34
 
-Base: V33d — $3,124,041 final equity, 17.41% CAGR. Previous best.
+Base: V33d – $3,124,041 final equity, 17.41% CAGR. Previous best.
 
 V34 CHANGES vs V33d:
 [V34-C3] GAP_DOWN_MAX tightened -1.5% → -1.0%
@@ -21,9 +21,9 @@ Sharpe:        0.71        (was 0.68)
 Trades/Year:   1,025       (was 1,043)
 
 REJECTED IN V38a (do not retry):
-C1 IBS < 0.35 filter   — lost $2.15M, killed 26% of trades
-C2 EMA 20/50 stack     — lost $1.47M, worsened MaxDD simultaneously
-C4 double cooldown     — neutral, fires too rarely to matter
+C1 IBS < 0.35 filter   – lost $2.15M, killed 26% of trades
+C2 EMA 20/50 stack     – lost $1.47M, worsened MaxDD simultaneously
+C4 double cooldown     – neutral, fires too rarely to matter
 
 V34 is the confirmed ceiling. Paper trading is the only remaining signal.
 
@@ -210,7 +210,7 @@ print(f”[Universe] {label}: {len(syms)} symbols (table {i})”)
 found = True
 break
 if not found:
-print(f”[Universe] {label}: WARNING — no valid ticker table found”)
+print(f”[Universe] {label}: WARNING – no valid ticker table found”)
 except Exception as e:
 print(f”[Universe] {label} failed: {e}”)
 
@@ -650,7 +650,7 @@ for today in tqdm(trading_dates, desc="Simulating"):
             "entry_commission": entry_comm,
         }
 
-print(f"[Backtest] Complete — {len(trades)} trades executed.")
+print(f"[Backtest] Complete -- {len(trades)} trades executed.")
 return pd.DataFrame(trades)
 ```
 
@@ -824,7 +824,7 @@ metrics = {
             f"pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]"),
         "vix_sizing":  f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
         "commission":  f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
-        "dd_scale":    "REMOVED — thresholds set unreachable [V22]",
+        "dd_scale":    "REMOVED -- thresholds set unreachable [V22]",
     },
 }
 return metrics, eq_df_dt.reset_index()
@@ -844,7 +844,7 @@ json.dump(metrics, f, indent=2, default=str)
 
 ```
 print("\n" + "=" * 70)
-print("  NAIVE MR BACKTEST — V34 (S&P 500 + 400 + 600)")
+print("  NAIVE MR BACKTEST -- V34 (S&P 500 + 400 + 600)")
 print("=" * 70)
 
 for section, keys in [
