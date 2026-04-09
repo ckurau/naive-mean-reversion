@@ -1,39 +1,11 @@
-# -*- coding: utf-8 -*-
+# V34 - backtest_nmr_lib.py
 
-# “”” Enhanced Naive Mean Reversion (MR) Backtest – V34
+# Changes vs V33d:
 
-Base: V33d – $3,124,041 final equity, 17.41% CAGR. Previous best.
+# [C3] GAP_DOWN_MAX = -0.010  (was -0.015)
 
-V34 CHANGES vs V33d:
-[V34-C3] GAP_DOWN_MAX tightened -1.5% → -1.0%
-Standalone result: +$324k equity, +0.55% CAGR, MaxDD improved.
-As C3 permanent baseline: +$413k, +0.68% CAGR, MaxDD -52.57%.
+# [C5] Top 20% of signals by composite score get 1.2x size multiplier, hard cap 12%
 
-[V34-C5] Top 20% of signals by composite score get 1.2x size multiplier.
-Hard cap 12% per position. Zero change to trade count or win rate.
-On C3 base: +$337k additional equity, +0.51% CAGR.
-
-COMBINED V34 RESULT:
-CAGR:          18.60%      (was 17.41% in V33d, +1.19%)
-Final Equity:  $3,874,833  (was $3,124,041, +$750k)
-Win Rate:      60.16%      (was 59.98%)
-Profit Factor: 1.07        (was 1.06)
-Max Drawdown:  -54.50%     (was -54.73%)
-Sharpe:        0.71        (was 0.68)
-Trades/Year:   1,025       (was 1,043)
-
-REJECTED IN V38a (do not retry):
-C1 IBS < 0.35 filter   – lost $2.15M, killed 26% of trades
-C2 EMA 20/50 stack     – lost $1.47M, worsened MaxDD simultaneously
-C4 double cooldown     – neutral, fires too rarely to matter
-
-V34 is the confirmed ceiling. Paper trading is the only remaining signal.
-
-RESULTS HISTORY:
-V33d:  CAGR 17.41% | $3.12M  ← previous best (taxable account)
-V32d:  CAGR 15.37% | $2.14M  ← best risk-adjusted (Roth IRA)
-V34:   CAGR 18.60% | $3.87M  ← current best (taxable account)
-“””
 import io
 import warnings
 import datetime
@@ -48,11 +20,11 @@ from tqdm import tqdm
 
 warnings.filterwarnings(“ignore”)
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # Config
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 START_DATE  = “2004-01-01”
 END_DATE    = datetime.date.today().isoformat()
@@ -71,6 +43,8 @@ ATR_PERIOD             = 14
 ATR_MIN_PCT            = 0.01
 VOL_MA_PERIOD          = 20
 MIN_HOLD_BEFORE_EXIT   = 2
+
+# Tier system - uniform 2%/8d
 
 TIER1_MIN_DOWN        = 6
 TIER1_TARGET          = 0.020
@@ -95,13 +69,19 @@ TIER3_PARTIAL_TRIGGER = 0.0
 
 MIN_CONSEC_DOWN = TIER3_MIN_DOWN
 
+# [V22] Drawdown scaling REMOVED
+
 DD_SCALE_MILD           = 9.99
 DD_SCALE_SEVERE         = 9.99
 POSITION_SIZE_DD_MILD   = 0.03
 POSITION_SIZE_DD_SEVERE = 0.02
 
+# [V21] Velocity crash pause
+
 VELOCITY_CRASH_5D_THRESHOLD = -0.12
 VELOCITY_CRASH_PAUSE_DAYS   = 5
+
+# Filters
 
 EARNINGS_BLACKOUT     = 3
 GAP_DOWN_MAX          = -0.010          # [V34-C3] tightened from -0.015
@@ -164,18 +144,18 @@ return {“tier”: 1, “profit_target”: TIER1_TARGET, “hold_days”: TIER1
 “partial_trigger”: TIER1_PARTIAL_TRIGGER}
 elif consec_down >= TIER2_MIN_DOWN:
 return {“tier”: 2, “profit_target”: TIER2_TARGET, “hold_days”: TIER2_HOLD_DAYS,
-“partial_enabled”: TIER2_PARTIAL, “partial_frac”: TIER2_PARTIAL_FRAC,
+“partial_enabled”: TIER2_PARTIAL, “partial_frac”: 0.0,
 “partial_trigger”: TIER2_TARGET}
 else:
 return {“tier”: 3, “profit_target”: TIER3_TARGET, “hold_days”: TIER3_HOLD_DAYS,
-“partial_enabled”: TIER3_PARTIAL, “partial_frac”: TIER3_PARTIAL_FRAC,
+“partial_enabled”: TIER3_PARTIAL, “partial_frac”: 0.0,
 “partial_trigger”: TIER3_TARGET}
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 1. Universe
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def _fetch_wiki(url: str) -> list:
 headers = {“User-Agent”: “Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 “
@@ -212,7 +192,7 @@ print(f”[Universe] {label}: {len(syms)} symbols (table {i})”)
 found = True
 break
 if not found:
-print(f”[Universe] {label}: WARNING – no valid ticker table found”)
+print(f”[Universe] {label}: WARNING - no valid ticker table found”)
 except Exception as e:
 print(f”[Universe] {label} failed: {e}”)
 
@@ -240,11 +220,11 @@ print(f"[Universe] Total unique tickers: {len(result)}")
 return result
 ```
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 2. Downloads
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
 print(f”\n[Download] Fetching {len(tickers)} tickers ({START_DATE} -> {END_DATE}) …”)
@@ -320,11 +300,11 @@ print(f"[Download] Sector ETFs: {len(sector_data)}")
 return spy, vix, sector_data
 ```
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 3. Earnings calendar
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def build_earnings_dates(tickers: list[str]) -> dict[str, set]:
 print(f”[Earnings] Building calendar for {len(tickers)} tickers …”)
@@ -354,11 +334,11 @@ return False
 d = pd.Timestamp(date).normalize()
 return any(abs((d - e).days) <= EARNINGS_BLACKOUT for e in earnings_map[tkr])
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 4. Signal generation
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
 df = df.copy()
@@ -391,11 +371,11 @@ df[“above_ma”]
 )
 return df
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 5. Helpers
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def calc_commission(shares: float, price: float) -> float:
 return max(shares * COMMISSION_RATE, COMMISSION_MIN)
@@ -447,16 +427,16 @@ if (pd.Timestamp(today) - pd.Timestamp(last_spike_date)).days <= VIX_SPIKE_PAUSE
 return True, last_spike_date
 return False, last_spike_date
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 6. Backtest simulation
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map) -> pd.DataFrame:
 print(”\n[Backtest] Running V34 simulation …”)
 print(f”[Backtest] GAP_DOWN_MAX={GAP_DOWN_MAX} [C3] | “
-f”TOP_SIGNAL_MULTIPLIER={TOP_SIGNAL_MULTIPLIER}x top {TOP_SIGNAL_PCT*100:.0f}% [C5]”)
+f”TOP_SIGNAL_PCT={TOP_SIGNAL_PCT} MULTIPLIER={TOP_SIGNAL_MULTIPLIER} [C5]”)
 
 ```
 spy_regime  = spy_df["spy_ok"].to_dict()
@@ -508,7 +488,7 @@ for today in tqdm(trading_dates, desc="Simulating"):
         else:
             current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
-    # ── Exits ──────────────────────────────────────────────────────────────
+    # Exits
     to_close = []
     for tkr, pos in open_positions.items():
         if tkr not in signals:
@@ -579,7 +559,7 @@ for today in tqdm(trading_dates, desc="Simulating"):
     if len(open_positions) >= MAX_POSITIONS:
         continue
 
-    # ── Entries ────────────────────────────────────────────────────────────
+    # Entries
     candidates = []
     for tkr, tkr_df in signals.items():
         if tkr in open_positions or today not in tkr_df.index:
@@ -603,8 +583,6 @@ for today in tqdm(trading_dates, desc="Simulating"):
 
     candidates.sort(key=lambda x: x[0])
     n_candidates = len(candidates)
-
-    # [V34-C5] Determine top-signal threshold
     top_n = max(1, int(n_candidates * TOP_SIGNAL_PCT))
 
     for rank, (composite_score, tkr, consec_val, rsi_val) in enumerate(candidates):
@@ -628,11 +606,10 @@ for today in tqdm(trading_dates, desc="Simulating"):
         tier_cfg = get_tier(consec_val)
 
         # [V34-C5] Size multiplier for top-ranked signals
-        size_multiplier = (
-            TOP_SIGNAL_MULTIPLIER
-            if n_candidates >= MIN_CANDIDATES_FOR_RANKING and rank < top_n
-            else 1.0
-        )
+        size_multiplier = 1.0
+        if n_candidates >= MIN_CANDIDATES_FOR_C5 and rank < top_n:
+            size_multiplier = TOP_SIGNAL_MULTIPLIER
+
         pos_size   = get_position_size(
             today, vix_df, current_drawdown,
             multiplier=size_multiplier,
@@ -656,11 +633,11 @@ print(f"[Backtest] Complete -- {len(trades)} trades executed.")
 return pd.DataFrame(trades)
 ```
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 7. Metrics
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def compute_metrics(trades_df: pd.DataFrame) -> tuple:
 if trades_df.empty:
@@ -808,35 +785,33 @@ metrics = {
     "tier_stats":           tier_stats,
     "year_stats":           year_stats,
     "parameters": {
-        "version":        "V34",
-        "base":           "V33d ($3.124M, 17.41% CAGR) + C3 gap filter + C5 tiered sizing",
-        "universe":       "S&P500 + S&P400 + S&P600",
-        "min_consec_down": MIN_CONSEC_DOWN,
-        "max_positions":  MAX_POSITIONS,
-        "tier1_6plus":    "2% target, 8d, partial at +1%",
-        "tier2_5days":    "2% target, 8d, no partial",
-        "tier3_4days":    "2% target, 8d, no partial",
-        "entry_ranking":  "Composite RSI(2)/ATR_pct [V32e]",
-        "gap_down_max":   f"{GAP_DOWN_MAX*100:.1f}% [V34-C3, was -1.5%]",
-        "top_signal_sizing": (f"Top {TOP_SIGNAL_PCT*100:.0f}% signals: "
-                              f"{TOP_SIGNAL_MULTIPLIER}x size, "
-                              f"cap {TOP_SIGNAL_HARD_CAP*100:.0f}% [V34-C5]"),
-        "velocity_crash_pause": (
-            f"SPY 5d <{VELOCITY_CRASH_5D_THRESHOLD*100:.0f}% → "
-            f"pause {VELOCITY_CRASH_PAUSE_DAYS}d [V21]"),
-        "vix_sizing":  f"<{VIX_LOW}VIX: {POSITION_SIZE_HIGH*100:.1f}%, base: {POSITION_SIZE*100:.1f}%",
-        "commission":  f"${COMMISSION_RATE}/share, ${COMMISSION_MIN:.2f} min",
-        "dd_scale":    "REMOVED -- thresholds set unreachable [V22]",
+        "version":               "V34",
+        "base":                  "V33d + C3 gap filter + C5 tiered sizing",
+        "universe":              "S&P500 + S&P400 + S&P600",
+        "min_consec_down":       MIN_CONSEC_DOWN,
+        "max_positions":         MAX_POSITIONS,
+        "gap_down_max":          GAP_DOWN_MAX,
+        "top_signal_pct":        TOP_SIGNAL_PCT,
+        "top_signal_multiplier": TOP_SIGNAL_MULTIPLIER,
+        "top_signal_hard_cap":   TOP_SIGNAL_HARD_CAP,
+        "tier1_6plus":           "2% target, 8d, partial at +1%",
+        "tier2_5days":           "2% target, 8d, no partial",
+        "tier3_4days":           "2% target, 8d, no partial",
+        "entry_ranking":         "Composite RSI(2)/ATR_pct [V32e]",
+        "velocity_crash_pause":  "SPY 5d < -12% -> pause 5d [V21]",
+        "vix_sizing":            "VIX < 25: 9%, base: 5%",
+        "commission":            "$0.005/share, $0.35 min",
+        "dd_scale":              "REMOVED",
     },
 }
 return metrics, eq_df_dt.reset_index()
 ```
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 # 8. Save + print
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 def save_outputs(trades_df, metrics, eq_df):
 trades_df.to_csv(OUTPUT_DIR / “trades.csv”, index=False)
@@ -893,7 +868,7 @@ print("=" * 70)
 print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
 ```
 
-# ─────────────────────────────────────────────────────────────────────────────
+# —————————————————————————–
 
 **all** = [
 “get_universe”, “download_prices”, “download_reference_data”,
