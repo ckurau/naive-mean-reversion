@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # “”” Enhanced Naive Mean Reversion (MR) Backtest – V34
 
 Base: V33d – $3,124,041 final equity, 17.41% CAGR. Previous best.
