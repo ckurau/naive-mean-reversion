@@ -1,0 +1,32 @@
+name: V38a Experiments
+
+on:
+  workflow_dispatch:  # manual trigger only — won't run automatically
+
+jobs:
+  run-v38a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240  # 4 hours — 7 experiments takes ~same as 1 full run
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run V38a experiments
+        run: python backtest-nmr-v38a.py
+
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/
+          git diff --cached --quiet || git commit -m "V38a experiment results"
+          git push
