@@ -1,0 +1,27 @@
+{
+  "experiment": "V38a_all",
+  "description": "V38a \u2014 C1+C2+C3+C4+C5 combined",
+  "flags": {
+    "C1_ibs": true,
+    "C2_ema_stack": true,
+    "C3_gap_tighter": true,
+    "C4_cooldown": true,
+    "C5_sizing": true
+  },
+  "total_trades": 15039,
+  "trades_per_year": 701.4,
+  "cagr_pct": 8.94,
+  "final_equity": 626963.31,
+  "win_rate_pct": 59.76,
+  "profit_factor": 1.06,
+  "avg_win_pct": 3.09,
+  "avg_loss_pct": -3.62,
+  "max_drawdown_pct": -57.88,
+  "sharpe_ratio": 0.48,
+  "time_stop_rate_pct": 60.6,
+  "exit_reasons": {
+    "time_stop": 8634,
+    "profit_target": 5623,
+    "partial_exit": 782
+  }
+}

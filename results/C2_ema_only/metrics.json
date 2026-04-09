@@ -1,0 +1,27 @@
+{
+  "experiment": "C2_ema_only",
+  "description": "C2 \u2014 EMA 20/50 downtrend block only",
+  "flags": {
+    "C1_ibs": false,
+    "C2_ema_stack": true,
+    "C3_gap_tighter": false,
+    "C4_cooldown": false,
+    "C5_sizing": false
+  },
+  "total_trades": 21076,
+  "trades_per_year": 982.9,
+  "cagr_pct": 13.91,
+  "final_equity": 1632591.19,
+  "win_rate_pct": 59.69,
+  "profit_factor": 1.05,
+  "avg_win_pct": 3.08,
+  "avg_loss_pct": -3.61,
+  "max_drawdown_pct": -58.44,
+  "sharpe_ratio": 0.6,
+  "time_stop_rate_pct": 59.9,
+  "exit_reasons": {
+    "time_stop": 12166,
+    "profit_target": 8138,
+    "partial_exit": 772
+  }
+}

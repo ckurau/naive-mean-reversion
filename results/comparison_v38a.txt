@@ -1,0 +1,37 @@
+==============================================================================================================
+  V38a EXPERIMENT COMPARISON — V33d Baseline vs 5 Changes vs All Combined
+==============================================================================================================
+  Metric                     V33d_baseline   C1_ibs_only   C2_ema_only   C3_gap_only   C4_cooldown     C5_sizing      V38a_all
+--------------------------------------------------------------------------------------------------------------
+  CAGR %                             17.37        11.07▼        13.91▼        17.92▲        17.25▼        17.82▲         8.94▼
+  Final Equity                  $3,100,079     $949,210▼   $1,632,591▼   $3,424,911▲   $3,035,643▼   $3,367,364▲     $626,963▼
+  Win Rate %                         59.99        60.09▲        59.69▼        60.13▲        59.99         59.99         59.76▼
+  Profit Factor                       1.06         1.06          1.05▼         1.07▲         1.06          1.06          1.06 
+  Avg Win %                           3.11         3.14▲         3.08▼         3.09▼         3.11          3.11          3.09▼
+  Avg Loss %                         -3.63        -3.67▼        -3.61▲        -3.61▲        -3.63         -3.63         -3.62▲
+  Max Drawdown %                    -54.41       -56.03▼       -58.44▼       -53.42▲       -54.72▼       -55.92▼       -57.88▼
+  Sharpe                              0.68         0.55▼         0.60▼         0.71▲         0.68          0.68          0.48▼
+  Total Trades                       22348        16446▼        21076▼        21989▼        22337▼        22348         15039▼
+  Trades/Year                      1042.20       767.00▼       982.90▼      1025.50▼      1041.70▼      1042.20        701.40▼
+  Time-Stop Rate %                   59.50        59.80▲        59.90▲        59.60▲        59.50         59.50         60.60▲
+--------------------------------------------------------------------------------------------------------------
+  ▲ = better than baseline  ▼ = worse than baseline  (for MaxDD: ▲ = less negative = better)
+
+  Feature Flags Active:
+    V33d_baseline       : none (baseline)
+    C1_ibs_only         : C1_ibs
+    C2_ema_only         : C2_ema_stack
+    C3_gap_only         : C3_gap_tighter
+    C4_cooldown         : C4_cooldown
+    C5_sizing           : C5_sizing
+    V38a_all            : C1_ibs, C2_ema_stack, C3_gap_tighter, C4_cooldown, C5_sizing
+
+  Descriptions:
+    V33d_baseline       : V33d — no changes
+    C1_ibs_only         : C1 — IBS < 0.35 filter only
+    C2_ema_only         : C2 — EMA 20/50 downtrend block only
+    C3_gap_only         : C3 — Gap down tightened to -1.0% only
+    C4_cooldown         : C4 — Double time-stop cooldown only
+    C5_sizing           : C5 — Top-20% signal size multiplier only
+    V38a_all            : V38a — C1+C2+C3+C4+C5 combined
+==============================================================================================================

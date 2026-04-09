@@ -1,0 +1,27 @@
+{
+  "experiment": "C3_gap_only",
+  "description": "C3 \u2014 Gap down tightened to -1.0% only",
+  "flags": {
+    "C1_ibs": false,
+    "C2_ema_stack": false,
+    "C3_gap_tighter": true,
+    "C4_cooldown": false,
+    "C5_sizing": false
+  },
+  "total_trades": 21989,
+  "trades_per_year": 1025.5,
+  "cagr_pct": 17.92,
+  "final_equity": 3424910.54,
+  "win_rate_pct": 60.13,
+  "profit_factor": 1.07,
+  "avg_win_pct": 3.09,
+  "avg_loss_pct": -3.61,
+  "max_drawdown_pct": -53.42,
+  "sharpe_ratio": 0.71,
+  "time_stop_rate_pct": 59.6,
+  "exit_reasons": {
+    "time_stop": 12594,
+    "profit_target": 8540,
+    "partial_exit": 855
+  }
+}

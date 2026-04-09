@@ -1,22 +1,22 @@
 {
-  "experiment": "V33d_baseline",
-  "description": "V33d \u2014 no changes",
+  "experiment": "C5_sizing",
+  "description": "C5 \u2014 Top-20% signal size multiplier only",
   "flags": {
     "C1_ibs": false,
     "C2_ema_stack": false,
     "C3_gap_tighter": false,
     "C4_cooldown": false,
-    "C5_sizing": false
+    "C5_sizing": true
   },
   "total_trades": 22348,
   "trades_per_year": 1042.2,
-  "cagr_pct": 17.37,
-  "final_equity": 3100079.38,
+  "cagr_pct": 17.82,
+  "final_equity": 3367363.68,
   "win_rate_pct": 59.99,
   "profit_factor": 1.06,
   "avg_win_pct": 3.11,
   "avg_loss_pct": -3.63,
-  "max_drawdown_pct": -54.41,
+  "max_drawdown_pct": -55.92,
   "sharpe_ratio": 0.68,
   "time_stop_rate_pct": 59.5,
   "exit_reasons": {

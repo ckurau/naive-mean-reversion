@@ -1,0 +1,27 @@
+{
+  "experiment": "C1_ibs_only",
+  "description": "C1 \u2014 IBS < 0.35 filter only",
+  "flags": {
+    "C1_ibs": true,
+    "C2_ema_stack": false,
+    "C3_gap_tighter": false,
+    "C4_cooldown": false,
+    "C5_sizing": false
+  },
+  "total_trades": 16446,
+  "trades_per_year": 767.0,
+  "cagr_pct": 11.07,
+  "final_equity": 949210.13,
+  "win_rate_pct": 60.09,
+  "profit_factor": 1.06,
+  "avg_win_pct": 3.14,
+  "avg_loss_pct": -3.67,
+  "max_drawdown_pct": -56.03,
+  "sharpe_ratio": 0.55,
+  "time_stop_rate_pct": 59.8,
+  "exit_reasons": {
+    "time_stop": 9327,
+    "profit_target": 6283,
+    "partial_exit": 836
+  }
+}

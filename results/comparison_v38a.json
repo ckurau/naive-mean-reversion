@@ -1,0 +1,191 @@
+[
+  {
+    "experiment": "V33d_baseline",
+    "description": "V33d \u2014 no changes",
+    "flags": {
+      "C1_ibs": false,
+      "C2_ema_stack": false,
+      "C3_gap_tighter": false,
+      "C4_cooldown": false,
+      "C5_sizing": false
+    },
+    "total_trades": 22348,
+    "trades_per_year": 1042.2,
+    "cagr_pct": 17.37,
+    "final_equity": 3100079.38,
+    "win_rate_pct": 59.99,
+    "profit_factor": 1.06,
+    "avg_win_pct": 3.11,
+    "avg_loss_pct": -3.63,
+    "max_drawdown_pct": -54.41,
+    "sharpe_ratio": 0.68,
+    "time_stop_rate_pct": 59.5,
+    "exit_reasons": {
+      "time_stop": 12790,
+      "profit_target": 8723,
+      "partial_exit": 835
+    }
+  },
+  {
+    "experiment": "C1_ibs_only",
+    "description": "C1 \u2014 IBS < 0.35 filter only",
+    "flags": {
+      "C1_ibs": true,
+      "C2_ema_stack": false,
+      "C3_gap_tighter": false,
+      "C4_cooldown": false,
+      "C5_sizing": false
+    },
+    "total_trades": 16446,
+    "trades_per_year": 767.0,
+    "cagr_pct": 11.07,
+    "final_equity": 949210.13,
+    "win_rate_pct": 60.09,
+    "profit_factor": 1.06,
+    "avg_win_pct": 3.14,
+    "avg_loss_pct": -3.67,
+    "max_drawdown_pct": -56.03,
+    "sharpe_ratio": 0.55,
+    "time_stop_rate_pct": 59.8,
+    "exit_reasons": {
+      "time_stop": 9327,
+      "profit_target": 6283,
+      "partial_exit": 836
+    }
+  },
+  {
+    "experiment": "C2_ema_only",
+    "description": "C2 \u2014 EMA 20/50 downtrend block only",
+    "flags": {
+      "C1_ibs": false,
+      "C2_ema_stack": true,
+      "C3_gap_tighter": false,
+      "C4_cooldown": false,
+      "C5_sizing": false
+    },
+    "total_trades": 21076,
+    "trades_per_year": 982.9,
+    "cagr_pct": 13.91,
+    "final_equity": 1632591.19,
+    "win_rate_pct": 59.69,
+    "profit_factor": 1.05,
+    "avg_win_pct": 3.08,
+    "avg_loss_pct": -3.61,
+    "max_drawdown_pct": -58.44,
+    "sharpe_ratio": 0.6,
+    "time_stop_rate_pct": 59.9,
+    "exit_reasons": {
+      "time_stop": 12166,
+      "profit_target": 8138,
+      "partial_exit": 772
+    }
+  },
+  {
+    "experiment": "C3_gap_only",
+    "description": "C3 \u2014 Gap down tightened to -1.0% only",
+    "flags": {
+      "C1_ibs": false,
+      "C2_ema_stack": false,
+      "C3_gap_tighter": true,
+      "C4_cooldown": false,
+      "C5_sizing": false
+    },
+    "total_trades": 21989,
+    "trades_per_year": 1025.5,
+    "cagr_pct": 17.92,
+    "final_equity": 3424910.54,
+    "win_rate_pct": 60.13,
+    "profit_factor": 1.07,
+    "avg_win_pct": 3.09,
+    "avg_loss_pct": -3.61,
+    "max_drawdown_pct": -53.42,
+    "sharpe_ratio": 0.71,
+    "time_stop_rate_pct": 59.6,
+    "exit_reasons": {
+      "time_stop": 12594,
+      "profit_target": 8540,
+      "partial_exit": 855
+    }
+  },
+  {
+    "experiment": "C4_cooldown",
+    "description": "C4 \u2014 Double time-stop cooldown only",
+    "flags": {
+      "C1_ibs": false,
+      "C2_ema_stack": false,
+      "C3_gap_tighter": false,
+      "C4_cooldown": true,
+      "C5_sizing": false
+    },
+    "total_trades": 22337,
+    "trades_per_year": 1041.7,
+    "cagr_pct": 17.25,
+    "final_equity": 3035643.45,
+    "win_rate_pct": 59.99,
+    "profit_factor": 1.06,
+    "avg_win_pct": 3.11,
+    "avg_loss_pct": -3.63,
+    "max_drawdown_pct": -54.72,
+    "sharpe_ratio": 0.68,
+    "time_stop_rate_pct": 59.5,
+    "exit_reasons": {
+      "time_stop": 12786,
+      "profit_target": 8716,
+      "partial_exit": 835
+    }
+  },
+  {
+    "experiment": "C5_sizing",
+    "description": "C5 \u2014 Top-20% signal size multiplier only",
+    "flags": {
+      "C1_ibs": false,
+      "C2_ema_stack": false,
+      "C3_gap_tighter": false,
+      "C4_cooldown": false,
+      "C5_sizing": true
+    },
+    "total_trades": 22348,
+    "trades_per_year": 1042.2,
+    "cagr_pct": 17.82,
+    "final_equity": 3367363.68,
+    "win_rate_pct": 59.99,
+    "profit_factor": 1.06,
+    "avg_win_pct": 3.11,
+    "avg_loss_pct": -3.63,
+    "max_drawdown_pct": -55.92,
+    "sharpe_ratio": 0.68,
+    "time_stop_rate_pct": 59.5,
+    "exit_reasons": {
+      "time_stop": 12790,
+      "profit_target": 8723,
+      "partial_exit": 835
+    }
+  },
+  {
+    "experiment": "V38a_all",
+    "description": "V38a \u2014 C1+C2+C3+C4+C5 combined",
+    "flags": {
+      "C1_ibs": true,
+      "C2_ema_stack": true,
+      "C3_gap_tighter": true,
+      "C4_cooldown": true,
+      "C5_sizing": true
+    },
+    "total_trades": 15039,
+    "trades_per_year": 701.4,
+    "cagr_pct": 8.94,
+    "final_equity": 626963.31,
+    "win_rate_pct": 59.76,
+    "profit_factor": 1.06,
+    "avg_win_pct": 3.09,
+    "avg_loss_pct": -3.62,
+    "max_drawdown_pct": -57.88,
+    "sharpe_ratio": 0.48,
+    "time_stop_rate_pct": 60.6,
+    "exit_reasons": {
+      "time_stop": 8634,
+      "profit_target": 5623,
+      "partial_exit": 782
+    }
+  }
+]

@@ -1,27 +1,27 @@
 {
-  "experiment": "V33d_baseline",
-  "description": "V33d \u2014 no changes",
+  "experiment": "C4_cooldown",
+  "description": "C4 \u2014 Double time-stop cooldown only",
   "flags": {
     "C1_ibs": false,
     "C2_ema_stack": false,
     "C3_gap_tighter": false,
-    "C4_cooldown": false,
+    "C4_cooldown": true,
     "C5_sizing": false
   },
-  "total_trades": 22348,
-  "trades_per_year": 1042.2,
-  "cagr_pct": 17.37,
-  "final_equity": 3100079.38,
+  "total_trades": 22337,
+  "trades_per_year": 1041.7,
+  "cagr_pct": 17.25,
+  "final_equity": 3035643.45,
   "win_rate_pct": 59.99,
   "profit_factor": 1.06,
   "avg_win_pct": 3.11,
   "avg_loss_pct": -3.63,
-  "max_drawdown_pct": -54.41,
+  "max_drawdown_pct": -54.72,
   "sharpe_ratio": 0.68,
   "time_stop_rate_pct": 59.5,
   "exit_reasons": {
-    "time_stop": 12790,
-    "profit_target": 8723,
+    "time_stop": 12786,
+    "profit_target": 8716,
     "partial_exit": 835
   }
 }
