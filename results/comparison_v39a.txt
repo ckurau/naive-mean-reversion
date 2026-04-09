@@ -1,0 +1,25 @@
+====================================================================================================
+  V39a RESULTS — C3 permanent + C5 test
+  Reference columns: V33d original | C3 standalone (from V38a)
+====================================================================================================
+  Metric                     V33d_original_ref C3_standalone_ref     V39a_baseline           V39a_c5
+----------------------------------------------------------------------------------------------------
+  CAGR %                                 17.41             17.92             18.09            18.60▲
+  Final Equity                         3124041           3424911        $3,537,755       $3,874,833▲
+  Win Rate %                             59.98             60.13             60.16            60.16▼
+  Profit Factor                           1.06              1.07              1.07             1.07▼
+  Avg Win %                               3.11              3.09              3.09             3.09▼
+  Avg Loss %                             -3.63             -3.61             -3.61            -3.61▼
+  Max Drawdown %                        -54.73            -53.42            -52.57           -54.50▼
+  Sharpe                                  0.68              0.71              0.71             0.71▼
+  Total Trades                           21902             21989             21980            21980▼
+  Trades/Year                             1043           1025.50           1025.10          1025.10▼
+  Time-Stop Rate %                       59.50             59.60             59.60            59.60▼
+----------------------------------------------------------------------------------------------------
+  ▲/▼ vs V39a_baseline | For MaxDD and AvgLoss: ▲ = less negative = better
+
+  Decision rule:
+    V39a_c5 CAGR > V39a_baseline AND MaxDD within 1% → carry C5 into lib permanently
+    V39a_c5 CAGR > V39a_baseline AND MaxDD worse >1% → risk/reward judgment call
+    V39a_c5 CAGR <= V39a_baseline → reject C5, ship C3 only as V34
+====================================================================================================

@@ -1,0 +1,28 @@
+{
+  "experiment": "V39a_baseline",
+  "description": "V33d + C3 permanent \u2014 new floor (GAP_DOWN_MAX -1.0%)",
+  "c5_active": false,
+  "total_trades": 21980,
+  "trades_per_year": 1025.1,
+  "cagr_pct": 18.09,
+  "final_equity": 3537754.78,
+  "win_rate_pct": 60.16,
+  "profit_factor": 1.07,
+  "avg_win_pct": 3.09,
+  "avg_loss_pct": -3.61,
+  "max_drawdown_pct": -52.57,
+  "sharpe_ratio": 0.71,
+  "time_stop_rate_pct": 59.6,
+  "exit_reasons": {
+    "time_stop": 12581,
+    "profit_target": 8542,
+    "partial_exit": 857
+  },
+  "parameters": {
+    "gap_down_max": -0.01,
+    "gap_up_max": 0.02,
+    "c5_top_pct": 0.2,
+    "c5_multiplier": 1.2,
+    "c5_hard_cap": 0.12
+  }
+}
