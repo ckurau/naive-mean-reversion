@@ -2,6 +2,7 @@
 =============================================
 This file is a thin entry-point wrapper. All strategy logic, parameters,
 signal generation, simulation, metrics, and output live in backtest_nmr_lib.py.
+
 This eliminates the silent divergence risk that caused multiple debugging
 sessions where backtest-nmr.py and backtest_nmr_lib.py fell out of sync.
 
@@ -26,18 +27,22 @@ WHY V33d IS BEST FOR A TAXABLE ACCOUNT (despite lower Sharpe):
   return per unit of total volatility — it penalises upside volatility equally
   with downside. In a taxable account compounding over 20+ years, the relevant
   question is not "smoothest ride" but "most wealth after tax".
+
   The position count increase captures overflow on high-signal days — the exact
   days when mean reversion edge is strongest (many stocks simultaneously oversold).
   These are episodic bursts of alpha, not persistent volatility. Sharpe penalises
   them. But the compounding effect of capturing 60 signals on a crash-recovery day
   vs 40 is +$670k over 21 years.
+
   The Sharpe tradeoff is real: V33d's worst years are proportionally worse
   (2022: -$1.05M vs -$691k in V32e). If you would abandon the strategy during
   a -54% drawdown, V32d or V32e is better for you. If you understand the
   strategy edge and will hold through drawdowns, V33d maximises long-term wealth.
+
   For a Roth IRA where drawdown management matters more: use V32d (Sharpe 0.77,
   MaxDD -39.21%).
 """
+
 from backtest_nmr_lib import (
     get_universe,
     download_prices,
@@ -49,11 +54,11 @@ from backtest_nmr_lib import (
 )
 
 if __name__ == "__main__":
-    universe                     = get_universe()
-    price_data                   = download_prices(universe)
-    spy_df, vix_df, sector_data  = download_reference_data()
-    earnings_map                 = build_earnings_dates(list(price_data.keys()))
-    trades_df                    = run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
+    universe       = get_universe()
+    price_data     = download_prices(universe)
+    spy_df, vix_df, sector_data = download_reference_data()
+    earnings_map   = build_earnings_dates(list(price_data.keys()))
+    trades_df      = run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map)
     if trades_df.empty:
         print("[ERROR] No trades generated.")
     else:
