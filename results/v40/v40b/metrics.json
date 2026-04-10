@@ -1,0 +1,197 @@
+{
+  "version": "V40b",
+  "test_description": "V34 base + GAP_DOWN_MAX tightened -1.0% -> -0.50%",
+  "vs_v34_changes": {
+    "GAP_DOWN_MAX": "-0.005 (was -0.010)"
+  },
+  "period_start": "2004-10-19",
+  "period_end": "2026-03-30",
+  "years_tested": 21.44,
+  "total_trades": 20863,
+  "trades_per_year": 973.0,
+  "cagr_pct": 13.97,
+  "final_equity": 1652032.38,
+  "total_return_pct": 1552.03,
+  "sharpe_ratio": 0.59,
+  "sortino_ratio": 0.65,
+  "max_drawdown_pct": -58.8,
+  "win_rate_pct": 60.02,
+  "profit_factor": 1.06,
+  "avg_win_pct": 3.08,
+  "avg_loss_pct": -3.63,
+  "avg_days_held": 6.55,
+  "total_commission_usd": 477553.19,
+  "exit_reasons": {
+    "time_stop": 12000,
+    "profit_target": 7952,
+    "partial_exit": 911
+  },
+  "tier_stats": {
+    "tier_1": {
+      "trades": 2475,
+      "win_rate": 69.1,
+      "avg_win": 3.13,
+      "avg_loss": -4.01,
+      "avg_days": 6.3
+    },
+    "tier_2": {
+      "trades": 3466,
+      "win_rate": 58.9,
+      "avg_win": 3.07,
+      "avg_loss": -3.76,
+      "avg_days": 6.5
+    },
+    "tier_3": {
+      "trades": 14922,
+      "win_rate": 58.8,
+      "avg_win": 3.07,
+      "avg_loss": -3.55,
+      "avg_days": 6.6
+    }
+  },
+  "year_stats": {
+    "2004": {
+      "trades": 117,
+      "win_rate": 77.8,
+      "pnl_usd": 21895.92,
+      "avg_win": 3.1
+    },
+    "2005": {
+      "trades": 957,
+      "win_rate": 60.9,
+      "pnl_usd": 48719.68,
+      "avg_win": 2.89
+    },
+    "2006": {
+      "trades": 967,
+      "win_rate": 63.0,
+      "pnl_usd": 38438.66,
+      "avg_win": 3.11
+    },
+    "2007": {
+      "trades": 785,
+      "win_rate": 62.3,
+      "pnl_usd": 49590.87,
+      "avg_win": 2.93
+    },
+    "2008": {
+      "trades": 8,
+      "win_rate": 87.5,
+      "pnl_usd": 5652.11,
+      "avg_win": 4.04
+    },
+    "2009": {
+      "trades": 648,
+      "win_rate": 63.3,
+      "pnl_usd": 55258.26,
+      "avg_win": 3.62
+    },
+    "2010": {
+      "trades": 687,
+      "win_rate": 60.3,
+      "pnl_usd": 45564.62,
+      "avg_win": 3.13
+    },
+    "2011": {
+      "trades": 779,
+      "win_rate": 62.0,
+      "pnl_usd": 66751.07,
+      "avg_win": 3.04
+    },
+    "2012": {
+      "trades": 1130,
+      "win_rate": 62.9,
+      "pnl_usd": 2632.81,
+      "avg_win": 3.02
+    },
+    "2013": {
+      "trades": 1317,
+      "win_rate": 63.7,
+      "pnl_usd": 289306.16,
+      "avg_win": 2.95
+    },
+    "2014": {
+      "trades": 1162,
+      "win_rate": 54.9,
+      "pnl_usd": 77848.32,
+      "avg_win": 2.78
+    },
+    "2015": {
+      "trades": 851,
+      "win_rate": 62.4,
+      "pnl_usd": 200215.2,
+      "avg_win": 2.65
+    },
+    "2016": {
+      "trades": 830,
+      "win_rate": 56.4,
+      "pnl_usd": 79750.1,
+      "avg_win": 2.64
+    },
+    "2017": {
+      "trades": 1494,
+      "win_rate": 60.0,
+      "pnl_usd": 410987.92,
+      "avg_win": 2.61
+    },
+    "2018": {
+      "trades": 1036,
+      "win_rate": 50.2,
+      "pnl_usd": -454622.53,
+      "avg_win": 2.99
+    },
+    "2019": {
+      "trades": 1074,
+      "win_rate": 63.0,
+      "pnl_usd": 725000.31,
+      "avg_win": 2.88
+    },
+    "2020": {
+      "trades": 902,
+      "win_rate": 62.3,
+      "pnl_usd": 380262.43,
+      "avg_win": 3.65
+    },
+    "2021": {
+      "trades": 1609,
+      "win_rate": 58.5,
+      "pnl_usd": -66980.9,
+      "avg_win": 3.38
+    },
+    "2022": {
+      "trades": 221,
+      "win_rate": 30.8,
+      "pnl_usd": -482275.12,
+      "avg_win": 3.32
+    },
+    "2023": {
+      "trades": 1192,
+      "win_rate": 60.6,
+      "pnl_usd": -23346.52,
+      "avg_win": 3.28
+    },
+    "2024": {
+      "trades": 1573,
+      "win_rate": 60.9,
+      "pnl_usd": 347658.63,
+      "avg_win": 3.42
+    },
+    "2025": {
+      "trades": 1151,
+      "win_rate": 58.6,
+      "pnl_usd": -105452.33,
+      "avg_win": 3.07
+    },
+    "2026": {
+      "trades": 373,
+      "win_rate": 61.7,
+      "pnl_usd": -160823.3,
+      "avg_win": 4.0
+    }
+  },
+  "parameters": {
+    "gap_down_max": -0.005,
+    "top_signal_multiplier": 1.2,
+    "max_positions": 60
+  }
+}
