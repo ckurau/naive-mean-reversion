@@ -1,34 +1,24 @@
 # backtest_nmr_lib_v36cv2.py
-# V36c-v2 -- Inverse ETF mean reversion using UNDERLYING overbought signal
+# V36c-v2 -- Inverse ETF mean reversion, corrected signal
 #
-# PROBLEM WITH V36c-v1:
-#   Required 4+ consecutive DOWN days on SH/PSQ/RWM directly.
-#   Inverse ETFs trend UP during bear markets, so they rarely have
-#   4+ consecutive down days. Only 57 trades in 21 years -- too few
-#   to provide meaningful drawdown protection (+$29k total, ~$1.4k/year).
+# FINDING FROM SPY BEAR REGIME ANALYSIS:
+#   RSI(2) resets so fast that 2+ consecutive up days always show NaN.
+#   The signal must fire on day 1 of an up day, not after multiple up days.
+#   During bear regime:
+#     1 up day AND RSI(2) > 70: 82 signals over 21 years (~4/year)
+#     1 up day AND RSI(2) > 65: 88 signals
+#     1 up day AND RSI(2) > 60: 103 signals
+#   Using RSI(2) > 65 as baseline -- meaningful frequency without noise.
 #
-# V36c-v2 FIX -- invert the signal logic:
-#   Instead of looking at the inverse ETF's price action, look at the
-#   UNDERLYING index being overbought during a bear market.
-#   Signal: SPY has 3+ consecutive UP days AND RSI(2) > 75
-#   while SPY is still BELOW its 200d MA (bear regime active).
-#   This means the underlying has bounced/rallied too far in a downtrend
-#   -- a high-probability setup for mean reversion back down.
-#   Entry: buy SH (inverse S&P 500) at next open.
-#   Exit: SPY closes DOWN for 1 day (underlying has resumed decline)
-#         OR 5-day time stop OR 2% profit target on SH.
-#
-# The signal logic is identical to the long side but applied in reverse:
-#   Long side:  underlying has too many DOWN days --> buy (mean reversion up)
-#   Short side: underlying has too many UP days during bear --> buy inverse (mean reversion down)
+# CORRECTED SIGNAL:
+#   When SPY is BELOW its 200d MA (bear regime):
+#   SPY has 1 up day AND RSI(2) > 65 (overbought within a downtrend)
+#   --> Buy SH (1x inverse S&P 500) at next open
+#   Exit: 5-day time stop OR 2% profit target on SH
 #
 # V34 PERMANENT CHANGES CARRIED FORWARD:
 #   [C3] GAP_DOWN_MAX = -0.010
 #   [C5] Top 20% of signals get 1.2x size, hard cap 12%
-#
-# EXPERIMENTS:
-#   V34_baseline    -- V34 unchanged (control)
-#   V36cv2_inverse  -- V34 + inverse ETF using underlying overbought signal
 
 import io
 import warnings
@@ -46,26 +36,18 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 
-# -----------------------------------------------------------------------------
-# Experiment configuration
-# -----------------------------------------------------------------------------
 @dataclass
 class ExperimentConfig:
     name: str = "V34_baseline"
     description: str = "V34 -- no changes"
-
     use_inverse_etf: bool = False
-
-    # Underlying overbought signal parameters
-    underlying_consec_up: int = 3       # SPY needs 3+ consecutive up days
-    underlying_rsi_threshold: float = 75.0  # AND RSI(2) > 75 (overbought)
-
-    # Inverse ETF trade parameters
-    inverse_etf: str = "SH"            # 1x inverse S&P 500 -- liquid, low slippage
+    spy_rsi_threshold: float = 65.0
+    spy_min_up_days: int = 1
+    inverse_etf: str = "SH"
     inverse_position_size: float = 0.05
     inverse_profit_target: float = 0.020
     inverse_hold_days: int = 5
-    inverse_max_positions: int = 1     # max 1 inverse position at a time
+    inverse_max_positions: int = 1
 
 
 BASELINE = ExperimentConfig(
@@ -76,22 +58,21 @@ BASELINE = ExperimentConfig(
 
 V36CV2 = ExperimentConfig(
     name="V36cv2_inverse",
-    description="V36c-v2 -- buy SH when SPY has 3+ up days + RSI(2)>75 in bear regime",
+    description="V36cv2 -- buy SH when SPY 1 up day + RSI2>65 in bear regime",
     use_inverse_etf=True,
-    underlying_consec_up=3,
-    underlying_rsi_threshold=75.0,
+    spy_rsi_threshold=65.0,
+    spy_min_up_days=1,
     inverse_etf="SH",
     inverse_position_size=0.05,
     inverse_profit_target=0.020,
     inverse_hold_days=5,
-    inverse_max_positions=1,
 )
 
 EXPERIMENTS = [BASELINE, V36CV2]
 
 
 # -----------------------------------------------------------------------------
-# Config -- V34 permanent
+# Config
 # -----------------------------------------------------------------------------
 START_DATE  = "2004-01-01"
 END_DATE    = datetime.date.today().isoformat()
@@ -298,72 +279,71 @@ def download_prices(tickers: list[str]) -> dict[str, pd.DataFrame]:
 
 
 def _dl_single(ticker: str) -> pd.DataFrame:
-    df = yf.download(ticker, start=START_DATE, end=END_DATE,
-                     auto_adjust=True, progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df
+    raw = yf.download(ticker, start=START_DATE, end=END_DATE,
+                      auto_adjust=True, progress=False)
+    if isinstance(raw.columns, pd.MultiIndex):
+        raw.columns = raw.columns.get_level_values(0)
+    return raw
 
 
-def _compute_rsi(series: pd.Series, period: int) -> pd.Series:
-    delta = series.diff()
+def _compute_rsi(close: pd.Series, period: int) -> pd.Series:
+    """RSI on a plain Series."""
+    close = pd.Series(close.values, index=close.index)
+    delta = close.diff()
     gain  = delta.clip(lower=0).rolling(period).mean()
     loss  = (-delta.clip(upper=0)).rolling(period).mean()
-    rs    = gain / loss.replace(0, np.nan)
+    rs    = gain / loss.where(loss != 0, np.nan)
     return 100 - (100 / (1 + rs))
 
 
 def download_reference_data() -> tuple:
-    spy       = _dl_single("SPY")
-    close     = spy["Close"].squeeze()
-    spy["spy_ma200"]  = close.rolling(200).mean()
-    spy["spy_ok"]     = (close > spy["spy_ma200"].squeeze()).values
-    spy["spy_5d_ret"] = close.pct_change(5)
-    # For inverse signal: consecutive UP days and RSI on SPY
-    spy["up_day"]     = (close > close.shift(1)).astype(int)
-    consec_up, count  = [], 0
-    for d in spy["up_day"]:
-        count = count + 1 if d == 1 else 0
-        consec_up.append(count)
-    spy["spy_consec_up"] = consec_up
-    spy["spy_rsi2"]      = _compute_rsi(close, 2)
-    print(f"[Download] SPY: {len(spy)} rows")
+    raw   = _dl_single("SPY")
+    close = pd.Series(raw["Close"].values, index=raw.index, name="Close")
 
-    vix       = _dl_single("^VIX")
-    vix_close = vix["Close"].squeeze()
+    ma200 = close.rolling(200).mean()
+    spy   = pd.DataFrame(index=raw.index)
+    spy["spy_ma200"]  = ma200
+    spy["spy_ok"]     = (close > ma200).values
+    spy["spy_5d_ret"] = close.pct_change(5)
+
+    # Inverse signal: 1 up day + RSI(2) for SPY
+    spy["spy_up_day"] = (close > close.shift(1)).astype(int)
+    spy["spy_rsi2"]   = _compute_rsi(close, 2)
+    print(f"[Download] SPY: {len(spy)} rows, "
+          f"RSI2 non-NaN: {spy['spy_rsi2'].notna().sum()}")
+
+    raw_vix   = _dl_single("^VIX")
+    vix_close = pd.Series(raw_vix["Close"].values, index=raw_vix.index)
+    vix       = pd.DataFrame(index=raw_vix.index)
     vix["vix_5d_ago"] = vix_close.shift(5)
-    vix["vix_spike"]  = (vix_close / vix["vix_5d_ago"].replace(0, np.nan) - 1) >= VIX_SPIKE_PCT
+    vix["vix_spike"]  = (vix_close / vix["vix_5d_ago"].where(
+        vix["vix_5d_ago"] != 0, np.nan) - 1) >= VIX_SPIKE_PCT
     print(f"[Download] VIX: {len(vix)} rows")
 
     etf_list    = list(SECTOR_ETFS.keys())
     sector_data: dict[str, pd.DataFrame] = {}
-    raw = yf.download(etf_list, start=START_DATE, end=END_DATE,
-                      auto_adjust=True, progress=False, threads=True)
-    if not raw.empty:
+    raw_s = yf.download(etf_list, start=START_DATE, end=END_DATE,
+                        auto_adjust=True, progress=False, threads=True)
+    if not raw_s.empty:
         for etf in etf_list:
             try:
-                df = (raw.xs(etf, axis=1, level=1).dropna(how="all")
-                      if isinstance(raw.columns, pd.MultiIndex) else raw.copy())
-                cs = df["Close"].squeeze()
-                df = df.copy()
-                df["ma"] = cs.rolling(SECTOR_MA_WINDOW).mean()
-                df["ok"] = (cs > df["ma"].squeeze()).values
-                sector_data[etf] = df
+                df = (raw_s.xs(etf, axis=1, level=1).dropna(how="all")
+                      if isinstance(raw_s.columns, pd.MultiIndex) else raw_s.copy())
+                cs = pd.Series(df["Close"].values, index=df.index)
+                df2 = pd.DataFrame(index=df.index)
+                df2["ma"]  = cs.rolling(SECTOR_MA_WINDOW).mean()
+                df2["ok"]  = (cs > df2["ma"]).values
+                sector_data[etf] = df2
             except Exception:
                 pass
     print(f"[Download] Sector ETFs: {len(sector_data)}")
     return spy, vix, sector_data
 
 
-def download_sh(ticker: str = "SH") -> pd.DataFrame:
-    """Download SH (inverse S&P 500 ETF) price data."""
-    try:
-        df = _dl_single(ticker)
-        print(f"[Download] {ticker}: {len(df)} rows")
-        return df
-    except Exception as e:
-        print(f"[Download] {ticker} failed: {e}")
-        return pd.DataFrame()
+def download_sh() -> pd.DataFrame:
+    raw = _dl_single("SH")
+    print(f"[Download] SH: {len(raw)} rows")
+    return raw
 
 
 # -----------------------------------------------------------------------------
@@ -400,29 +380,30 @@ def near_earnings(tkr: str, date, earnings_map: dict[str, set]) -> bool:
 
 
 # -----------------------------------------------------------------------------
-# 4. Signal generation (main universe -- unchanged from V34)
+# 4. Signal generation
 # -----------------------------------------------------------------------------
 def generate_signals(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df["ma200"]     = df["Close"].rolling(MA_WINDOW).mean()
-    df["above_ma"]  = df["Close"] > df["ma200"]
-    df["down_day"]  = (df["Close"] < df["Close"].shift(1)).astype(int)
+    df   = df.copy()
+    close = pd.Series(df["Close"].values, index=df.index)
+    df["ma200"]     = close.rolling(MA_WINDOW).mean()
+    df["above_ma"]  = (close > df["ma200"]).values
+    df["down_day"]  = (close < close.shift(1)).astype(int)
     consec, count   = [], 0
     for d in df["down_day"]:
         count = count + 1 if d == 1 else 0
         consec.append(count)
     df["consec_down"] = consec
-    df["rsi2"]        = _compute_rsi(df["Close"], RSI_PERIOD)
-    tr = pd.concat([
-        df["High"] - df["Low"],
-        (df["High"] - df["Close"].shift(1)).abs(),
-        (df["Low"]  - df["Close"].shift(1)).abs(),
-    ], axis=1).max(axis=1)
+    df["rsi2"]        = _compute_rsi(close, RSI_PERIOD)
+    hi  = pd.Series(df["High"].values, index=df.index)
+    lo  = pd.Series(df["Low"].values, index=df.index)
+    tr  = pd.concat([hi - lo, (hi - close.shift(1)).abs(),
+                     (lo - close.shift(1)).abs()], axis=1).max(axis=1)
     df["atr"]             = tr.rolling(ATR_PERIOD).mean()
-    df["atr_pct"]         = df["atr"] / df["Close"]
-    df["vol_ma20"]        = df["Volume"].rolling(VOL_MA_PERIOD).mean()
-    df["vol_confirm"]     = df["Volume"] > df["vol_ma20"]
-    df["dollar_vol_ma20"] = (df["Close"] * df["Volume"]).rolling(VOL_MA_PERIOD).mean()
+    df["atr_pct"]         = df["atr"] / close
+    vol = pd.Series(df["Volume"].values, index=df.index)
+    df["vol_ma20"]        = vol.rolling(VOL_MA_PERIOD).mean()
+    df["vol_confirm"]     = (vol > df["vol_ma20"]).values
+    df["dollar_vol_ma20"] = (close * vol).rolling(VOL_MA_PERIOD).mean()
     df["signal"] = (
         df["above_ma"]
         & (df["consec_down"] >= MIN_CONSEC_DOWN)
@@ -447,7 +428,7 @@ def get_position_size(today, vix_df, drawdown_pct: float = 0.0,
     earnings_month = month in EARNINGS_MONTHS
     base           = POSITION_SIZE
     try:
-        vc = vix_df["Close"].squeeze()
+        vc = vix_df["Close"].squeeze() if "Close" in vix_df.columns else pd.Series(dtype=float)
         if today in vc.index:
             v = float(vc.loc[today])
             if v < VIX_LOW:
@@ -493,18 +474,17 @@ def check_vix_spike(today, vix_df, last_spike_date) -> tuple:
 
 
 # -----------------------------------------------------------------------------
-# 6. Backtest simulation
+# 6. Backtest
 # -----------------------------------------------------------------------------
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
                  sh_data: pd.DataFrame = None,
                  cfg: ExperimentConfig = BASELINE) -> pd.DataFrame:
 
-    print(f"\n[Backtest] Running: {cfg.name}")
-    print(f"[Backtest] {cfg.description}")
+    print(f"\n[Backtest] Running: {cfg.name} -- {cfg.description}")
 
-    spy_regime      = spy_df["spy_ok"].to_dict()
-    spy_consec_up   = spy_df["spy_consec_up"].to_dict()
-    spy_rsi2        = spy_df["spy_rsi2"].to_dict()
+    spy_regime  = spy_df["spy_ok"].to_dict()
+    spy_up_day  = spy_df["spy_up_day"].to_dict()
+    spy_rsi2    = spy_df["spy_rsi2"].to_dict()
 
     all_dates: set = set()
     for df in price_data.values():
@@ -523,14 +503,13 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
     portfolio_peak   = None
     current_drawdown = 0.0
     open_positions: dict[str, dict] = {}
-    open_inv: dict = {}   # at most 1 SH position at a time
+    open_inv: dict = {}
     trades: list[dict] = []
     cooldown_map: dict = {}
     last_vix_spike      = None
     last_velocity_crash = None
-
-    diag_inv_entries  = 0
-    diag_inv_signals  = 0
+    diag_signals = 0
+    diag_entries = 0
 
     for today in tqdm(trading_dates, desc=f"Simulate [{cfg.name}]"):
         spy_ok = spy_regime.get(today, True)
@@ -560,7 +539,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
             else:
                 current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
 
-        # ?? Exits: main long positions ??????????????????????????????????????
+        # Exits: main positions
         to_close = []
         for tkr, pos in open_positions.items():
             if tkr not in signals:
@@ -628,43 +607,35 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
         for tkr in to_close:
             del open_positions[tkr]
 
-        # ?? Exits: SH inverse position ??????????????????????????????????????
-        if "SH" in open_inv and sh_data is not None and not sh_data.empty:
-            pos = open_inv["SH"]
-            if today in sh_data.index:
-                sh_close    = float(sh_data.loc[today, "Close"])
-                entry_price = pos["entry_price"]
-                days_held   = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
-                pos_pct     = (sh_close - entry_price) / entry_price
-                time_stop   = days_held >= cfg.inverse_hold_days
-                profit_hit  = pos_pct >= cfg.inverse_profit_target
-                # Also exit if SPY has a down day (underlying resumed decline --
-                # inverse trade has served its purpose as a hedge)
-                spy_down_today = (today in spy_df.index and
-                                  float(spy_df.loc[today, "spy_5d_ret"]) < 0 and
-                                  days_held >= 1)
-                if time_stop or profit_hit or spy_down_today:
-                    commission = calc_commission(pos["shares"], sh_close)
-                    pnl        = ((sh_close - entry_price) * pos["shares"]
-                                  - commission - pos["entry_commission"])
-                    reason = ("time_stop" if time_stop
-                              else "profit_target" if profit_hit
-                              else "spy_resumed_decline")
-                    trades.append({
-                        "ticker": "SH", "entry_date": pos["entry_date"],
-                        "exit_date": today, "entry_price": entry_price,
-                        "exit_price": sh_close, "shares": pos["shares"],
-                        "commission": round(commission + pos["entry_commission"], 4),
-                        "pnl_usd": pnl, "pnl_pct": pos_pct * 100,
-                        "days_held": days_held, "exit_reason": reason,
-                        "tier": 0, "consec_down": 0,
-                        "portfolio_val": portfolio_value + pnl,
-                        "experiment": cfg.name, "trade_type": "inverse",
-                    })
-                    portfolio_value += pnl
-                    del open_inv["SH"]
+        # Exit: SH position
+        if "SH" in open_inv and sh_data is not None and today in sh_data.index:
+            pos         = open_inv["SH"]
+            sh_close    = float(sh_data.loc[today, "Close"])
+            entry_price = pos["entry_price"]
+            days_held   = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
+            pos_pct     = (sh_close - entry_price) / entry_price
+            time_stop   = days_held >= cfg.inverse_hold_days
+            profit_hit  = pos_pct >= cfg.inverse_profit_target
+            if time_stop or profit_hit:
+                commission = calc_commission(pos["shares"], sh_close)
+                pnl        = ((sh_close - entry_price) * pos["shares"]
+                              - commission - pos["entry_commission"])
+                reason = "time_stop" if time_stop else "profit_target"
+                trades.append({
+                    "ticker": "SH", "entry_date": pos["entry_date"],
+                    "exit_date": today, "entry_price": entry_price,
+                    "exit_price": sh_close, "shares": pos["shares"],
+                    "commission": round(commission + pos["entry_commission"], 4),
+                    "pnl_usd": pnl, "pnl_pct": pos_pct * 100,
+                    "days_held": days_held, "exit_reason": reason,
+                    "tier": 0, "consec_down": 0,
+                    "portfolio_val": portfolio_value + pnl,
+                    "experiment": cfg.name, "trade_type": "inverse",
+                })
+                portfolio_value += pnl
+                del open_inv["SH"]
 
-        # ?? Main entries (SPY above 200d) ????????????????????????????????????
+        # Main entries (SPY above 200d)
         if spy_ok and not paused and not velocity_paused:
             if len(open_positions) < MAX_POSITIONS:
                 candidates = []
@@ -730,26 +701,26 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
                         "entry_commission": entry_comm,
                     }
 
-        # ?? Inverse SH entry (SPY BELOW 200d -- bear regime) ????????????????
+        # SH entry: SPY below 200d AND 1 up day AND RSI2 > threshold
         if (cfg.use_inverse_etf and not spy_ok and not velocity_paused
                 and "SH" not in open_inv
                 and sh_data is not None and not sh_data.empty):
 
-            # Check if SPY is overbought within the bear regime
-            consec_up = spy_consec_up.get(today, 0)
-            rsi2_spy  = spy_rsi2.get(today, 50.0)
+            up_today  = spy_up_day.get(today, 0)
+            rsi2_today = spy_rsi2.get(today, np.nan)
 
-            spy_overbought = (consec_up >= cfg.underlying_consec_up
-                              and rsi2_spy > cfg.underlying_rsi_threshold)
+            spy_signal = (
+                up_today >= cfg.spy_min_up_days
+                and not np.isnan(rsi2_today)
+                and rsi2_today > cfg.spy_rsi_threshold
+            )
 
-            if spy_overbought:
-                diag_inv_signals += 1
-                # Buy SH at next open
+            if spy_signal:
+                diag_signals += 1
                 if today in sh_data.index:
                     today_idx = sh_data.index.get_loc(today)
                     if today_idx + 1 < len(sh_data):
-                        next_sh    = sh_data.iloc[today_idx + 1]
-                        sh_open    = float(next_sh["Open"])
+                        sh_open = float(sh_data.iloc[today_idx + 1]["Open"])
                         if sh_open > 0:
                             shares     = (portfolio_value * cfg.inverse_position_size) / sh_open
                             entry_comm = calc_commission(shares, sh_open)
@@ -759,12 +730,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
                                 "shares":      shares,
                                 "entry_commission": entry_comm,
                             }
-                            diag_inv_entries += 1
+                            diag_entries += 1
 
     print(f"[Backtest] {cfg.name} complete -- {len(trades)} trades.")
     if cfg.use_inverse_etf:
-        print(f"[Backtest] Inverse signals fired: {diag_inv_signals} | "
-              f"Entries taken: {diag_inv_entries}")
+        print(f"[Backtest] SH signals fired: {diag_signals} | "
+              f"SH entries taken: {diag_entries}")
     return pd.DataFrame(trades)
 
 
@@ -828,7 +799,8 @@ def compute_metrics(trades_df: pd.DataFrame, cfg: ExperimentConfig = BASELINE) -
             "pnl_usd":  round(y_df["pnl_usd"].sum(), 2),
         }
 
-    inv_df     = trades_df[trades_df.get("trade_type", pd.Series(["main"]*len(trades_df))) == "inverse"] \
+    inv_df    = trades_df[trades_df.get("trade_type", pd.Series(
+        ["main"] * len(trades_df))) == "inverse"] \
         if "trade_type" in trades_df.columns else pd.DataFrame()
     inv_trades = len(inv_df)
     inv_pnl    = round(inv_df["pnl_usd"].sum(), 2) if not inv_df.empty else 0.0
