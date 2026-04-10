@@ -1,6 +1,6 @@
 {
-  "experiment": "V34_baseline",
-  "description": "V34 -- no changes (control)",
+  "experiment": "V36cv2_inverse",
+  "description": "V36c-v2 -- buy SH when SPY has 3+ up days + RSI(2)>75 in bear regime",
   "total_trades": 21976,
   "trades_per_year": 1024.9,
   "cagr_pct": 18.55,
