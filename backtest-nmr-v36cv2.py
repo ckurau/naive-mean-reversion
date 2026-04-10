@@ -137,7 +137,7 @@ def main():
     earnings_map = build_earnings_dates(list(price_data.keys()))
 
     print("\n[Download] Fetching SH (inverse S&P 500 ETF)...")
-    sh_data = download_sh("SH")
+    sh_data = download_sh()
 
     all_metrics = []
     for cfg in EXPERIMENTS:
