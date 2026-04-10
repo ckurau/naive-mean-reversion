@@ -1,0 +1,42 @@
+name: V35 Streak Filter
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: 'Which experiment to run: baseline or v35'
+        required: true
+        default: 'v35'
+        type: choice
+        options:
+          - baseline
+          - v35
+          - both
+
+jobs:
+  run-v35:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run V35 experiments
+        run: python backtest-nmr-v35.py --experiment ${{ github.event.inputs.experiment }}
+
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/
+          git diff --cached --quiet || git commit -m "V35 streak filter results (${{ github.event.inputs.experiment }})"
+          git push
