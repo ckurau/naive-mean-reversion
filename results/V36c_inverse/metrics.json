@@ -1,22 +1,22 @@
 {
-  "experiment": "V34_baseline",
-  "description": "V34 -- no changes (control)",
-  "total_trades": 21975,
-  "trades_per_year": 1024.8,
-  "cagr_pct": 18.49,
-  "final_equity": 3801703.51,
-  "win_rate_pct": 60.14,
+  "experiment": "V36c_inverse",
+  "description": "V36c -- inverse ETF mean reversion in bear regime (SH/PSQ/RWM)",
+  "total_trades": 22032,
+  "trades_per_year": 1027.5,
+  "cagr_pct": 18.69,
+  "final_equity": 3937846.31,
+  "win_rate_pct": 60.15,
   "profit_factor": 1.07,
   "avg_win_pct": 3.09,
   "avg_loss_pct": -3.61,
-  "max_drawdown_pct": -54.5,
+  "max_drawdown_pct": -54.57,
   "sharpe_ratio": 0.71,
   "time_stop_rate_pct": 59.6,
-  "alt_trades": 0,
-  "alt_pnl_usd": 0.0,
+  "alt_trades": 57,
+  "alt_pnl_usd": 29178.44,
   "exit_reasons": {
-    "time_stop": 12583,
-    "profit_target": 8537,
+    "time_stop": 12612,
+    "profit_target": 8565,
     "partial_exit": 855
   },
   "year_stats": {
@@ -41,99 +41,99 @@
       "pnl_usd": 60320.35
     },
     "2008": {
-      "trades": 10,
-      "win_rate": 80.0,
-      "pnl_usd": 5488.54
+      "trades": 21,
+      "win_rate": 81.0,
+      "pnl_usd": 10297.84
     },
     "2009": {
-      "trades": 667,
-      "win_rate": 63.0,
-      "pnl_usd": 59809.96
+      "trades": 680,
+      "win_rate": 63.2,
+      "pnl_usd": 63853.3
     },
     "2010": {
-      "trades": 735,
-      "win_rate": 59.7,
-      "pnl_usd": 66747.09
+      "trades": 738,
+      "win_rate": 59.6,
+      "pnl_usd": 68259.99
     },
     "2011": {
-      "trades": 815,
-      "win_rate": 63.4,
-      "pnl_usd": 102736.36
+      "trades": 821,
+      "win_rate": 63.7,
+      "pnl_usd": 111079.68
     },
     "2012": {
       "trades": 1191,
       "win_rate": 64.1,
-      "pnl_usd": 143482.53
+      "pnl_usd": 148553.63
     },
     "2013": {
       "trades": 1372,
       "win_rate": 63.7,
-      "pnl_usd": 496724.87
+      "pnl_usd": 514280.49
     },
     "2014": {
       "trades": 1224,
       "win_rate": 54.7,
-      "pnl_usd": 155632.92
+      "pnl_usd": 161133.45
     },
     "2015": {
-      "trades": 914,
-      "win_rate": 60.9,
-      "pnl_usd": 272709.46
+      "trades": 916,
+      "win_rate": 60.8,
+      "pnl_usd": 280084.36
     },
     "2016": {
-      "trades": 887,
+      "trades": 889,
       "win_rate": 55.8,
-      "pnl_usd": 151975.44
+      "pnl_usd": 156431.9
     },
     "2017": {
       "trades": 1554,
       "win_rate": 60.4,
-      "pnl_usd": 869772.53
+      "pnl_usd": 898933.0
     },
     "2018": {
-      "trades": 1093,
+      "trades": 1094,
       "win_rate": 52.1,
-      "pnl_usd": -570177.25
+      "pnl_usd": -586887.63
     },
     "2019": {
-      "trades": 1121,
-      "win_rate": 63.2,
-      "pnl_usd": 1564520.39
+      "trades": 1126,
+      "win_rate": 62.9,
+      "pnl_usd": 1585845.33
     },
     "2020": {
-      "trades": 953,
+      "trades": 958,
       "win_rate": 62.1,
-      "pnl_usd": 680910.61
+      "pnl_usd": 711652.73
     },
     "2021": {
       "trades": 1681,
       "win_rate": 58.3,
-      "pnl_usd": 517217.74
+      "pnl_usd": 532052.38
     },
     "2022": {
-      "trades": 234,
-      "win_rate": 31.2,
-      "pnl_usd": -1185972.45
+      "trades": 241,
+      "win_rate": 33.2,
+      "pnl_usd": -1188570.67
     },
     "2023": {
       "trades": 1299,
       "win_rate": 60.5,
-      "pnl_usd": 796.43
+      "pnl_usd": 826.25
     },
     "2024": {
       "trades": 1613,
       "win_rate": 61.0,
-      "pnl_usd": 1192631.93
+      "pnl_usd": 1237171.61
     },
     "2025": {
-      "trades": 1222,
-      "win_rate": 58.0,
-      "pnl_usd": -602352.84
+      "trades": 1224,
+      "win_rate": 57.9,
+      "pnl_usd": -631320.14
     },
     "2026": {
       "trades": 407,
       "win_rate": 61.9,
-      "pnl_usd": -415526.55
+      "pnl_usd": -430406.98
     }
   }
 }
