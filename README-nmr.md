@@ -197,6 +197,7 @@ SPY RSI(2) distribution during bear regime (1,079 days, 19.3% of all trading day
 | **Inverse ETF v1 -- direct signal (V36c-v1)** | Buy SH/PSQ/RWM when inverse ETF has 4+ consecutive down days + RSI<20 | 57 signals in 21 years -- too rare (~2.7/year). SH trends UP in bear markets so rarely has 4+ consecutive down days. +$29k total (not meaningful). |
 | **Bond allocation in bear regime (V36e)** | Buy IEF when 2+ consecutive down days + RSI<40, during SPY below 200d MA | Alt P&L -$2,113 across 146 trades. 2022 bonds fell with equities, destroying the hedge thesis for the worst drawdown year. |
 | **Inverse ETF v2 -- underlying overbought (V36cv2)** | Buy SH when SPY has 1 up day + RSI(2)>65 in bear regime | 72 entries over 21 years. SH P&L -$10,075 (45.8% WR). SH has structural daily rebalancing decay that erodes returns on 5-day holds. Negligible impact on bear year P&L (2022 changed by only -$771). |
+| **Volume peak on final down day (V37)** | Entry only when today's volume is highest day in the consecutive down streak | Blocked 15,040 of ~30,000 signals (50%). WR unchanged at 59.9% -- filtered trades had identical quality. CAGR -6.33pp, equity -$900k. Good-year losses ($1.05M) overwhelm bad-year savings ($320k). Volume during crashes is distributed across multiple down days, not concentrated on the final one. |
 
 ### Final structural conclusion on drawdown
 
@@ -431,6 +432,7 @@ V34 is the confirmed ceiling. Do not retry entry filters, drawdown filters, or e
 | V36c-v1 | Inverse ETF: SH/PSQ/RWM 4+ down days | 18.69% | $3,938k | -54.57% | 0.71 |
 | V36e bonds | IEF mean reversion in bear regime | 17.93% | $3,884k | -54.64% | 0.70 |
 | V36cv2 | Inverse ETF: SPY 1 up day + RSI2>65 in bear | CAGR neutral | Alt P&L -$10k | -54.50% | 0.71 |
+| V37 vol peak | Volume must peak on final down day of streak | 6.24% | $366k | -40.76% | 0.50 |
 
 **V34 is the confirmed ceiling. Optimisation is complete.**
 
@@ -501,3 +503,35 @@ html5lib>=1.1
 ## Disclaimer
 
 Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. V34's aggressive position sizing (60 positions, up to 10.8% each for top signals when VIX < 25) is suitable only for those who understand and can hold through drawdowns of -54%+. V32d is the recommended alternative for Roth IRA accounts (MaxDD -39%, Sharpe 0.77).
+
+---
+
+## V37 Volume Peak Filter -- Rejected
+
+**Tested:** Entry only when today's volume is the highest day in the consecutive down streak (capitulation volume hypothesis).
+
+**Result:** Blocked 15,040 of ~30,000 signals (50%). CAGR 6.24% (-6.33pp vs baseline). Trade count -34% (21,976 -> 14,551). Win rate unchanged at 59.9% proving filtered trades had identical quality. Good-year losses ($1.05M across 2013/2019/2020/2021/2024) overwhelm bad-year savings ($320k across 2018/2022/2025/2026).
+
+**Why it failed:** During market crashes, volume is distributed across multiple down days, not concentrated on the final one. The 2020 crash had its highest volume on March 16-20, not on maximum-oversold days. Requiring peak volume on the final day blocks systematic crash entries while allowing individual stock panics -- but both have the same win rate, so the filter selects randomly rather than by quality.
+
+**Add to do-not-retry table.** See full table above.
+
+---
+
+## Final Research Conclusions
+
+All ideas from the research queue have been tested. Summary:
+
+| Idea | Outcome |
+|---|---|
+| Streak filter Option C (V35) | Rejected -- MaxDD -8pp better but CAGR -4.72pp |
+| Per-stock EWMA vol filter (V36a) | Rejected -- CAGR -4.74pp, MaxDD worse |
+| Inverse ETF direct signal (V36c-v1) | Rejected -- only 57 signals in 21 years |
+| Bond allocation in bear regime (V36e) | Rejected -- bonds fell with equities in 2022 |
+| Inverse ETF underlying overbought (V36cv2) | Rejected -- SH P&L -$10k, structural decay |
+| Volume peak on final down day (V37) | Rejected -- 50% of signals blocked, WR unchanged |
+| Rolling trade P&L vol sizing | Not tested -- economically identical to V35 |
+| Limit orders instead of MOO | Not tested -- execution change only, low priority |
+
+**The drawdown is structural and cannot be reduced without sacrificing CAGR.**
+**V34 is the confirmed ceiling. Optimisation is complete. Focus shifts to paper trading.**
