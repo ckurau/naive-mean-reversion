@@ -1,0 +1,312 @@
+name: V40 Three-Way Test (Gap -0.75%, Gap -0.50%, Tier 1.3x)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Backtest start date (YYYY-MM-DD)"
+        required: false
+        default: "2004-01-01"
+      end_date:
+        description: "Backtest end date (YYYY-MM-DD, leave blank for today)"
+        required: false
+        default: ""
+      initial_capital:
+        description: "Starting capital in USD"
+        required: false
+        default: "100000"
+
+jobs:
+  # ------------------------------------------------------------------ #
+  # V40a: GAP_DOWN_MAX -1.0% -> -0.75%                                  #
+  # ------------------------------------------------------------------ #
+  v40a:
+    name: "V40a | Gap -0.75%"
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply date / capital overrides
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest_nmr_lib_v40a.py
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            sed -i "s/^END_DATE.*=.*/END_DATE = \"${{ github.event.inputs.end_date }}\"/" backtest_nmr_lib_v40a.py
+          fi
+          if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest_nmr_lib_v40a.py
+          fi
+
+      - name: Run V40a backtest
+        run: python backtest-nmr-v40a.py
+
+      - name: Upload V40a results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v40a-results-${{ github.run_id }}
+          path: results/v40/v40a/
+          retention-days: 90
+
+      - name: Commit V40a results
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/v40/v40a/
+          git diff --cached --quiet || git commit -m "chore: V40a results $(date -u +%Y-%m-%d)"
+          git stash
+          git pull --rebase origin main
+          git stash pop
+          git push
+
+  # ------------------------------------------------------------------ #
+  # V40b: GAP_DOWN_MAX -1.0% -> -0.50%                                  #
+  # ------------------------------------------------------------------ #
+  v40b:
+    name: "V40b | Gap -0.50%"
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply date / capital overrides
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest_nmr_lib_v40b.py
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            sed -i "s/^END_DATE.*=.*/END_DATE = \"${{ github.event.inputs.end_date }}\"/" backtest_nmr_lib_v40b.py
+          fi
+          if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest_nmr_lib_v40b.py
+          fi
+
+      - name: Run V40b backtest
+        run: python backtest-nmr-v40b.py
+
+      - name: Upload V40b results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v40b-results-${{ github.run_id }}
+          path: results/v40/v40b/
+          retention-days: 90
+
+      - name: Commit V40b results
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/v40/v40b/
+          git diff --cached --quiet || git commit -m "chore: V40b results $(date -u +%Y-%m-%d)"
+          git stash
+          git pull --rebase origin main
+          git stash pop
+          git push
+
+  # ------------------------------------------------------------------ #
+  # V40c: TOP_SIGNAL_MULTIPLIER 1.20x -> 1.30x                          #
+  # ------------------------------------------------------------------ #
+  v40c:
+    name: "V40c | Tier 1.3x"
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply date / capital overrides
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest_nmr_lib_v40c.py
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            sed -i "s/^END_DATE.*=.*/END_DATE = \"${{ github.event.inputs.end_date }}\"/" backtest_nmr_lib_v40c.py
+          fi
+          if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest_nmr_lib_v40c.py
+          fi
+
+      - name: Run V40c backtest
+        run: python backtest-nmr-v40c.py
+
+      - name: Upload V40c results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v40c-results-${{ github.run_id }}
+          path: results/v40/v40c/
+          retention-days: 90
+
+      - name: Commit V40c results
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/v40/v40c/
+          git diff --cached --quiet || git commit -m "chore: V40c results $(date -u +%Y-%m-%d)"
+          git stash
+          git pull --rebase origin main
+          git stash pop
+          git push
+
+  # ------------------------------------------------------------------ #
+  # Summary: runs after all 3, downloads artifacts, prints comparison   #
+  # ------------------------------------------------------------------ #
+  summary:
+    name: "V40 Comparison Summary"
+    runs-on: ubuntu-latest
+    needs: [v40a, v40b, v40c]
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download V40a results
+        uses: actions/download-artifact@v4
+        with:
+          name: v40a-results-${{ github.run_id }}
+          path: results/v40/v40a/
+        continue-on-error: true
+
+      - name: Download V40b results
+        uses: actions/download-artifact@v4
+        with:
+          name: v40b-results-${{ github.run_id }}
+          path: results/v40/v40b/
+        continue-on-error: true
+
+      - name: Download V40c results
+        uses: actions/download-artifact@v4
+        with:
+          name: v40c-results-${{ github.run_id }}
+          path: results/v40/v40c/
+        continue-on-error: true
+
+      - name: Generate comparison report
+        run: |
+          python - <<'EOF'
+          import json, os
+          from pathlib import Path
+
+          # V34 baseline (hardcoded from README)
+          v34 = {
+              "version": "V34 (baseline)",
+              "cagr_pct": 18.50,
+              "final_equity": 3805846,
+              "max_drawdown_pct": -54.50,
+              "sharpe_ratio": 0.71,
+              "win_rate_pct": 60.14,
+              "profit_factor": 1.07,
+              "trades_per_year": 1025,
+              "test_description": "Baseline (GAP_DOWN_MAX=-1.0%, MULTIPLIER=1.20x)",
+          }
+
+          variants = {
+              "V40a": Path("results/v40/v40a/metrics.json"),
+              "V40b": Path("results/v40/v40b/metrics.json"),
+              "V40c": Path("results/v40/v40c/metrics.json"),
+          }
+
+          rows = [v34]
+          for name, path in variants.items():
+              if path.exists():
+                  with open(path) as f:
+                      rows.append(json.load(f))
+              else:
+                  rows.append({"version": name, "error": "results not found"})
+
+          keys = ["version","test_description","cagr_pct","final_equity",
+                  "max_drawdown_pct","sharpe_ratio","win_rate_pct",
+                  "profit_factor","trades_per_year"]
+
+          sep = "=" * 110
+          print(f"\n{sep}")
+          print("  V40 COMPARISON SUMMARY vs V34 BASELINE")
+          print(sep)
+          for r in rows:
+              print(f"\n  {r.get('version','?')} | {r.get('test_description','')}")
+              if "error" in r:
+                  print(f"    ERROR: {r['error']}")
+                  continue
+              for k in keys[2:]:
+                  v34_val = v34.get(k)
+                  cur_val = r.get(k)
+                  if cur_val is None:
+                      continue
+                  if v34_val is not None and r.get("version") != "V34 (baseline)":
+                      delta = cur_val - v34_val
+                      sign = "+" if delta >= 0 else ""
+                      print(f"    {k:<28}: {cur_val:>12}   (vs V34: {sign}{delta:.2f})")
+                  else:
+                      print(f"    {k:<28}: {cur_val:>12}")
+          print(f"\n{sep}")
+
+          # Save summary JSON
+          out = Path("results/v40/comparison_summary.json")
+          out.parent.mkdir(parents=True, exist_ok=True)
+          with open(out, "w") as f:
+              json.dump(rows, f, indent=2, default=str)
+          print(f"\n  Saved comparison to: {out}")
+          EOF
+
+      - name: Upload comparison report
+        uses: actions/upload-artifact@v4
+        with:
+          name: v40-comparison-${{ github.run_id }}
+          path: results/v40/comparison_summary.json
+          retention-days: 90
+
+      - name: Commit comparison summary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/v40/
+          git diff --cached --quiet || git commit -m "chore: V40 comparison summary $(date -u +%Y-%m-%d)"
+          git stash
+          git pull --rebase origin main
+          git stash pop
+          git push
