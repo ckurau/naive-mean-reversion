@@ -1,0 +1,278 @@
+[
+  {
+    "experiment": "V34_baseline",
+    "description": "V34 -- no changes (control)",
+    "vol_filter_active": false,
+    "total_trades": 21976,
+    "trades_per_year": 1024.9,
+    "cagr_pct": 12.57,
+    "final_equity": 1265963.18,
+    "win_rate_pct": 60.16,
+    "profit_factor": 1.11,
+    "avg_win_pct": 3.09,
+    "avg_loss_pct": -3.61,
+    "max_drawdown_pct": -35.03,
+    "sharpe_ratio": 0.71,
+    "time_stop_rate_pct": 59.6,
+    "exit_reasons": {
+      "time_stop": 12582,
+      "profit_target": 8538,
+      "partial_exit": 856
+    },
+    "year_stats": {
+      "2004": {
+        "trades": 126,
+        "win_rate": 78.6,
+        "pnl_usd": 12708.24
+      },
+      "2005": {
+        "trades": 990,
+        "win_rate": 61.1,
+        "pnl_usd": 24927.94
+      },
+      "2006": {
+        "trades": 1023,
+        "win_rate": 63.5,
+        "pnl_usd": 39117.84
+      },
+      "2007": {
+        "trades": 844,
+        "win_rate": 62.4,
+        "pnl_usd": 21568.99
+      },
+      "2008": {
+        "trades": 10,
+        "win_rate": 80.0,
+        "pnl_usd": 2048.64
+      },
+      "2009": {
+        "trades": 667,
+        "win_rate": 63.0,
+        "pnl_usd": 29675.94
+      },
+      "2010": {
+        "trades": 735,
+        "win_rate": 59.7,
+        "pnl_usd": 19035.52
+      },
+      "2011": {
+        "trades": 813,
+        "win_rate": 63.2,
+        "pnl_usd": 26135.93
+      },
+      "2012": {
+        "trades": 1191,
+        "win_rate": 64.1,
+        "pnl_usd": 79081.38
+      },
+      "2013": {
+        "trades": 1372,
+        "win_rate": 63.7,
+        "pnl_usd": 168205.52
+      },
+      "2014": {
+        "trades": 1229,
+        "win_rate": 54.9,
+        "pnl_usd": 919.42
+      },
+      "2015": {
+        "trades": 915,
+        "win_rate": 61.0,
+        "pnl_usd": 84777.67
+      },
+      "2016": {
+        "trades": 887,
+        "win_rate": 55.8,
+        "pnl_usd": 31170.25
+      },
+      "2017": {
+        "trades": 1554,
+        "win_rate": 60.4,
+        "pnl_usd": 187709.38
+      },
+      "2018": {
+        "trades": 1093,
+        "win_rate": 52.2,
+        "pnl_usd": -144242.3
+      },
+      "2019": {
+        "trades": 1121,
+        "win_rate": 63.2,
+        "pnl_usd": 269686.1
+      },
+      "2020": {
+        "trades": 953,
+        "win_rate": 62.1,
+        "pnl_usd": 145030.77
+      },
+      "2021": {
+        "trades": 1682,
+        "win_rate": 58.4,
+        "pnl_usd": 153507.41
+      },
+      "2022": {
+        "trades": 234,
+        "win_rate": 31.2,
+        "pnl_usd": -262289.9
+      },
+      "2023": {
+        "trades": 1298,
+        "win_rate": 60.5,
+        "pnl_usd": 75137.36
+      },
+      "2024": {
+        "trades": 1611,
+        "win_rate": 60.9,
+        "pnl_usd": 271052.83
+      },
+      "2025": {
+        "trades": 1219,
+        "win_rate": 58.1,
+        "pnl_usd": -24857.62
+      },
+      "2026": {
+        "trades": 409,
+        "win_rate": 62.3,
+        "pnl_usd": -44144.13
+      }
+    }
+  },
+  {
+    "experiment": "V37_vol_peak",
+    "description": "V37 -- volume must be highest on final down day of streak",
+    "vol_filter_active": true,
+    "total_trades": 14551,
+    "trades_per_year": 678.6,
+    "cagr_pct": 6.24,
+    "final_equity": 366027.47,
+    "win_rate_pct": 59.88,
+    "profit_factor": 1.09,
+    "avg_win_pct": 3.12,
+    "avg_loss_pct": -3.72,
+    "max_drawdown_pct": -40.76,
+    "sharpe_ratio": 0.5,
+    "time_stop_rate_pct": 60.1,
+    "exit_reasons": {
+      "time_stop": 8334,
+      "profit_target": 5541,
+      "partial_exit": 676
+    },
+    "year_stats": {
+      "2004": {
+        "trades": 76,
+        "win_rate": 77.6,
+        "pnl_usd": 7790.42
+      },
+      "2005": {
+        "trades": 667,
+        "win_rate": 61.0,
+        "pnl_usd": 17122.53
+      },
+      "2006": {
+        "trades": 622,
+        "win_rate": 60.5,
+        "pnl_usd": 15623.93
+      },
+      "2007": {
+        "trades": 501,
+        "win_rate": 64.7,
+        "pnl_usd": 16606.22
+      },
+      "2008": {
+        "trades": 7,
+        "win_rate": 100.0,
+        "pnl_usd": 1944.41
+      },
+      "2009": {
+        "trades": 469,
+        "win_rate": 66.1,
+        "pnl_usd": 23607.03
+      },
+      "2010": {
+        "trades": 449,
+        "win_rate": 64.6,
+        "pnl_usd": 25755.42
+      },
+      "2011": {
+        "trades": 571,
+        "win_rate": 59.4,
+        "pnl_usd": -1289.41
+      },
+      "2012": {
+        "trades": 775,
+        "win_rate": 62.2,
+        "pnl_usd": 24712.66
+      },
+      "2013": {
+        "trades": 842,
+        "win_rate": 63.1,
+        "pnl_usd": 56290.58
+      },
+      "2014": {
+        "trades": 855,
+        "win_rate": 58.0,
+        "pnl_usd": 25704.01
+      },
+      "2015": {
+        "trades": 600,
+        "win_rate": 62.0,
+        "pnl_usd": 36104.95
+      },
+      "2016": {
+        "trades": 573,
+        "win_rate": 55.8,
+        "pnl_usd": 14784.52
+      },
+      "2017": {
+        "trades": 1024,
+        "win_rate": 62.4,
+        "pnl_usd": 87121.56
+      },
+      "2018": {
+        "trades": 765,
+        "win_rate": 50.3,
+        "pnl_usd": -83310.23
+      },
+      "2019": {
+        "trades": 725,
+        "win_rate": 64.7,
+        "pnl_usd": 73616.11
+      },
+      "2020": {
+        "trades": 542,
+        "win_rate": 59.0,
+        "pnl_usd": 16338.74
+      },
+      "2021": {
+        "trades": 1188,
+        "win_rate": 56.7,
+        "pnl_usd": -60554.11
+      },
+      "2022": {
+        "trades": 167,
+        "win_rate": 29.3,
+        "pnl_usd": -69157.1
+      },
+      "2023": {
+        "trades": 849,
+        "win_rate": 60.9,
+        "pnl_usd": 22019.01
+      },
+      "2024": {
+        "trades": 1179,
+        "win_rate": 58.8,
+        "pnl_usd": 15360.88
+      },
+      "2025": {
+        "trades": 820,
+        "win_rate": 57.9,
+        "pnl_usd": -1934.19
+      },
+      "2026": {
+        "trades": 285,
+        "win_rate": 62.8,
+        "pnl_usd": 1769.52
+      }
+    }
+  }
+]
