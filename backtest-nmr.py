@@ -43,7 +43,7 @@ WHY V33d IS BEST FOR A TAXABLE ACCOUNT (despite lower Sharpe):
   MaxDD -39.21%).
 """
 
-from backtest_nmr_lib import (
+from backtest_nmr_lib_v36_tests import (
     get_universe,
     download_prices,
     download_reference_data,
