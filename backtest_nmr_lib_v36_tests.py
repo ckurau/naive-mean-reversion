@@ -57,8 +57,8 @@ warnings.filterwarnings("ignore")
 # =============================================================================
 # TEST FLAGS -- set these to control which tests are active
 # =============================================================================
-ENABLE_TEST1_ROLLING_WR = True   # Rolling win rate adaptive sizing
-ENABLE_TEST2_VIX_RSI    = False   # RSI threshold tightening in low-VIX
+ENABLE_TEST1_ROLLING_WR = False   # Rolling win rate adaptive sizing
+ENABLE_TEST2_VIX_RSI    = True   # RSI threshold tightening in low-VIX
 
 # =============================================================================
 # TEST 1 PARAMETERS -- Rolling win rate adaptive sizing
