@@ -59,9 +59,9 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 TESTS = [
     {
         "name":              "Baseline_V35",
-        "equity_curve_ma":   False,   # Test A off
-        "vol_scaled_sizing": False,   # Test B off
-        "turn_of_month":     False,   # Test C off
+        "equity_curve_ma":   False,
+        "vol_scaled_sizing": False,
+        "turn_of_month":     False,
     },
     {
         "name":              "A_EquityCurve",
@@ -79,30 +79,6 @@ TESTS = [
         "name":              "C_TurnOfMonth",
         "equity_curve_ma":   False,
         "vol_scaled_sizing": False,
-        "turn_of_month":     True,
-    },
-    {
-        "name":              "AB_EquityCurve_VolScaling",
-        "equity_curve_ma":   True,
-        "vol_scaled_sizing": True,
-        "turn_of_month":     False,
-    },
-    {
-        "name":              "AC_EquityCurve_TurnOfMonth",
-        "equity_curve_ma":   True,
-        "vol_scaled_sizing": False,
-        "turn_of_month":     True,
-    },
-    {
-        "name":              "BC_VolScaling_TurnOfMonth",
-        "equity_curve_ma":   False,
-        "vol_scaled_sizing": True,
-        "turn_of_month":     True,
-    },
-    {
-        "name":              "ABC_All_Three",
-        "equity_curve_ma":   True,
-        "vol_scaled_sizing": True,
         "turn_of_month":     True,
     },
 ]
