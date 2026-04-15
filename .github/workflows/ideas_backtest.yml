@@ -1,0 +1,35 @@
+name: Ideas Backtest
+
+on:
+  workflow_dispatch:
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance pandas numpy requests tqdm lxml html5lib
+
+      - name: Run ideas backtest
+        run: |
+          python backtest_ideas.py
+
+      - name: Commit results
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add results_ideas/
+          git diff --staged --quiet || git commit -m "chore: ideas backtest results [skip ci]"
+          git pull --rebase origin main
+          git push
