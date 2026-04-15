@@ -1,0 +1,45 @@
+name: Bear Momentum Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      top_n:
+        description: 'Number of top instruments to hold (1 or 2)'
+        required: false
+        default: '1'
+      momentum_days:
+        description: 'Momentum lookback in trading days (default 63 = 3 months)'
+        required: false
+        default: '63'
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance pandas numpy tqdm
+
+      - name: Run bear momentum backtest
+        run: |
+          python backtest_bear_momentum.py
+
+      - name: Commit results
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          mkdir -p results_bear
+          git add results_bear/
+          git diff --staged --quiet || git commit -m "chore: bear momentum backtest results [skip ci]"
+          git pull --rebase origin main
+          git push
