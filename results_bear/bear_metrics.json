@@ -1,269 +1,265 @@
 {
   "strategy": "Dual Momentum Bear Regime (TOP_N=1)",
   "universe": [
-    "GLD",
-    "TLT",
-    "SH",
-    "XLE",
-    "XLU"
+    "GLD"
   ],
   "momentum_days": 63,
   "period": "2004-01-01 to 2026-04-15",
   "initial_capital": 100000.0,
-  "final_equity": 70113.23,
-  "cagr_full_period_pct": -1.58,
-  "sharpe_full_period": -0.1,
-  "max_drawdown_pct": -60.98,
+  "final_equity": 113746.21,
+  "cagr_full_period_pct": 0.58,
+  "sharpe_full_period": 0.19,
+  "max_drawdown_pct": -53.98,
   "bear_periods_count": 22,
   "total_bear_days": 1075,
   "bear_pct_of_time": 13.2,
   "avg_bear_duration_days": 49.0,
   "strategy_positive_bear_periods": 11,
-  "avg_strategy_return_per_bear": -1.16,
+  "avg_strategy_return_per_bear": 0.6,
   "avg_spy_return_per_bear": 2.75,
-  "avg_outperformance_vs_spy": -3.9,
+  "avg_outperformance_vs_spy": -2.15,
   "per_period_results": [
     {
       "start": "2008-01-25",
       "end": "2008-05-06",
       "days": 102,
-      "strat_ret": -1.04,
+      "strat_ret": -1.81,
       "spy_ret": 7.3,
       "sh_approx": -6.94,
       "cash_ret": 0.0,
-      "vs_cash": -1.04,
-      "vs_spy": -8.35
+      "vs_cash": -1.81,
+      "vs_spy": -9.11
     },
     {
       "start": "2008-05-07",
       "end": "2008-05-15",
       "days": 8,
-      "strat_ret": 3.07,
+      "strat_ret": 0.0,
       "spy_ret": 2.16,
       "sh_approx": -2.05,
       "cash_ret": 0.0,
-      "vs_cash": 3.07,
-      "vs_spy": 0.92
+      "vs_cash": 0.0,
+      "vs_spy": -2.16
     },
     {
       "start": "2008-05-21",
       "end": "2009-05-29",
       "days": 373,
-      "strat_ret": -18.86,
+      "strat_ret": 1.98,
       "spy_ret": -31.92,
       "sh_approx": 30.32,
       "cash_ret": 0.0,
-      "vs_cash": -18.86,
-      "vs_spy": 13.06
+      "vs_cash": 1.98,
+      "vs_spy": 33.9
     },
     {
       "start": "2011-08-30",
       "end": "2011-09-19",
       "days": 20,
-      "strat_ret": -3.23,
+      "strat_ret": -1.62,
       "spy_ret": -0.61,
       "sh_approx": 0.58,
       "cash_ret": 0.0,
-      "vs_cash": -3.23,
-      "vs_spy": -2.62
+      "vs_cash": -1.62,
+      "vs_spy": -1.01
     },
     {
       "start": "2011-09-26",
       "end": "2011-10-27",
       "days": 31,
-      "strat_ret": -6.99,
+      "strat_ret": 3.77,
       "spy_ret": 10.66,
       "sh_approx": -10.13,
       "cash_ret": 0.0,
-      "vs_cash": -6.99,
-      "vs_spy": -17.65
+      "vs_cash": 3.77,
+      "vs_spy": -6.89
     },
     {
       "start": "2011-10-31",
       "end": "2011-11-08",
       "days": 8,
-      "strat_ret": 0.12,
+      "strat_ret": 1.85,
       "spy_ret": 1.9,
       "sh_approx": -1.8,
       "cash_ret": 0.0,
-      "vs_cash": 0.12,
-      "vs_spy": -1.78
+      "vs_cash": 1.85,
+      "vs_spy": -0.05
     },
     {
       "start": "2011-11-09",
       "end": "2011-11-11",
       "days": 2,
-      "strat_ret": -2.09,
+      "strat_ret": 0.55,
       "spy_ret": 2.84,
       "sh_approx": -2.7,
       "cash_ret": 0.0,
-      "vs_cash": -2.09,
-      "vs_spy": -4.93
+      "vs_cash": 0.55,
+      "vs_spy": -2.29
     },
     {
       "start": "2011-11-14",
       "end": "2011-12-05",
       "days": 21,
-      "strat_ret": 1.01,
+      "strat_ret": -1.7,
       "spy_ret": 0.61,
       "sh_approx": -0.58,
       "cash_ret": 0.0,
-      "vs_cash": 1.01,
-      "vs_spy": 0.4
+      "vs_cash": -1.7,
+      "vs_spy": -2.3
     },
     {
       "start": "2011-12-08",
       "end": "2011-12-09",
       "days": 1,
-      "strat_ret": 1.27,
+      "strat_ret": 0.0,
       "spy_ret": 1.69,
       "sh_approx": -1.61,
       "cash_ret": 0.0,
-      "vs_cash": 1.27,
-      "vs_spy": -0.42
+      "vs_cash": 0.0,
+      "vs_spy": -1.69
     },
     {
       "start": "2011-12-12",
       "end": "2011-12-22",
       "days": 10,
-      "strat_ret": 1.35,
+      "strat_ret": 0.0,
       "spy_ret": 1.49,
       "sh_approx": -1.42,
       "cash_ret": 0.0,
-      "vs_cash": 1.35,
-      "vs_spy": -0.15
+      "vs_cash": 0.0,
+      "vs_spy": -1.49
     },
     {
       "start": "2015-09-10",
       "end": "2015-10-22",
       "days": 42,
-      "strat_ret": 1.68,
+      "strat_ret": 0.0,
       "spy_ret": 5.35,
       "sh_approx": -5.08,
       "cash_ret": 0.0,
-      "vs_cash": 1.68,
-      "vs_spy": -3.67
+      "vs_cash": 0.0,
+      "vs_spy": -5.35
     },
     {
       "start": "2015-12-21",
       "end": "2015-12-23",
       "days": 2,
-      "strat_ret": 2.4,
+      "strat_ret": 0.0,
       "spy_ret": 2.16,
       "sh_approx": -2.05,
       "cash_ret": 0.0,
-      "vs_cash": 2.4,
-      "vs_spy": 0.24
+      "vs_cash": 0.0,
+      "vs_spy": -2.16
     },
     {
       "start": "2015-12-31",
       "end": "2016-03-11",
       "days": 71,
-      "strat_ret": 7.93,
+      "strat_ret": 0.7,
       "spy_ret": -0.54,
       "sh_approx": 0.52,
       "cash_ret": 0.0,
-      "vs_cash": 7.93,
-      "vs_spy": 8.47
+      "vs_cash": 0.7,
+      "vs_spy": 1.24
     },
     {
       "start": "2018-11-12",
       "end": "2018-11-28",
       "days": 16,
-      "strat_ret": -0.07,
+      "strat_ret": 0.76,
       "spy_ret": 0.74,
       "sh_approx": -0.7,
       "cash_ret": 0.0,
-      "vs_cash": -0.07,
-      "vs_spy": -0.81
+      "vs_cash": 0.76,
+      "vs_spy": 0.02
     },
     {
       "start": "2018-12-19",
       "end": "2019-01-31",
       "days": 43,
-      "strat_ret": -7.58,
+      "strat_ret": 3.09,
       "spy_ret": 8.06,
       "sh_approx": -7.66,
       "cash_ret": 0.0,
-      "vs_cash": -7.58,
-      "vs_spy": -15.64
+      "vs_cash": 3.09,
+      "vs_spy": -4.96
     },
     {
       "start": "2020-03-23",
       "end": "2020-05-26",
       "days": 64,
-      "strat_ret": -12.9,
+      "strat_ret": 4.93,
       "spy_ret": 34.15,
       "sh_approx": -32.44,
       "cash_ret": 0.0,
-      "vs_cash": -12.9,
-      "vs_spy": -47.05
+      "vs_cash": 4.93,
+      "vs_spy": -29.21
     },
     {
       "start": "2022-05-09",
       "end": "2022-08-16",
       "days": 99,
-      "strat_ret": -22.18,
+      "strat_ret": -2.16,
       "spy_ret": 8.38,
       "sh_approx": -7.97,
       "cash_ret": 0.0,
-      "vs_cash": -22.18,
-      "vs_spy": -30.56
+      "vs_cash": -2.16,
+      "vs_spy": -10.54
     },
     {
       "start": "2022-08-17",
       "end": "2022-11-30",
       "days": 105,
-      "strat_ret": 26.3,
+      "strat_ret": 0.0,
       "spy_ret": -4.05,
       "sh_approx": 3.85,
       "cash_ret": 0.0,
-      "vs_cash": 26.3,
-      "vs_spy": 30.36
+      "vs_cash": 0.0,
+      "vs_spy": 4.05
     },
     {
       "start": "2022-12-05",
       "end": "2022-12-13",
       "days": 8,
-      "strat_ret": -1.34,
+      "strat_ret": 1.25,
       "spy_ret": 0.6,
       "sh_approx": -0.57,
       "cash_ret": 0.0,
-      "vs_cash": -1.34,
-      "vs_spy": -1.93
+      "vs_cash": 1.25,
+      "vs_spy": 0.66
     },
     {
       "start": "2022-12-14",
       "end": "2023-01-11",
       "days": 28,
-      "strat_ret": 6.27,
+      "strat_ret": 1.93,
       "spy_ret": -0.52,
       "sh_approx": 0.49,
       "cash_ret": 0.0,
-      "vs_cash": 6.27,
-      "vs_spy": 6.79
+      "vs_cash": 1.93,
+      "vs_spy": 2.45
     },
     {
       "start": "2023-01-18",
       "end": "2023-01-20",
       "days": 2,
-      "strat_ret": 1.25,
+      "strat_ret": 0.62,
       "spy_ret": 1.12,
       "sh_approx": -1.07,
       "cash_ret": 0.0,
-      "vs_cash": 1.25,
-      "vs_spy": 0.13
+      "vs_cash": 0.62,
+      "vs_spy": -0.5
     },
     {
       "start": "2025-04-23",
       "end": "2025-05-12",
       "days": 19,
-      "strat_ret": -1.8,
+      "strat_ret": -0.9,
       "spy_ret": 8.88,
       "sh_approx": -8.44,
       "cash_ret": 0.0,
-      "vs_cash": -1.8,
-      "vs_spy": -10.68
+      "vs_cash": -0.9,
+      "vs_spy": -9.78
     }
   ]
 }
