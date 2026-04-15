@@ -60,10 +60,11 @@ END_DATE       = datetime.date.today().isoformat()
 INITIAL_CAPITAL = 100_000.0
 
 # Universe of instruments to rotate through during bear regime
-UNIVERSE = ["GLD", "TLT", "SH", "XLE", "XLU"]
+UNIVERSE = ["GLD"]
 
 # Number of top-ranked instruments to hold (equal weight if > 1)
 TOP_N = 1
+CASH_ALLOCATION = 0.50  # Hold 50% in GLD, 50% in cash -- no rotation
 
 # Momentum lookback in trading days
 MOMENTUM_DAYS = 63   # ~3 months
@@ -220,15 +221,12 @@ def run_backtest(data):
                                      'in_bear': True, 'holdings': 'CASH'})
                 continue
 
-            # Select top N
-            ranked  = sorted(scores.items(), key=lambda x: -x[1])
-            top     = [t for t, _ in ranked[:TOP_N]]
-            top_str = ", ".join([f"{t}({scores[t]:+.1%})" for t in top])
-            print(f"  [REBAL] {today.date()} | Top: {top_str}")
+                        # Fixed allocation: 50% GLD, 50% cash -- no momentum rotation
+            print(f"  [REBAL] {today.date()} | Fixed: 50% GLD + 50% cash")
 
-            # Exit current holdings not in top
+            # Exit anything that isn't GLD
             for tkr, shares in list(holdings.items()):
-                if tkr not in top:
+                if tkr != "GLD":
                     if tkr in closes and today in closes[tkr].index:
                         price    = float(closes[tkr].loc[today])
                         proceeds = shares * price
@@ -240,29 +238,29 @@ def run_backtest(data):
                         })
                     del holdings[tkr]
 
-            # Allocate equally to top N
-            alloc_per = cash / len(top) if cash > 0 else 0
-            remaining_alloc = cash
+            # Deploy 50% of total portfolio into GLD
+            total_value = cash
+            for tkr, shares in holdings.items():
+                if tkr in closes and today in closes[tkr].index:
+                    total_value += shares * float(closes[tkr].loc[today])
 
-            for i, tkr in enumerate(top):
-                if tkr not in closes or today not in closes[tkr].index:
-                    continue
-                price  = float(closes[tkr].loc[today])
-                alloc  = remaining_alloc / (len(top) - i)
-                shares = alloc / price
-                cost   = shares * price
-                cash  -= cost
-                remaining_alloc -= cost
+            target_gld_value = total_value * CASH_ALLOCATION
+            current_gld_value = 0
+            if "GLD" in holdings and "GLD" in closes and today in closes["GLD"].index:
+                current_gld_value = holdings["GLD"] * float(closes["GLD"].loc[today])
 
-                if tkr in holdings:
-                    holdings[tkr] += shares
-                else:
-                    holdings[tkr] = shares
-
+            gld_diff = target_gld_value - current_gld_value
+            if abs(gld_diff) > 100 and "GLD" in closes and today in closes["GLD"].index:
+                price = float(closes["GLD"].loc[today])
+                shares_diff = gld_diff / price
+                cost = shares_diff * price
+                cash -= cost
+                holdings["GLD"] = holdings.get("GLD", 0) + shares_diff
+                action = "BUY" if shares_diff > 0 else "SELL"
                 trades.append({
-                    'date': today, 'action': 'BUY', 'ticker': tkr,
-                    'shares': shares, 'price': price,
-                    'value': cost, 'reason': 'rebalance'
+                    'date': today, 'action': action, 'ticker': "GLD",
+                    'shares': abs(shares_diff), 'price': price,
+                    'value': abs(cost), 'reason': 'rebalance'
                 })
 
         # --- Mark to market ---
