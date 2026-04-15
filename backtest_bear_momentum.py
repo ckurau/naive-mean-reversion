@@ -444,4 +444,3 @@ with open(OUTPUT_DIR / "bear_metrics.json", "w") as f:
     json.dump(metrics, f, indent=2, default=str)
 
 print(f"\n  Results saved to: {OUTPUT_DIR.resolve()}/")
-```
