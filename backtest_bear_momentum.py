@@ -107,7 +107,13 @@ def get_spy_regime(spy_df):
     close = spy_df["Close"].squeeze()
     ma200 = close.rolling(SPY_MA_WINDOW).mean()
     above = close > ma200
-    return above   # True = bull, False = bear
+    # MA slope filter -- only confirm bear when 200d MA itself is declining
+    # Slope = today's MA vs MA 20 days ago. Negative = MA turning down = real bear.
+    ma_slope = ma200 - ma200.shift(20)
+    ma_declining = ma_slope < 0
+    # Bear = price below MA AND MA itself declining
+    confirmed_bear = (~above) & ma_declining
+    return ~confirmed_bear  # True = bull/neutral, False = confirmed bear
 
 # =============================================================================
 # Backtest
