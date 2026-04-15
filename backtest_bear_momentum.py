@@ -60,7 +60,7 @@ END_DATE       = datetime.date.today().isoformat()
 INITIAL_CAPITAL = 100_000.0
 
 # Universe of instruments to rotate through during bear regime
-UNIVERSE = ["GLD", "TLT", "SH", "XLE", "XLU", "VIXY"]
+UNIVERSE = ["GLD", "TLT", "SH", "XLE", "XLU"]
 
 # Number of top-ranked instruments to hold (equal weight if > 1)
 TOP_N = 1
@@ -73,7 +73,7 @@ SPY_MA_WINDOW = 200
 
 # Minimum momentum to enter (don't buy something falling hard even if top-ranked)
 # Set to None to disable. -0.05 means skip if 63d return < -5%.
-MIN_MOMENTUM_TO_ENTER = None
+MIN_MOMENTUM_TO_ENTER = -0.01
 
 OUTPUT_DIR = Path("results_bear")
 OUTPUT_DIR.mkdir(exist_ok=True)
