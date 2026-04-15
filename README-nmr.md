@@ -40,6 +40,26 @@ The current script (`backtest-nmr.py`) is **V35 -- V34 base + C6 tiered sizing m
 | Sharpe Ratio | 0.77 |
 | Avg Loss | -3.12% |
 
+### Middle Ground: Turn-of-Month Sizing (C_TurnOfMonth)
+
+Tested April 2026. Full size on days 1-5 and 26-31 of each month, 70% size mid-month (days 6-25). Sharpe identical to V35 at 0.71, profit factor improved to 1.08. Sits between V35 and V32d on the risk/return curve.
+
+| Metric | Value |
+| --- | --- |
+| CAGR | 16.20% |
+| Final Equity | $2,516,582 |
+| Max Drawdown | -48.91% |
+| Sharpe Ratio | 0.71 |
+| Profit Factor | 1.08 |
+
+### Three-Way Comparison
+
+| Strategy | CAGR | Equity | MaxDD | Sharpe | Best For |
+| --- | --- | --- | --- | --- | --- |
+| V35 | 18.81% | $4,028k | -56.22% | 0.71 | Max wealth, taxable |
+| C_TurnOfMonth | 16.20% | $2,517k | -48.91% | 0.71 | Middle ground |
+| V32d | 15.37% | $2,145k | -39.21% | 0.77 | Roth IRA, lower DD |
+
 ### Previous Bests -- for reference
 
 | Version | CAGR | Final Equity | MaxDD | Sharpe |
@@ -55,7 +75,7 @@ The current script (`backtest-nmr.py`) is **V35 -- V34 base + C6 tiered sizing m
 
 ### V35 Changes vs V34
 
-**C6 -- Tiered sizing multiplier raised (1.20x -> 1.30x):** Top 20% of signals by composite score now receive a 1.30x position size multiplier (was 1.20x in V34). Hard cap of 12% per position unchanged. Zero change to trade count or win rate. Tested as V40c: +$222k equity, +0.31% CAGR vs V34. Sharpe unchanged at 0.71. MaxDD worsens marginally by 1.72pp -- consistent with the original 1.2x addition pattern (small CAGR gain, small DD cost).
+**C6 -- Tiered sizing multiplier raised (1.20x -> 1.30x):** Top 20% of signals by composite score now receive a 1.30x position size multiplier (was 1.20x in V34). Hard cap of 12% per position unchanged. Zero change to trade count or win rate. Tested as V40c: +$222k equity, +0.31% CAGR vs V34. Sharpe unchanged at 0.71. MaxDD worsens marginally by 1.72pp.
 
 **V35 gain vs V34: +$222k final equity, +0.31% CAGR.**
 
@@ -81,9 +101,9 @@ Strong windows (W1, W2, W3, W6) share two traits: crash-recovery events present,
 
 Weak/failing windows cluster into three regime types:
 
-- **W7 (2021-2022): Slow grinding bear.** 2022 was a 12-month grind with repeated false bottoms. Win rate fell to 54.6% (below sustainable threshold). SPY oscillated around the 200d MA, triggering entries that caught falling knives with no snap-back within 8 days.
-- **W5 (2017-2018): Low-volatility drought.** Historically low VIX meant 4+ consecutive down days barely fired. When they did, the 9% position size in a low-vol environment created poor risk/reward (PF 1.05 -- barely covering commissions).
-- **W8 (2023-2025): Regime split.** Win rate held at 60% (healthy) but profit factor collapsed to 1.03. Average wins shrank relative to losses -- not a signal quality problem but a market structure problem: winners reverting partially then re-trending before hitting the 2% target.
+- **W7 (2021-2022): Slow grinding bear.** Win rate fell to 54.6%. SPY oscillated around the 200d MA triggering entries that caught falling knives with no snap-back within 8 days.
+- **W5 (2017-2018): Low-volatility drought.** Historically low VIX meant 4+ consecutive down days barely fired. PF 1.05 -- barely covering commissions.
+- **W8 (2023-2025): Regime split.** Win rate held at 60% but profit factor collapsed to 1.03. Average wins shrank -- stocks reverting partially then re-trending before hitting the 2% target.
 
 **Structural conclusion:** The edge is regime-conditional, not overfit. 3 of 4 regime types work. The only structural failure is slow-grinding bear markets where reversions don't complete within 8 days.
 
@@ -113,19 +133,18 @@ Weak/failing windows cluster into three regime types:
 | **SPY regime** | No new entries when SPY is below its 200-day MA |
 | **Re-entry cooldown** | No re-entry in a stock for 5 days after a time-stop exit |
 | **Velocity crash pause** | SPY 5-day return < -12% -> pause all entries for 5 days |
-| **Earnings month cap** | Position size capped at 2.4% in Jan/Apr/Jul/Oct (earnings months) |
+| **Earnings month cap** | Position size capped at 2.4% in Jan/Apr/Jul/Oct |
 | **Commission** | $0.005/share or $0.35 minimum per trade |
 
 ---
 
 ## The Honest Risk Picture for V35
 
-V35's gains come from the same structural edge as V34 -- leverage amplification, universe expansion, and position count maximisation -- plus one additional parametric improvement to the top-signal sizing multiplier. At ~$4.0M peak equity:
+V35's gains come from leverage amplification, universe expansion, and position count maximisation plus one parametric improvement to the top-signal sizing multiplier. At ~$4.0M peak equity:
 
 * The -56.22% max drawdown means a potential ~$2.25M paper loss peak-to-trough
 * 2022 lost ~$1.2M in a single year at that equity level
 * 2025 and 2026 YTD remain the current live drawdown environment
-* The 1.30x sizing multiplier concentrates slightly more capital on top-ranked trades, modestly amplifying both wins and losses on those positions
 
 **60 positions is the confirmed ceiling.** Win rate is the anchor -- if live win rate drops below 56%, the strategy is failing.
 
@@ -133,11 +152,11 @@ V35's gains come from the same structural edge as V34 -- leverage amplification,
 
 ## Drawdown Research: Confirmed Structural -- Do Not Retry
 
-After exhaustive testing across V35-V40 sessions, the following conclusion is definitive:
+After exhaustive testing across V35-V40 sessions and April 2026 research, the following conclusion is definitive:
 
 **The max drawdown cannot be reduced without sacrificing CAGR.**
 
-Every mechanism tested either blocks crash-recovery entries (costing more in good years than it saves in bad years) or adds a losing overlay. This is structural, not a calibration problem.
+Every mechanism tested either blocks crash-recovery entries or adds a losing overlay. This is structural, not a calibration problem.
 
 ### What the streak analysis proved
 
@@ -153,7 +172,7 @@ From V34 trade data (18,775 trades after excluding partials):
 
 Loss streak trades (45.8% of all trades) account for -$13.98M total P&L. Non-streak trades (54.2%) account for +$14.65M. The edge is entirely in non-streak periods.
 
-**Why reducing streak exposure fails:** After 3+ consecutive losses, the strategy is in a market regime where entries are catching falling knives. BUT these same clustered-loss windows are immediately followed by the largest recovery periods. Every filter that reduces streak exposure also reduces crash-recovery entries. 2019, 2020, and 2021 -- the three best years -- each began with a loss cluster that triggered streak filters, then recovered violently. Blocking entries during that window costs more than the streak losses saved.
+**Why reducing streak exposure fails:** After 3+ consecutive losses, the strategy catches falling knives. BUT these same clustered-loss windows are immediately followed by the largest recovery periods. Every filter that reduces streak exposure also reduces crash-recovery entries. 2019, 2020, and 2021 each began with a loss cluster that triggered streak filters, then recovered violently. Blocking entries during that window costs more than the streak losses saved.
 
 ### SPY bear regime analysis
 
@@ -202,9 +221,11 @@ SPY RSI(2) distribution during bear regime (1,079 days, 19.3% of all trading day
 | **IBS < 0.35 filter (V38a-C1)** | (Close-Low)/(High-Low) < 0.35 | -$2,150k. Killed crash-recovery entries |
 | **EMA 20/50 downtrend block (V38a-C2)** | Skip entries when Close < EMA20 < EMA50 | -$1,470k. Blocked crash-recovery AND worsened MaxDD |
 | **Double time-stop cooldown (V38a-C4)** | 15d cooldown if stock time-stops twice in 30d | Neutral -- fires too rarely |
-| **Streak filter Option C (V35)** | 3 losses=50% size, 5 losses=pause 3d, reset on win | MaxDD -54.5%->-46.2% (+8pp) but CAGR -4.72pp, equity -$2.2M. Structural -- streak trades immediately precede crash-recovery entries. |
-| **Rolling WR adaptive sizing (V36 Test 1)** | Last 20 trades WR < 55% -> halve position size | MaxDD -56.22%->-49.28% (+7pp) but CAGR -3.71pp, equity -$2.0M. Same structural failure as streak filter -- trigger fires during crash-recovery windows. Reduced-size trades had HIGHER WR (62%) than full-size trades (59%). |
+| **Streak filter Option C** | 3 losses=50% size, 5 losses=pause 3d, reset on win | MaxDD -54.5%->-46.2% (+8pp) but CAGR -4.72pp, equity -$2.2M. Structural. |
+| **Rolling WR adaptive sizing (V36 Test 1)** | Last 20 trades WR < 55% -> halve size | MaxDD -56.22%->-49.28% (+7pp) but CAGR -3.71pp. Reduced-size trades had HIGHER WR (62%) -- trigger fires during crash-recovery windows. |
 | **RSI tightening in low-VIX (V36 Test 2)** | RSI(2) < 15 when VIX < 15 | Filtered 1 trade across 21 years. VIX rarely below 15 post-2017. Dead end. |
+| **Equity curve trading (Ideas Test A)** | Size down 50% when equity < 20d MA | CAGR -3.30pp, MaxDD unchanged (-0.17pp). Same structural failure as rolling WR -- fires during crash-recovery. |
+| **Continuous vol-scaled sizing (Ideas Test B)** | size = base * (15% / realized\_vol) | CAGR -2.07pp, MaxDD -1pp improvement. Not worth complexity. |
 | **Per-stock EWMA vol filter (V36a)** | Skip entries when stock EWMA vol in top 20% of own 252d history | CAGR -4.74pp, MaxDD worse (-0.42pp). Same failure as streak filter. |
 | **Inverse ETF v1 -- direct signal (V36c-v1)** | Buy SH/PSQ/RWM when inverse ETF has 4+ consecutive down days + RSI<20 | 57 signals in 21 years -- too rare (~2.7/year). +$29k total (not meaningful). |
 | **Bond allocation in bear regime (V36e)** | Buy IEF when 2+ consecutive down days + RSI<40, during SPY below 200d MA | Alt P&L -$2,113 across 146 trades. 2022 bonds fell with equities. |
@@ -213,12 +234,17 @@ SPY RSI(2) distribution during bear regime (1,079 days, 19.3% of all trading day
 | **Gap filter further tightening -- -0.75% (V40a)** | GAP\_DOWN\_MAX = -0.0075 | CAGR -2.59pp, equity -$1,433k, MaxDD worse -3.72pp. Gap ceiling confirmed at -1.0%. |
 | **Gap filter further tightening -- -0.50% (V40b)** | GAP\_DOWN\_MAX = -0.005 | CAGR -4.53pp, equity -$2,154k, MaxDD worse -4.30pp. Strongly negative. |
 | **Tier multiplier 1.5x or 2.0x** | Not tested | Trend from 1.2x->1.3x shows diminishing CAGR gain with growing DD cost. Do not test. |
+| **Bear regime overlay -- all variants** | Momentum rotation (GLD/TLT/SH/XLE/XLU), BTAL+GLD, 50% GLD + 50% cash | Best result ever achieved: CAGR +0.58% over 22 years. Full MR is strictly superior. Capital sits idle 77% of time (bull regime) which overwhelms any bear-period gains. Abandoned. |
+| **Dynamic hedging / options / futures** | Not tested | Institutional infrastructure, not applicable at this scale. |
 
 ### Final structural conclusion on drawdown
 
 The strategy must be fully exposed during panic to capture recovery. The drawdown is the price of the edge. Every mechanism that reduces this exposure costs more in recovery years than it saves in bad years. The max drawdown is confirmed structural and not improvable within the current strategy design without meaningful CAGR sacrifice.
 
-**For investors who cannot tolerate -56% drawdown: use V32d (MaxDD -39%, Sharpe 0.77, CAGR 15.37%).**
+**The three honest options:**
+- **V35**: MaxDD -56%, CAGR 18.81% -- max wealth if you can hold through it
+- **C_TurnOfMonth**: MaxDD -49%, CAGR 16.20%, Sharpe 0.71 -- middle ground, Sharpe unchanged
+- **V32d**: MaxDD -39%, CAGR 15.37%, Sharpe 0.77 -- Roth IRA or lower DD tolerance
 
 ---
 
@@ -273,14 +299,14 @@ Apply ~26% walk-forward decay: 18.81% x 0.74 = ~13.9% live gross. After short-te
 
 ## SPY vs Strategy
 
-| Metric | SPY B&H | V35 | V32d (Roth) |
-| --- | --- | --- | --- |
-| CAGR (gross, in-sample) | ~10.5% | 18.81% | 15.37% |
-| CAGR (gross, OOS est.) | ~10.5% | ~14% | TBD |
-| CAGR (after tax, est.) | ~8.4% | ~8-10% | tax-free (Roth) |
-| Max Drawdown | -55% (2008) | -56.22% | -39.21% |
-| Sharpe Ratio | ~0.55 | 0.71 | 0.77 |
-| Final Equity ($100k start) | ~$800k | $4,028k | $2,145k |
+| Metric | SPY B&H | V35 | C_TurnOfMonth | V32d (Roth) |
+| --- | --- | --- | --- | --- |
+| CAGR (gross, in-sample) | ~10.5% | 18.81% | 16.20% | 15.37% |
+| CAGR (gross, OOS est.) | ~10.5% | ~14% | ~12% | TBD |
+| CAGR (after tax, est.) | ~8.4% | ~8-10% | ~7-9% | tax-free (Roth) |
+| Max Drawdown | -55% (2008) | -56.22% | -48.91% | -39.21% |
+| Sharpe Ratio | ~0.55 | 0.71 | 0.71 | 0.77 |
+| Final Equity ($100k start) | ~$800k | $4,028k | $2,517k | $2,145k |
 
 **Tax note:** ~1,025 trades/year qualifies for IRS trader tax status (Section 475(f) MTM election). Consult a CPA (e.g. Green Trader Tax).
 
@@ -292,20 +318,18 @@ Apply ~26% walk-forward decay: 18.81% x 0.74 = ~13.9% live gross. After short-te
 
 * **Broker:** Interactive Brokers (IBKR) paper account, starting equity $100,000
 * **Scripts:** `scan_evening.py` (6:00 PM PT) + `trade_morning.py` (6:15 AM PT)
-* **Scheduler:** Windows Task Scheduler -- two tasks (see below)
+* **Scheduler:** Windows Task Scheduler -- two tasks
 * **Orders:** Limit On Open (LOO) entries submitted evening before; MOO exits submitted morning of
 * **Database:** `C:\nmr-trader\positions.db` -- SQLite (4 tables)
-* **Alerts:** Daily summary email via SendGrid (optional)
 * **MAX\_POSITIONS:** 60 (matches V35)
 
-### Two-Script Architecture (April 2026 redesign)
+### Two-Script Architecture (April 2026)
 
 The original single `trade.py` (MOO entries at 6:25 AM) was replaced with a two-script system that more accurately implements the backtest's gap filter logic.
 
-**Why LOO instead of MOO for entries:**
-The backtest applies `GAP_DOWN_MAX = -1%` and `GAP_UP_MAX = +2%` filters using the next-day open price. MOO orders accept any open price regardless of overnight gap -- diverging from what the backtest actually tested. LOO (Limit On Open) orders with a limit of `prior_close * 1.005` implement the gap-up filter in live execution: stocks that bounce hard overnight won't fill, matching backtest behavior. No backtesting of this change is required -- it only affects live execution fidelity, not backtest parameters.
+**Why LOO instead of MOO for entries:** The backtest applies `GAP_DOWN_MAX = -1%` and `GAP_UP_MAX = +2%` filters using the next-day open price. MOO orders accept any open price -- diverging from the backtest. LOO orders with limit = `prior_close * 1.005` implement the gap-up filter in live execution. Stocks that bounce hard overnight won't fill, matching backtest behavior. No backtesting of this change is required -- it only affects live execution fidelity.
 
-**Exit orders remain MOO:** Selling at market open on exit is standard -- you're already in the position and accepting the open price is correct. No gap filter applies to exits.
+**Exit orders remain MOO:** Selling at market open on exit is correct -- you're already in the position and accepting the open price is standard.
 
 | Script | Trigger | Does |
 | --- | --- | --- |
@@ -343,7 +367,7 @@ Scripts run from `C:\nmr-trader\` on your local PC. They do NOT pull updated fil
 
 ### LOO Limit Price
 
-Entry limit = `prior_close * 1.005` (prior close + 0.5%). Orders that gap up more than 0.5% overnight will not fill. This is intentional -- it matches the backtest's gap filter behavior. Not-filled orders are logged as `NOT FILLED (gapped up)` in the morning summary and are expected behavior, not errors.
+Entry limit = `prior_close * 1.005` (prior close + 0.5%). Orders that gap up more than 0.5% overnight will not fill. This is intentional and correct -- logged as `NOT FILLED (gapped up)`, not an error.
 
 ### Parameter Sync Checklist (V35)
 
@@ -357,27 +381,16 @@ Entry limit = `prior_close * 1.005` (prior close + 0.5%). Orders that gap up mor
 | IBKR\_PORT (paper) | 4002 | both scripts |
 | IBKR\_PORT (live) | 4001 | both scripts |
 
-### Universe Verification
+### Diagnostic Scripts
 
 ```
 cd C:\nmr-trader
 venv\Scripts\activate
-python -c "import io, requests, pandas as pd; tickers=set(); [tickers.update(pd.read_html(io.StringIO(requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=30).text))[0]['Symbol'].tolist()) for u in ['https://en.wikipedia.org/wiki/List_of_S%26P_500_companies']]; print(f'S&P500 tickers: {len(tickers)}')"
+python preflight.py        # Pre-flight: files, DB, Gateway, market data, signal scan
+python positions_check.py  # Open positions (live prices), closed trades, P&L summary
+python diag.py             # SPY regime + DB connection check
+python scan_debug.py       # Signal scanner filter funnel debug
 ```
-
-Expected: 500-503 tickers from S&P 500 alone; full universe (500+400+600) should be 1,400-1,600.
-
-### Pre-Flight Check
-
-Run before each new deployment or after any changes:
-
-```
-cd C:\nmr-trader
-venv\Scripts\activate
-python preflight.py
-```
-
-Checks: file existence, syntax, DB tables, IBKR Gateway connection, portfolio value readable, market data downloads, signal scan on 20-ticker sample.
 
 ### Paper Trading Win Rate Check
 
@@ -412,7 +425,7 @@ else:
 | Trades per month | 65-90 | Check universe fetch and signal parameters |
 | Worst single month | Better than -15% | Review if repeated |
 | Script ran every trading day | 100% | Fix Gateway startup |
-| LOO fill rate | >70% of orders fill | Increase LOO\_LIMIT\_BUFFER if too many missed |
+| LOO fill rate | >70% of orders fill | Increase LOO\_LIMIT\_BUFFER to 0.010 if too many missed |
 | Slippage vs prior close | Under 0.6% avg | Higher for small-caps expected |
 
 ### Going Live -- Two Changes Only
@@ -427,14 +440,16 @@ Switch Gateway from Paper to Live account. No other changes.
 
 | Problem | Likely cause | Fix |
 | --- | --- | --- |
-| "IBKR connection failed" (morning) | Gateway not running | Open Gateway and log in before 6:15 AM PT |
-| "IBKR connection failed" (evening) | Gateway not running at 6 PM | Leave Gateway running all day or use IBC for auto-login |
+| "IBKR connection failed" (morning) | Gateway not running | Open Gateway before 6:15 AM PT |
+| "IBKR connection failed" (evening) | Gateway not running at 6 PM | Leave Gateway running all day |
+| VIX download failed in log | Pre-market, Yahoo data unavailable | Scripts use fallback VIX=20 and continue normally |
 | 0 entry candidates | SPY below 200d MA | Normal in bear market -- no action needed |
 | All LOO orders not filling | LOO\_LIMIT\_BUFFER too tight | Increase from 0.005 to 0.010 in scan\_evening.py |
 | Downloaded 123 tickers | Universe fetch broken | `pip install lxml` |
 | Win rate < 55% after 50 trades | Signal logic drift | Verify parameter sync checklist above |
-| positions error: no such table | DB not initialized | Run `python preflight.py` to create tables |
+| positions error: no such table | DB not initialized | Run `python preflight.py` |
 | PC asleep at trigger time | Windows sleep settings | Power & Sleep -> Sleep -> Never |
+| IBKR market data disabled message | Balance below minimum | Ignorable -- scripts use yfinance, not IBKR data |
 
 ---
 
@@ -454,9 +469,7 @@ Only after paper trading passes all criteria. Change `IBKR_PORT` to 4001 in both
 
 ### Step 4 -- Optimisation is complete
 
-V35 is the confirmed ceiling. Do not retry entry filters, drawdown filters, or exit mechanics. The drawdown is structural and cannot be reduced without sacrificing CAGR. See the "Do Not Retry" table above for the complete list of exhausted approaches.
-
-**One remaining low-priority test:** Earnings blackout extension (3 -> 5 days). Expected impact small given ~6 day avg hold.
+V35 is the confirmed ceiling. Do not retry entry filters, drawdown filters, exit mechanics, or bear regime overlays. The drawdown is structural and cannot be reduced without sacrificing CAGR. See the Do-Not-Retry table for the complete exhausted list.
 
 ---
 
@@ -513,8 +526,12 @@ V35 is the confirmed ceiling. Do not retry entry filters, drawdown filters, or e
 | V40a | Gap filter -1.0%->-0.75% | 15.91% | $2,373k | -58.22% | 0.64 |
 | V40b | Gap filter -1.0%->-0.50% | 13.97% | $1,652k | -58.80% | 0.59 |
 | **V35 (V40c)** | **Tier multiplier 1.20x->1.30x** | **18.81%** | **$4,028k** | **-56.22%** | **0.71** |
+| Ideas A: Equity curve trading | Size down 50% when equity < 20d MA | 15.51% | $2,214k | -56.39% | 0.66 |
+| Ideas B: Vol-scaled sizing | size = base * (15% / realized\_vol) | 16.74% | $2,778k | -55.25% | 0.67 |
+| **Ideas C: Turn-of-month sizing** | **Full size days 1-5+26-31, 70% mid-month** | **16.20%** | **$2,517k** | **-48.91%** | **0.71** |
+| Bear overlay -- best result | 50% GLD + 50% cash during confirmed bear | 0.58% | $114k | -54.0% | 0.16 |
 
-**V35 is the confirmed ceiling. Optimisation is complete.**
+**V35 is the confirmed CAGR ceiling. C_TurnOfMonth is the confirmed MaxDD middle ground. Optimisation is complete.**
 
 ---
 
@@ -522,15 +539,18 @@ V35 is the confirmed ceiling. Do not retry entry filters, drawdown filters, or e
 
 ```
 .
-+-- backtest-nmr.py              # Thin wrapper -- imports from backtest_nmr_lib.py
-+-- backtest_nmr_lib.py          # All backtest logic, parameters, simulation (V35)
-+-- backtest_nmr_lib_v36_tests.py  # Test build: rolling WR + VIX-RSI (both failed -- archived)
-+-- walkforward.py               # Walk-forward validation runner
-+-- scan_evening.py              # Live: evening signal scan + LOO order submission
-+-- trade_morning.py             # Live: morning exit orders + fill confirmation
-+-- preflight.py                 # Pre-flight system check (run before deployment)
-+-- diag.py                      # SPY regime / DB diagnostic
-+-- scan_debug.py                # Signal scanner debug (filter funnel)
++-- backtest-nmr.py                    # Thin wrapper -- imports from backtest_nmr_lib.py
++-- backtest_nmr_lib.py                # All backtest logic, parameters, simulation (V35)
++-- backtest_nmr_lib_v36_tests.py      # Test build: rolling WR + VIX-RSI (both failed)
++-- backtest_ideas.py                  # Ideas test: equity curve, vol scaling, turn-of-month
++-- backtest_bear_momentum.py          # Bear regime overlay tests (all failed -- abandoned)
++-- walkforward.py                     # Walk-forward validation runner
++-- scan_evening.py                    # Live: evening signal scan + LOO order submission
++-- trade_morning.py                   # Live: morning exit orders + fill confirmation
++-- preflight.py                       # Pre-flight system check (run before deployment)
++-- positions_check.py                 # CLI: view open/closed positions + P&L
++-- diag.py                            # SPY regime / DB diagnostic
++-- scan_debug.py                      # Signal scanner filter funnel debug
 +-- requirements.txt
 +-- README-nmr.md
 +-- results/
@@ -539,26 +559,29 @@ V35 is the confirmed ceiling. Do not retry entry filters, drawdown filters, or e
 |   +-- equity_curve.csv
 |   +-- walkforward_summary.csv
 |   +-- walkforward_report.json
++-- results_ideas/                     # Ideas backtest per-test outputs
++-- results_bear/                      # Bear regime backtest outputs
 +-- paper_trading/
 |   +-- summary.json
 |   +-- trades.csv
 |   +-- open_positions.csv
-+-- .github/workflows/backtest.yml
++-- .github/workflows/
+|   +-- backtest.yml                   # Main backtest workflow
+|   +-- ideas_backtest.yml             # Ideas test workflow
+|   +-- bear_backtest.yml              # Bear regime test workflow
 ```
 
 ---
 
 ## Setup & Running
 
-### GitHub Actions (backtest only)
+### GitHub Actions (backtest)
 
 1. Push all files to your repo
 2. **Settings -> Actions -> General -> Workflow permissions -> Read and write**
 3. **Actions -> Naive MR Backtest -> Run workflow**
 
 Walk-forward: set `run_walkforward = true` in workflow dispatch inputs. Adds 6-8 hours.
-
-To run test variants: edit `ENABLE_TEST1_ROLLING_WR` and `ENABLE_TEST2_VIX_RSI` flags in `backtest_nmr_lib_v36_tests.py` and update the import in `backtest-nmr.py` to point to that file.
 
 ### Local Backtest
 
@@ -575,7 +598,7 @@ cd C:\nmr-trader
 python preflight.py      # Verify everything before first run
 ```
 
-Ensure Gateway is running before both script trigger times.
+Ensure Gateway is running before both script trigger times (6:00 PM and 6:15 AM PT).
 
 ### Health Checks
 
@@ -583,7 +606,7 @@ Ensure Gateway is running before both script trigger times.
 * `win_rate < 55%`: verify uniform 8-day windows; check SPY regime filter
 * `CAGR < 17%` with no changes: verify `MAX_POSITIONS = 60` and version V35
 * `trades_per_year < 700`: Tier 3 may be disabled -- check `MIN_CONSEC_DOWN = 4`
-* `LOO fill rate < 50%`: LOO\_LIMIT\_BUFFER may be too tight -- increase to 0.010
+* `LOO fill rate < 50%`: `LOO_LIMIT_BUFFER` may be too tight -- increase to 0.010
 
 ---
 
@@ -604,4 +627,4 @@ ib_async>=1.0.0
 
 ## Disclaimer
 
-Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. V35's aggressive position sizing (60 positions, up to 11.7% each for top signals when VIX < 25) is suitable only for those who understand and can hold through drawdowns of -56%+. V32d is the recommended alternative for Roth IRA accounts (MaxDD -39%, Sharpe 0.77).
+Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. Consult a licensed financial advisor and CPA before trading with real capital. V35's aggressive position sizing (60 positions, up to 11.7% each for top signals when VIX < 25) is suitable only for those who understand and can hold through drawdowns of -56%+. V32d is the recommended alternative for Roth IRA accounts (MaxDD -39%, Sharpe 0.77). C_TurnOfMonth (MaxDD -49%, Sharpe 0.71, CAGR 16.20%) is a middle ground option for taxable accounts with moderate drawdown tolerance.
