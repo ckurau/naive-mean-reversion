@@ -1,0 +1,189 @@
+[
+  {
+    "test": "Baseline_V35",
+    "cagr": 18.87,
+    "max_dd": -55.89,
+    "sharpe": 0.71,
+    "pf": 1.06,
+    "final_eq": 4105077.22,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": 0.0
+  },
+  {
+    "test": "Baseline_V35_I3",
+    "cagr": 19.67,
+    "max_dd": -52.86,
+    "sharpe": 0.73,
+    "pf": 1.07,
+    "final_eq": 4483239.84,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": -258742.6
+  },
+  {
+    "test": "IdeaD_VixTS",
+    "cagr": 18.81,
+    "max_dd": -55.75,
+    "sharpe": 0.71,
+    "pf": 1.06,
+    "final_eq": 4057304.79,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": 0.0
+  },
+  {
+    "test": "IdeaE_52wkHigh",
+    "cagr": 15.62,
+    "max_dd": -54.65,
+    "sharpe": 0.65,
+    "pf": 1.06,
+    "final_eq": 2260862.86,
+    "wr": 59.87,
+    "trades_yr": 956.7,
+    "non_mr_pnl": 0.0
+  },
+  {
+    "test": "IdeaB_GapCapture",
+    "cagr": 14.88,
+    "max_dd": -57.72,
+    "sharpe": 0.62,
+    "pf": 1.06,
+    "final_eq": 2344624.98,
+    "wr": 60.25,
+    "trades_yr": 868.4,
+    "non_mr_pnl": 374240.75
+  },
+  {
+    "test": "IdeaC_Analyst",
+    "cagr": 18.87,
+    "max_dd": -55.89,
+    "sharpe": 0.71,
+    "pf": 1.06,
+    "final_eq": 4105077.22,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": 0.0
+  },
+  {
+    "test": "IdeaF_CallSpread",
+    "cagr": 18.68,
+    "max_dd": -52.93,
+    "sharpe": 0.72,
+    "pf": 1.07,
+    "final_eq": 3542320.44,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": -421473.52
+  },
+  {
+    "test": "IdeaD+I3",
+    "cagr": 19.61,
+    "max_dd": -52.85,
+    "sharpe": 0.73,
+    "pf": 1.07,
+    "final_eq": 4427047.49,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": -257420.79
+  },
+  {
+    "test": "IdeaE+I3",
+    "cagr": 16.4,
+    "max_dd": -52.61,
+    "sharpe": 0.68,
+    "pf": 1.07,
+    "final_eq": 2410882.96,
+    "wr": 59.87,
+    "trades_yr": 956.7,
+    "non_mr_pnl": -202191.03
+  },
+  {
+    "test": "IdeaB+I3",
+    "cagr": 15.59,
+    "max_dd": -56.19,
+    "sharpe": 0.65,
+    "pf": 1.07,
+    "final_eq": 2506886.19,
+    "wr": 60.25,
+    "trades_yr": 868.4,
+    "non_mr_pnl": 256251.52
+  },
+  {
+    "test": "IdeaC+I3",
+    "cagr": 19.67,
+    "max_dd": -52.86,
+    "sharpe": 0.73,
+    "pf": 1.07,
+    "final_eq": 4483239.84,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": -258742.6
+  },
+  {
+    "test": "IdeaF+I3",
+    "cagr": 19.44,
+    "max_dd": -51.3,
+    "sharpe": 0.74,
+    "pf": 1.08,
+    "final_eq": 3862988.14,
+    "wr": 60.17,
+    "trades_yr": 1022.7,
+    "non_mr_pnl": -683989.95
+  },
+  {
+    "test": "IdeaD+E",
+    "cagr": 15.56,
+    "max_dd": -54.65,
+    "sharpe": 0.64,
+    "pf": 1.06,
+    "final_eq": 2236889.32,
+    "wr": 59.87,
+    "trades_yr": 956.7,
+    "non_mr_pnl": 0.0
+  },
+  {
+    "test": "IdeaD+E+I3",
+    "cagr": 16.34,
+    "max_dd": -52.59,
+    "sharpe": 0.67,
+    "pf": 1.07,
+    "final_eq": 2383232.12,
+    "wr": 59.87,
+    "trades_yr": 956.7,
+    "non_mr_pnl": -201338.58
+  },
+  {
+    "test": "IdeaD+E+B+I3",
+    "cagr": 13.18,
+    "max_dd": -50.07,
+    "sharpe": 0.6,
+    "pf": 1.07,
+    "final_eq": 1477766.54,
+    "wr": 60.02,
+    "trades_yr": 812.5,
+    "non_mr_pnl": 55130.6
+  },
+  {
+    "test": "IdeaD+E+F+I3",
+    "cagr": 16.17,
+    "max_dd": -50.63,
+    "sharpe": 0.69,
+    "pf": 1.07,
+    "final_eq": 2034631.69,
+    "wr": 59.87,
+    "trades_yr": 956.7,
+    "non_mr_pnl": -469677.17
+  },
+  {
+    "test": "Kitchen_Sink",
+    "cagr": 13.08,
+    "max_dd": -47.41,
+    "sharpe": 0.61,
+    "pf": 1.07,
+    "final_eq": 1256650.6,
+    "wr": 60.02,
+    "trades_yr": 812.5,
+    "non_mr_pnl": -139530.74
+  }
+]
