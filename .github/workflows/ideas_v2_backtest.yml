@@ -1,0 +1,155 @@
+name: Ideas V2 Backtest (4 New Drawdown Ideas)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tests_to_run:
+        description: "Comma-separated test names to run (leave blank for ALL 14 tests)"
+        required: false
+        default: ""
+      start_date:
+        description: "Backtest start date (YYYY-MM-DD)"
+        required: false
+        default: "2004-01-01"
+      end_date:
+        description: "Backtest end date (YYYY-MM-DD, leave blank for today)"
+        required: false
+        default: ""
+      initial_capital:
+        description: "Starting capital in USD"
+        required: false
+        default: "100000"
+      twin_alloc:
+        description: "Idea 1: Bear momentum allocation fraction (default 0.25)"
+        required: false
+        default: ""
+      pvol_target:
+        description: "Idea 2: Portfolio vol target annualized (default 0.15)"
+        required: false
+        default: ""
+      put_cost:
+        description: "Idea 3: Put spread quarterly cost fraction (default 0.0075)"
+        required: false
+        default: ""
+      sector_streak_trigger:
+        description: "Idea 4: Consecutive sector losses to trigger (default 3)"
+        required: false
+        default: ""
+
+jobs:
+  backtest-ideas-v2:
+    name: Run Ideas V2 Backtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply parameter overrides
+        run: |
+          # Date overrides apply to the lib (shared infrastructure)
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest_nmr_lib.py
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            sed -i "s/^END_DATE.*=.*/END_DATE = \"${{ github.event.inputs.end_date }}\"/" backtest_nmr_lib.py
+          fi
+          if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest_nmr_lib.py
+          fi
+
+          # Idea-specific overrides apply to the ideas runner
+          if [ -n "${{ github.event.inputs.twin_alloc }}" ]; then
+            sed -i "s/^TWIN_ENGINE_BEAR_ALLOC.*/TWIN_ENGINE_BEAR_ALLOC   = ${{ github.event.inputs.twin_alloc }}/" backtest_ideas_v2.py
+          fi
+          if [ -n "${{ github.event.inputs.pvol_target }}" ]; then
+            sed -i "s/^PORT_VOL_TARGET.*/PORT_VOL_TARGET          = ${{ github.event.inputs.pvol_target }}/" backtest_ideas_v2.py
+          fi
+          if [ -n "${{ github.event.inputs.put_cost }}" ]; then
+            sed -i "s/^PUT_SPREAD_QUARTERLY_COST.*/PUT_SPREAD_QUARTERLY_COST= ${{ github.event.inputs.put_cost }}/" backtest_ideas_v2.py
+          fi
+          if [ -n "${{ github.event.inputs.sector_streak_trigger }}" ]; then
+            sed -i "s/^SECTOR_STREAK_TRIGGER.*/SECTOR_STREAK_TRIGGER    = ${{ github.event.inputs.sector_streak_trigger }}/" backtest_ideas_v2.py
+          fi
+
+          # Filter TESTS list if specific tests requested
+          if [ -n "${{ github.event.inputs.tests_to_run }}" ]; then
+            python3 - <<'PYEOF'
+          import re, sys
+
+          requested = [t.strip() for t in "${{ github.event.inputs.tests_to_run }}".split(",") if t.strip()]
+          if not requested:
+              sys.exit(0)
+
+          with open("backtest_ideas_v2.py", "r") as f:
+              content = f.read()
+
+          # Build new TESTS list with only requested tests (always keep Baseline)
+          all_names = re.findall(r'"name":\s+"([^"]+)"', content)
+          keep = set(requested) | {"Baseline_V35"}
+          filter_code = f"""
+          # Filter injected by workflow
+          TESTS = [t for t in TESTS if t["name"] in {sorted(keep)}]
+          print(f"[Workflow] Running {len(TESTS)} tests: " + ", ".join(t['name'] for t in TESTS))
+          """
+          # Inject before main()
+          content = content.replace("if __name__ == \"__main__\":",
+                                    filter_code + "\nif __name__ == \"__main__\":")
+          with open("backtest_ideas_v2.py", "w") as f:
+              f.write(content)
+          print(f"Filtered to: {sorted(keep)}")
+          PYEOF
+          fi
+
+      - name: Run Ideas V2 Backtest
+        run: python backtest_ideas_v2.py
+
+      - name: Upload results as workflow artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ideas-v2-results-${{ github.run_id }}
+          path: results_ideas_v2/
+          retention-days: 90
+
+      - name: Commit results to repository
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results_ideas_v2/
+          git diff --cached --quiet || git commit -m "chore: ideas-v2 results $(date -u +%Y-%m-%d) [run ${{ github.run_id }}]"
+          git stash
+          git pull --rebase origin main
+          git stash pop
+          git push
+
+      - name: Print summary to job log
+        if: always()
+        run: |
+          if [ -f results_ideas_v2/comparison.json ]; then
+            echo "=== IDEAS V2 COMPARISON ==="
+            python3 -c "
+          import json
+          with open('results_ideas_v2/comparison.json') as f:
+              data = json.load(f)
+          print(f'{'Test':<22} {'CAGR%':>7} {'MaxDD%':>8} {'Sharpe':>7} {'PF':>6} {'FinalEq':>12}')
+          print('-'*70)
+          for d in data:
+              print(f'{d[\"test\"]:<22} {d[\"cagr\"]:>7.2f} {d[\"max_dd\"]:>8.2f} {d[\"sharpe\"]:>7.2f} {d[\"pf\"]:>6.2f} {d[\"final_eq\"]:>12,.0f}')
+          "
+          fi
