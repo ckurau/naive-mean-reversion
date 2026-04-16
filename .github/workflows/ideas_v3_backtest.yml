@@ -1,0 +1,142 @@
+name: Ideas V3 Backtest (VIX TS, 52wk, Gap, Analyst, Call Spread)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Backtest start date (YYYY-MM-DD)"
+        required: false
+        default: "2004-01-01"
+      end_date:
+        description: "Backtest end date (YYYY-MM-DD, leave blank for today)"
+        required: false
+        default: ""
+      initial_capital:
+        description: "Starting capital in USD"
+        required: false
+        default: "100000"
+      put_cost:
+        description: "Put spread quarterly cost fraction (default 0.015 = 1.5%)"
+        required: false
+        default: ""
+      vix_ts_floor:
+        description: "Idea D: min VIX term structure scale factor (default 0.40)"
+        required: false
+        default: ""
+      high_proximity_pct:
+        description: "Idea E: max distance from 52wk high (default 0.20 = 20%)"
+        required: false
+        default: ""
+      call_vix_max:
+        description: "Idea F: max VIX to sell call spread (default 15.0)"
+        required: false
+        default: ""
+      tests_to_run:
+        description: "Comma-separated test names (blank = all 17 tests)"
+        required: false
+        default: ""
+
+jobs:
+  backtest-ideas-v3:
+    name: Run Ideas V3 Backtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 720
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply parameter overrides
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            sed -i "s/^START_DATE.*=.*/START_DATE = \"${{ github.event.inputs.start_date }}\"/" backtest_nmr_lib.py
+          fi
+          if [ -n "${{ github.event.inputs.end_date }}" ]; then
+            sed -i "s/^END_DATE.*=.*/END_DATE = \"${{ github.event.inputs.end_date }}\"/" backtest_nmr_lib.py
+          fi
+          if [ -n "${{ github.event.inputs.initial_capital }}" ]; then
+            sed -i "s/^INITIAL_CAPITAL.*=.*/INITIAL_CAPITAL = ${{ github.event.inputs.initial_capital }}.0/" backtest_nmr_lib.py
+          fi
+          if [ -n "${{ github.event.inputs.put_cost }}" ]; then
+            sed -i "s/^PUT_SPREAD_QUARTERLY_COST.*/PUT_SPREAD_QUARTERLY_COST = ${{ github.event.inputs.put_cost }}/" backtest_ideas_v3.py
+          fi
+          if [ -n "${{ github.event.inputs.vix_ts_floor }}" ]; then
+            sed -i "s/^VIX_TS_FLOOR.*/VIX_TS_FLOOR         = ${{ github.event.inputs.vix_ts_floor }}/" backtest_ideas_v3.py
+          fi
+          if [ -n "${{ github.event.inputs.high_proximity_pct }}" ]; then
+            sed -i "s/^HIGH_PROXIMITY_PCT.*/HIGH_PROXIMITY_PCT   = ${{ github.event.inputs.high_proximity_pct }}/" backtest_ideas_v3.py
+          fi
+          if [ -n "${{ github.event.inputs.call_vix_max }}" ]; then
+            sed -i "s/^CALL_SPREAD_VIX_MAX.*/CALL_SPREAD_VIX_MAX          = ${{ github.event.inputs.call_vix_max }}/" backtest_ideas_v3.py
+          fi
+          if [ -n "${{ github.event.inputs.tests_to_run }}" ]; then
+            python3 - <<'PYEOF'
+          import re, sys
+          requested = [t.strip() for t in "${{ github.event.inputs.tests_to_run }}".split(",") if t.strip()]
+          if not requested:
+              sys.exit(0)
+          keep = set(requested) | {"Baseline_V35", "Baseline_V35_I3"}
+          filter_code = f"""
+          TESTS = [t for t in TESTS if t["name"] in {sorted(keep)}]
+          print(f"[Workflow] Running {{len(TESTS)}} tests: " + ", ".join(t['name'] for t in TESTS))
+          """
+          with open("backtest_ideas_v3.py", "r") as f:
+              content = f.read()
+          content = content.replace("if __name__ == \"__main__\":",
+                                    filter_code + "\nif __name__ == \"__main__\":")
+          with open("backtest_ideas_v3.py", "w") as f:
+              f.write(content)
+          print(f"Filtered to: {sorted(keep)}")
+          PYEOF
+          fi
+
+      - name: Run Ideas V3 Backtest
+        run: python backtest_ideas_v3.py
+
+      - name: Upload results as workflow artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ideas-v3-results-${{ github.run_id }}
+          path: results_ideas_v3/
+          retention-days: 90
+
+      - name: Commit results to repository
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results_ideas_v3/
+          git diff --cached --quiet || git commit -m "chore: ideas-v3 results $(date -u +%Y-%m-%d) [run ${{ github.run_id }}]"
+          git stash
+          git pull --rebase origin main
+          git stash pop
+          git push
+
+      - name: Print summary to job log
+        if: always()
+        run: |
+          if [ -f results_ideas_v3/comparison.json ]; then
+            python3 -c "
+          import json
+          with open('results_ideas_v3/comparison.json') as f:
+              data = json.load(f)
+          print(f'{'Test':<22} {'CAGR%':>7} {'MaxDD%':>8} {'Sharpe':>7} {'FinalEq':>13}')
+          print('-'*60)
+          for d in data:
+              print(f'{d[\"test\"]:<22} {d[\"cagr\"]:>7.2f} {d[\"max_dd\"]:>8.2f} {d[\"sharpe\"]:>7.2f} {d[\"final_eq\"]:>13,.0f}')
+          "
+          fi
