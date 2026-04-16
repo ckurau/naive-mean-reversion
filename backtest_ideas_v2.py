@@ -239,34 +239,33 @@ def get_momentum_candidates(price_data: dict, today, signals: dict,
 # Helper: put spread payout on a given day
 # =============================================================================
 
-def compute_put_spread_payout(spy_ref_price: float, spy_today_price: float,
-                               portfolio_value: float) -> float:
+def compute_put_spread_intrinsic_pct(spy_ref_price: float, spy_today_price: float) -> float:
     """
-    Compute daily mark-to-market payout of a 5%/15% OTM SPY put spread.
-    - Lower strike = ref_price * (1 - PUT_SPREAD_LOWER_OTM)  [we are LONG this put]
-    - Upper strike = ref_price * (1 - PUT_SPREAD_UPPER_OTM)  [we are SHORT this put]
-    Returns positive P&L when SPY falls significantly, 0 in normal times.
-    This is a simplified intrinsic-value model (no theta/vega), which UNDERESTIMATES
-    real payout in practice (actual options have positive vega -- they pay MORE during
-    crashes than intrinsic value alone).
+    Compute the intrinsic value of the 5%/15% OTM SPY put spread at expiry,
+    as a FRACTION of the reference (entry) SPY price.
+
+    This is called ONCE at expiry (not every day), giving a single payout
+    as a percentage of the notional protected.
+
+    - Long put: strike = ref * (1 - PUT_SPREAD_LOWER_OTM)   [5% OTM]
+    - Short put: strike = ref * (1 - PUT_SPREAD_UPPER_OTM)  [15% OTM]
+    - Max payout: 10% of ref price (spread width)
+    - Payout zone: SPY down 5-15% from ref
+
+    Returns a fraction (e.g. 0.08 = 8% of notional). Zero if SPY above lower strike.
     """
     lower_strike = spy_ref_price * (1 - PUT_SPREAD_LOWER_OTM)
     upper_strike = spy_ref_price * (1 - PUT_SPREAD_UPPER_OTM)
-    spread_width = lower_strike - upper_strike  # in $ terms
+    spread_width_pct = PUT_SPREAD_UPPER_OTM - PUT_SPREAD_LOWER_OTM  # 0.10 = 10%
 
-    if spread_width <= 0:
-        return 0.0
+    if spy_today_price >= lower_strike:
+        return 0.0  # SPY hasn't fallen enough to trigger
 
-    # Long put value (5% OTM): max(0, lower_strike - spy_today)
-    long_put_val = max(0.0, lower_strike - spy_today_price)
-    # Short put value (15% OTM): max(0, upper_strike - spy_today)
-    short_put_val = max(0.0, upper_strike - spy_today_price)
-    # Spread value = long - short, capped at spread_width
-    spread_val = min(long_put_val - short_put_val, spread_width)
-    # As fraction of underlying
-    spread_val_pct = spread_val / spy_ref_price
-    # Payout as portfolio P&L (1 unit of protection = 1x portfolio)
-    return portfolio_value * spread_val_pct
+    # How far through the spread are we?
+    spy_decline_pct = (spy_ref_price - spy_today_price) / spy_ref_price
+    payout_pct = spy_decline_pct - PUT_SPREAD_LOWER_OTM  # excess beyond lower strike
+    payout_pct = max(0.0, min(payout_pct, spread_width_pct))  # cap at spread width
+    return payout_pct
 
 
 # =============================================================================
@@ -322,6 +321,8 @@ def run_backtest_ideas(price_data: dict, spy_df: pd.DataFrame, vix_df: pd.DataFr
     # Idea 3: put spread state
     put_ref_price       = None
     put_ref_date        = None
+    put_notional        = 0.0    # portfolio value at spread inception (fixed)
+    put_min_spy         = 9999.0 # worst SPY close seen in current quarter
     put_days_since_renew= 0
     put_cumulative_pnl  = 0.0
 
@@ -379,6 +380,8 @@ def run_backtest_ideas(price_data: dict, spy_df: pd.DataFrame, vix_df: pd.DataFr
                     portfolio_value  -= quarterly_premium
                     put_ref_price    = spy_price_today
                     put_ref_date     = today
+                    put_notional     = portfolio_value   # fix notional at inception
+                    put_min_spy      = spy_price_today   # track worst SPY for settlement
                     put_days_since_renew = 0
                     trades.append({
                         "ticker": "SPY_PUT_SPREAD", "entry_date": today, "exit_date": today,
@@ -392,21 +395,29 @@ def run_backtest_ideas(price_data: dict, spy_df: pd.DataFrame, vix_df: pd.DataFr
                     })
                 else:
                     put_days_since_renew += 1
-                    # Daily mark-to-market payout (intrinsic only - conservative)
-                    payout = compute_put_spread_payout(put_ref_price, spy_price_today, portfolio_value)
-                    if payout > 0:
-                        portfolio_value += payout
-                        put_cumulative_pnl += payout
-                        trades.append({
-                            "ticker": "SPY_PUT_SPREAD", "entry_date": put_ref_date, "exit_date": today,
-                            "entry_price": put_ref_price, "exit_price": spy_price_today,
-                            "shares": 0, "commission": 0,
-                            "pnl_usd": payout,
-                            "pnl_pct": payout / portfolio_value * 100,
-                            "days_held": put_days_since_renew, "exit_reason": "put_payout",
-                            "tier": 0, "consec_down": 0,
-                            "portfolio_val": portfolio_value,
-                        })
+                    # Settle at expiry only (last day of the quarter window).
+                    # Use the WORST SPY close during the quarter for max realism --
+                    # track the minimum SPY price seen since spread inception.
+                    put_min_spy = min(put_min_spy, spy_price_today)
+
+                    # On the day BEFORE renewal, settle the expiring spread
+                    if put_days_since_renew == PUT_SPREAD_RENEW_DAYS - 1:
+                        payout_pct = compute_put_spread_intrinsic_pct(put_ref_price, put_min_spy)
+                        if payout_pct > 0:
+                            # Notional = portfolio value at spread inception (fixed, not growing)
+                            payout = put_notional * payout_pct
+                            portfolio_value += payout
+                            put_cumulative_pnl += payout
+                            trades.append({
+                                "ticker": "SPY_PUT_SPREAD", "entry_date": put_ref_date, "exit_date": today,
+                                "entry_price": put_ref_price, "exit_price": put_min_spy,
+                                "shares": 0, "commission": 0,
+                                "pnl_usd": round(payout, 2),
+                                "pnl_pct": round(payout_pct * 100, 4),
+                                "days_held": put_days_since_renew, "exit_reason": "put_payout",
+                                "tier": 0, "consec_down": 0,
+                                "portfolio_val": portfolio_value,
+                            })
 
         # ── MR Exits ──────────────────────────────────────────────────────────
         to_close = []
