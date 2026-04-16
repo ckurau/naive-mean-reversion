@@ -1,0 +1,142 @@
+[
+  {
+    "test": "Baseline_V35",
+    "cagr": 18.88,
+    "max_dd": -56.22,
+    "sharpe": 0.71,
+    "pf": 1.06,
+    "final_eq": 4111717.4,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Idea1_TwinEngine",
+    "cagr": 18.36,
+    "max_dd": -56.85,
+    "sharpe": 0.7,
+    "pf": 1.06,
+    "final_eq": 3936527.95,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Idea2_PortVol",
+    "cagr": 15.72,
+    "max_dd": -52.66,
+    "sharpe": 0.67,
+    "pf": 1.07,
+    "final_eq": 2304583.88,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Idea3_PutSpread",
+    "cagr": 136.69,
+    "max_dd": -1080.24,
+    "sharpe": 0.22,
+    "pf": 1.03,
+    "final_eq": 140838889595696.75,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Idea4_SectorStreak",
+    "cagr": 18.83,
+    "max_dd": -56.25,
+    "sharpe": 0.71,
+    "pf": 1.06,
+    "final_eq": 4072697.89,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas1+2",
+    "cagr": 15.37,
+    "max_dd": -53.21,
+    "sharpe": 0.66,
+    "pf": 1.07,
+    "final_eq": 2271405.75,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas1+3",
+    "cagr": 136.89,
+    "max_dd": -1027.62,
+    "sharpe": 0.22,
+    "pf": 1.03,
+    "final_eq": 148921967073072.7,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas2+3",
+    "cagr": 130.88,
+    "max_dd": -1080.05,
+    "sharpe": 0.19,
+    "pf": 1.04,
+    "final_eq": 79205735472805.5,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas2+4",
+    "cagr": 15.72,
+    "max_dd": -52.72,
+    "sharpe": 0.67,
+    "pf": 1.07,
+    "final_eq": 2304630.68,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas3+4",
+    "cagr": 136.47,
+    "max_dd": -1075.11,
+    "sharpe": 0.11,
+    "pf": 1.03,
+    "final_eq": 139512404455505.4,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas1+2+3",
+    "cagr": 130.97,
+    "max_dd": -1060.28,
+    "sharpe": 0.18,
+    "pf": 1.04,
+    "final_eq": 86160691149576.3,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas1+2+4",
+    "cagr": 15.37,
+    "max_dd": -53.27,
+    "sharpe": 0.66,
+    "pf": 1.07,
+    "final_eq": 2271185.81,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas2+3+4",
+    "cagr": 130.73,
+    "max_dd": -1074.93,
+    "sharpe": -0.33,
+    "pf": 1.04,
+    "final_eq": 79108818566729.28,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  },
+  {
+    "test": "Ideas1+2+3+4",
+    "cagr": 130.81,
+    "max_dd": -1054.84,
+    "sharpe": -0.22,
+    "pf": 1.04,
+    "final_eq": 86045271715556.4,
+    "wr": 60.17,
+    "trades_yr": 1022.9
+  }
+]
