@@ -1,142 +1,142 @@
 [
   {
     "test": "Baseline_V35",
-    "cagr": 18.88,
-    "max_dd": -56.22,
+    "cagr": 18.89,
+    "max_dd": -55.89,
     "sharpe": 0.71,
     "pf": 1.06,
-    "final_eq": 4111717.4,
+    "final_eq": 4116487.71,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Idea1_TwinEngine",
-    "cagr": 18.36,
-    "max_dd": -56.85,
+    "cagr": 18.37,
+    "max_dd": -56.51,
     "sharpe": 0.7,
     "pf": 1.06,
-    "final_eq": 3936527.95,
+    "final_eq": 3941086.43,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Idea2_PortVol",
-    "cagr": 15.72,
-    "max_dd": -52.66,
+    "cagr": 15.84,
+    "max_dd": -52.58,
     "sharpe": 0.67,
     "pf": 1.07,
-    "final_eq": 2304583.88,
+    "final_eq": 2355277.19,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Idea3_PutSpread",
-    "cagr": 136.69,
-    "max_dd": -1080.24,
-    "sharpe": 0.22,
-    "pf": 1.03,
-    "final_eq": 140838889595696.75,
+    "cagr": 21.77,
+    "max_dd": -60.01,
+    "sharpe": 0.73,
+    "pf": 1.06,
+    "final_eq": 8837980.95,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Idea4_SectorStreak",
-    "cagr": 18.83,
-    "max_dd": -56.25,
+    "cagr": 18.84,
+    "max_dd": -55.92,
     "sharpe": 0.71,
     "pf": 1.06,
-    "final_eq": 4072697.89,
+    "final_eq": 4078340.99,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas1+2",
-    "cagr": 15.37,
-    "max_dd": -53.21,
+    "cagr": 15.49,
+    "max_dd": -53.12,
     "sharpe": 0.66,
     "pf": 1.07,
-    "final_eq": 2271405.75,
+    "final_eq": 2321362.62,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas1+3",
-    "cagr": 136.89,
-    "max_dd": -1027.62,
-    "sharpe": 0.22,
-    "pf": 1.03,
-    "final_eq": 148921967073072.7,
+    "cagr": 21.32,
+    "max_dd": -60.8,
+    "sharpe": 0.73,
+    "pf": 1.06,
+    "final_eq": 8627503.3,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas2+3",
-    "cagr": 130.88,
-    "max_dd": -1080.05,
-    "sharpe": 0.19,
-    "pf": 1.04,
-    "final_eq": 79205735472805.5,
+    "cagr": 18.24,
+    "max_dd": -58.44,
+    "sharpe": 0.68,
+    "pf": 1.07,
+    "final_eq": 4793767.29,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas2+4",
-    "cagr": 15.72,
-    "max_dd": -52.72,
+    "cagr": 15.84,
+    "max_dd": -52.63,
     "sharpe": 0.67,
     "pf": 1.07,
-    "final_eq": 2304630.68,
+    "final_eq": 2356930.51,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas3+4",
-    "cagr": 136.47,
-    "max_dd": -1075.11,
-    "sharpe": 0.11,
-    "pf": 1.03,
-    "final_eq": 139512404455505.4,
+    "cagr": 21.72,
+    "max_dd": -60.05,
+    "sharpe": 0.73,
+    "pf": 1.06,
+    "final_eq": 8756641.54,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas1+2+3",
-    "cagr": 130.97,
-    "max_dd": -1060.28,
-    "sharpe": 0.18,
-    "pf": 1.04,
-    "final_eq": 86160691149576.3,
+    "cagr": 17.98,
+    "max_dd": -59.4,
+    "sharpe": 0.68,
+    "pf": 1.07,
+    "final_eq": 4841452.13,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas1+2+4",
-    "cagr": 15.37,
-    "max_dd": -53.27,
+    "cagr": 15.49,
+    "max_dd": -53.18,
     "sharpe": 0.66,
     "pf": 1.07,
-    "final_eq": 2271185.81,
+    "final_eq": 2322722.07,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas2+3+4",
-    "cagr": 130.73,
-    "max_dd": -1074.93,
-    "sharpe": -0.33,
-    "pf": 1.04,
-    "final_eq": 79108818566729.28,
+    "cagr": 18.23,
+    "max_dd": -58.52,
+    "sharpe": 0.68,
+    "pf": 1.07,
+    "final_eq": 4789334.64,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   },
   {
     "test": "Ideas1+2+3+4",
-    "cagr": 130.81,
-    "max_dd": -1054.84,
-    "sharpe": -0.22,
-    "pf": 1.04,
-    "final_eq": 86045271715556.4,
+    "cagr": 17.96,
+    "max_dd": -59.48,
+    "sharpe": 0.68,
+    "pf": 1.07,
+    "final_eq": 4836396.75,
     "wr": 60.17,
-    "trades_yr": 1022.9
+    "trades_yr": 1022.7
   }
 ]
