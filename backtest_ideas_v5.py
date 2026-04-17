@@ -486,7 +486,7 @@ def run_backtest(price_data: dict, spy_df: pd.DataFrame, vix_df: pd.DataFrame,
 # =============================================================================
 # Output helpers
 # =============================================================================
-def save_test_outputs(test_name: str, trades_df: pd.DataFrame,
+def save_outputs(test_name: str, trades_df: pd.DataFrame,
                       metrics: dict, eq_df: pd.DataFrame):
     test_dir = OUTPUT_DIR / test_name
     test_dir.mkdir(exist_ok=True)
