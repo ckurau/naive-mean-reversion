@@ -1,51 +1,16 @@
-# backtest_ideas_v5.py
+# backtest_ideas_v5.py  (fixed)
 # Ideas V5 — Genuinely untested ideas vs V35+I3 baseline
 #
-# Baseline: V35 + Idea3 put spread (19.71% CAGR, $4,513,155, MaxDD -52.87%, Sharpe 0.74)
-#
-# Cross-referenced exhaustively against the complete do-not-retry table.
-# Only ideas with NO prior test recorded are included.
-#
-# Tests in this suite:
-#
-#   BASELINE_V35I3  — V35 + put spread hedge (control, reproduced from backtest_ideas_v2)
-#
-#   A_VOL_EXIT      — Vol-adjusted dynamic exits (AHL/Winton principle)
-#                     profit_target = clip(ATR_pct × 1.8, 1.5%, 6%)
-#                     hold_days = 6/8/12 based on ATR percentile rank
-#                     THE only untested axis: exits have always been static 2%/8d
-#
-#   B_TOM_SIZING    — Turn-of-month entry size boost
-#                     Entries on last trading day of month through day +3 get 1.15x size
-#                     Academic: 90-year evidence (Lakonishok & Smidt 1988, McConnell 2008)
-#                     TOM as a *sizing overlay on V35 entries* is untested
-#                     (C_TurnOfMonth in README was a standalone strategy, not a sizing layer)
-#
-#   C_VIX_RSI      — VIX low-regime RSI tightening (from V36-T2 which showed +$86k +0.08% CAGR)
-#                     When VIX < 15: require RSI(2) < 15 instead of < 20
-#                     Best single positive result from the current session
-#
-#   D_PARTIAL_TUNE  — Tier 1 partial trigger tuning
-#                     Current: partial at +1.0%, remainder at +2.0%
-#                     Test: partial at +0.8%, remainder at +2.0%
-#                     Never tested at any level other than 1.0%
-#
-#   E_EARNINGS_EXT  — Earnings blackout 3 → 5 days
-#                     README explicitly flags as "one remaining low-priority test"
-#                     Expected: small negative (fewer trades) but could improve win rate
-#
-#   F_COMBO_ACB     — Combine A + C + B (the three most promising)
-#                     Vol exits + VIX RSI tightening + TOM sizing
-#                     Test if benefits are additive or cancel
-#
-#   G_COMBO_ACD     — Combine A + C + D
-#                     Vol exits + VIX RSI tightening + partial trigger tuning
-#
-# Put spread overlay is applied identically to all tests (same as Ideas V2 Idea3).
-# This matches the V35+I3 baseline correctly.
-#
-# Architecture: structured identically to backtest_ideas_v2.py / v3.py / v4.py
-# Results saved to results_ideas_v5/
+# Fixes vs original run:
+#   1. put spread: removed ref_price reset on payout — was truncating crash payouts
+#      and replaced O(n²) list.index() with a simple day counter
+#   2. C_VIX_RSI: added diagnostic log of how many days VIX < 15 fires
+#      and confirmed the re-check logic is correct (signal col uses RSI<20,
+#      per-day re-check correctly tightens to RSI<15 on low-VIX days)
+#   3. E_EARNINGS_EXT: confirmed blackout_days flows correctly throughout
+#   4. B_TOM_SIZING: replaced calendar approximation with actual trading-date
+#      list scan so TOM window is exact
+#   5. Added H_COMBO_BCD: best non-A combo (TOM + VIX RSI + partial tune)
 
 import io
 import warnings
@@ -61,95 +26,84 @@ from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
-# ---------------------------------------------------------------------------
-# Output dir
-# ---------------------------------------------------------------------------
 OUTPUT_DIR = Path("results_ideas_v5")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# V35 baseline parameters — do not change
+# V35 baseline parameters
 # ---------------------------------------------------------------------------
-START_DATE           = "2004-01-01"
-END_DATE             = datetime.date.today().isoformat()
-MIN_DOLLAR_VOLUME    = 5_000_000
-MAX_POSITIONS        = 60
-POSITION_SIZE        = 0.05
-POSITION_SIZE_HIGH   = 0.09
+START_DATE            = "2004-01-01"
+END_DATE              = datetime.date.today().isoformat()
+MIN_DOLLAR_VOLUME     = 5_000_000
+MAX_POSITIONS         = 60
+POSITION_SIZE         = 0.05
+POSITION_SIZE_HIGH    = 0.09
 POSITION_SIZE_EARNINGS = 0.03
-MA_WINDOW            = 200
-INITIAL_CAPITAL      = 100_000.0
-RSI_PERIOD           = 2
-RSI_THRESHOLD        = 20        # baseline; C overrides to 15 when VIX < 15
-ATR_PERIOD           = 14
-ATR_MIN_PCT          = 0.01
-VOL_MA_PERIOD        = 20
-MIN_HOLD_BEFORE_EXIT = 2
-TIER1_MIN_DOWN       = 6
-TIER1_TARGET         = 0.020
-TIER1_HOLD_DAYS      = 8
-TIER1_PARTIAL        = True
-TIER1_PARTIAL_FRAC   = 0.50
-TIER1_PARTIAL_TRIGGER = 0.010   # baseline; D tests 0.008
-TIER2_MIN_DOWN       = 5
-TIER2_TARGET         = 0.020
-TIER2_HOLD_DAYS      = 8
-TIER3_MIN_DOWN       = 4
-TIER3_TARGET         = 0.020
-TIER3_HOLD_DAYS      = 8
-MIN_CONSEC_DOWN      = TIER3_MIN_DOWN
+MA_WINDOW             = 200
+INITIAL_CAPITAL       = 100_000.0
+RSI_PERIOD            = 2
+RSI_THRESHOLD         = 20
+ATR_PERIOD            = 14
+ATR_MIN_PCT           = 0.01
+VOL_MA_PERIOD         = 20
+MIN_HOLD_BEFORE_EXIT  = 2
+TIER1_MIN_DOWN        = 6
+TIER1_TARGET          = 0.020
+TIER1_HOLD_DAYS       = 8
+TIER1_PARTIAL         = True
+TIER1_PARTIAL_FRAC    = 0.50
+TIER1_PARTIAL_TRIGGER = 0.010
+TIER2_MIN_DOWN        = 5
+TIER2_TARGET          = 0.020
+TIER2_HOLD_DAYS       = 8
+TIER3_MIN_DOWN        = 4
+TIER3_TARGET          = 0.020
+TIER3_HOLD_DAYS       = 8
+MIN_CONSEC_DOWN       = TIER3_MIN_DOWN
 VELOCITY_CRASH_5D_THRESHOLD = -0.12
 VELOCITY_CRASH_PAUSE_DAYS   = 5
-EARNINGS_BLACKOUT    = 3        # baseline; E tests 5
-GAP_DOWN_MAX         = -0.010
-GAP_UP_MAX           = 0.020
-SECTOR_MA_WINDOW     = 20
-MAX_SECTOR_POSITIONS = 3
-VIX_LOW              = 25
-VIX_SPIKE_PCT        = 0.30
-VIX_SPIKE_PAUSE_DAYS = 0
+EARNINGS_BLACKOUT     = 3
+GAP_DOWN_MAX          = -0.010
+GAP_UP_MAX            = 0.020
+SECTOR_MA_WINDOW      = 20
+MAX_SECTOR_POSITIONS  = 3
+VIX_LOW               = 25
+VIX_SPIKE_PCT         = 0.30
+VIX_SPIKE_PAUSE_DAYS  = 0
 REENTRY_COOLDOWN_DAYS = 5
-COMMISSION_RATE      = 0.005
-COMMISSION_MIN       = 0.35
-EARNINGS_MONTHS      = {1, 4, 7, 10}
-TOP_SIGNAL_PCT       = 0.20
+COMMISSION_RATE       = 0.005
+COMMISSION_MIN        = 0.35
+EARNINGS_MONTHS       = {1, 4, 7, 10}
+TOP_SIGNAL_PCT        = 0.20
 TOP_SIGNAL_MULTIPLIER = 1.30
-TOP_SIGNAL_HARD_CAP  = 0.12
+TOP_SIGNAL_HARD_CAP   = 0.12
 MIN_CANDIDATES_FOR_TOP = 5
 
 # ---------------------------------------------------------------------------
 # Test-specific parameters
 # ---------------------------------------------------------------------------
+A_TARGET_K    = 1.80
+A_TARGET_MIN  = 0.015
+A_TARGET_MAX  = 0.060
+A_ATR_WINDOW  = 252
+A_HOLD_LOW    = 6
+A_HOLD_MID    = 8
+A_HOLD_HIGH   = 12
 
-# A: Vol-adjusted exits
-A_TARGET_K   = 1.80    # profit_target = ATR_pct × k
-A_TARGET_MIN = 0.015
-A_TARGET_MAX = 0.060
-A_ATR_WINDOW = 252     # rolling window for ATR percentile rank
-A_HOLD_LOW   = 6       # ATR rank < 25th pct
-A_HOLD_MID   = 8       # ATR rank 25th–75th pct
-A_HOLD_HIGH  = 12      # ATR rank > 75th pct
+B_TOM_MULT    = 1.15
 
-# B: Turn-of-month sizing
-B_TOM_SIZE_MULT = 1.15  # size multiplier for TOM entries
-B_TOM_DAYS_AFTER = 3    # last day of month + this many days forward = TOM window
+C_VIX_THRESH  = 15.0
+C_RSI_THRESH  = 15.0
 
-# C: VIX low-regime RSI tightening (from V36-T2)
-C_VIX_TIGHT      = 15.0  # VIX threshold
-C_RSI_TIGHT      = 15.0  # RSI threshold when VIX < C_VIX_TIGHT
+D_PARTIAL_TRIGGER = 0.008
 
-# D: Tier 1 partial trigger tuning
-D_PARTIAL_TRIGGER = 0.008  # was 0.010
+E_EARNINGS_BLACKOUT = 5
 
-# E: Earnings blackout extension
-E_EARNINGS_BLACKOUT = 5  # was 3
-
-# Put spread parameters (Idea 3 — identical to Ideas V2)
-PUT_COST_PER_QUARTER = 0.015   # 1.5% of portfolio per quarter
-PUT_LOWER_STRIKE_PCT = 0.05    # 5% OTM long put
-PUT_UPPER_STRIKE_PCT = 0.15    # 15% OTM short put (spread width = 10%)
-PUT_MAX_PAYOUT_PCT   = 0.10    # max payout = 10% of portfolio
-PUT_RENEW_DAYS       = 63      # quarterly
+PUT_COST_PER_QUARTER = 0.015
+PUT_LOWER_PCT        = 0.05
+PUT_UPPER_PCT        = 0.15
+PUT_MAX_PAYOUT_PCT   = 0.10
+PUT_RENEW_DAYS       = 63
 
 # ---------------------------------------------------------------------------
 # Sector map
@@ -220,7 +174,7 @@ def get_universe():
                     break
         except Exception as e:
             print(f"[Universe] {label} failed: {e}")
-    historical_extras = [
+    extras = [
         "LEH","BSC","WB","WAMU","MER","C","AIG","FNM","FRE",
         "YHOO","SUNW","PALM","GE","GM","F","XOM","CVX","IBM","MSFT","AAPL",
         "AMZN","GOOG","GOOGL","META","NVDA","TSLA","BRK-B","JPM","BAC",
@@ -235,7 +189,7 @@ def get_universe():
         "SBUX","MCD","YUM","CMG","DIS","NFLX","CMCSA","VZ","TMUS",
         "PG","KO","PEP","CL","KMB","CHD","EL",
     ]
-    tickers.update(historical_extras)
+    tickers.update(extras)
     result = sorted(tickers)
     print(f"[Universe] Total: {len(result)} tickers")
     return result
@@ -245,7 +199,7 @@ def get_universe():
 # 2. Downloads
 # ---------------------------------------------------------------------------
 def download_prices(tickers):
-    print(f"\n[Download] {len(tickers)} tickers ({START_DATE} → {END_DATE})")
+    print(f"\n[Download] {len(tickers)} tickers ({START_DATE} -> {END_DATE})")
     all_data = {}
     for i in tqdm(range(0, len(tickers), 100), desc="Downloading"):
         chunk = tickers[i:i+100]
@@ -344,7 +298,30 @@ def build_earnings_dates(tickers):
 
 
 # ---------------------------------------------------------------------------
-# 4. Signal generation — with ATR percentile for Test A
+# 4. TOM window — exact trading-date scan
+# ---------------------------------------------------------------------------
+def build_tom_set(trading_dates):
+    """
+    Returns the set of trading dates in the TOM window:
+    last trading day of each month + next 3 trading days.
+    Uses actual trading date list, no calendar approximation.
+    """
+    tom = set()
+    dates_list = list(trading_dates)
+    n = len(dates_list)
+    for i, d in enumerate(dates_list):
+        ts = pd.Timestamp(d)
+        is_month_end = (i == n - 1) or (pd.Timestamp(dates_list[i + 1]).month != ts.month)
+        if is_month_end:
+            tom.add(d)
+            for j in range(1, 4):
+                if i + j < n:
+                    tom.add(dates_list[i + j])
+    return tom
+
+
+# ---------------------------------------------------------------------------
+# 5. Signal generation
 # ---------------------------------------------------------------------------
 def generate_signals(df):
     df = df.copy()
@@ -358,27 +335,24 @@ def generate_signals(df):
         consec.append(count)
     df["consec_down"] = consec
 
-    df["rsi2"] = _compute_rsi(df["Close"], RSI_PERIOD)
-
+    df["rsi2"]    = _compute_rsi(df["Close"], RSI_PERIOD)
     tr = pd.concat([
         df["High"] - df["Low"],
         (df["High"] - df["Close"].shift(1)).abs(),
         (df["Low"]  - df["Close"].shift(1)).abs(),
     ], axis=1).max(axis=1)
-    df["atr"]     = tr.rolling(ATR_PERIOD).mean()
-    df["atr_pct"] = df["atr"] / df["Close"]
-
-    # ATR percentile rank (for Test A vol-adjusted exits)
+    df["atr"]          = tr.rolling(ATR_PERIOD).mean()
+    df["atr_pct"]      = df["atr"] / df["Close"]
     df["atr_pct_rank"] = df["atr_pct"].rolling(A_ATR_WINDOW, min_periods=60).rank(pct=True)
-
-    df["vol_ma20"]       = df["Volume"].rolling(VOL_MA_PERIOD).mean()
-    df["vol_confirm"]    = df["Volume"] > df["vol_ma20"]
+    df["vol_ma20"]     = df["Volume"].rolling(VOL_MA_PERIOD).mean()
+    df["vol_confirm"]  = df["Volume"] > df["vol_ma20"]
     df["dollar_vol_ma20"] = (df["Close"] * df["Volume"]).rolling(VOL_MA_PERIOD).mean()
 
+    # Signal uses baseline RSI_THRESHOLD=20; per-day tightening happens at runtime
     df["signal"] = (
         df["above_ma"]
         & (df["consec_down"] >= MIN_CONSEC_DOWN)
-        & (df["rsi2"] < RSI_THRESHOLD)  # note: C test adjusts this at runtime per VIX
+        & (df["rsi2"] < RSI_THRESHOLD)
         & (df["atr_pct"] > ATR_MIN_PCT)
         & df["vol_confirm"]
         & (df["dollar_vol_ma20"] >= MIN_DOLLAR_VOLUME)
@@ -387,70 +361,96 @@ def generate_signals(df):
 
 
 # ---------------------------------------------------------------------------
-# 5. Put spread overlay (Idea 3 — identical to Ideas V2)
+# 6. Put spread simulation — FIXED
 # ---------------------------------------------------------------------------
-def simulate_put_spread(trading_dates, portfolio_values_by_date, spy_df):
+def simulate_put_spread(trading_dates, portfolio_by_date, spy_df):
     """
-    Simulates the quarterly SPY 5%/15% OTM put spread hedge.
-    Returns a dict of {date: pnl_delta} adjustments to apply to portfolio equity.
-    Identical logic to Ideas V2 Idea3 implementation.
+    FIX 1: Use day counter (O(1)) not list.index() (O(n²)).
+    FIX 2: Payout fires at RENEWAL TIME based on where SPY is vs the
+           opening ref_price. Do NOT reset ref_price after checking —
+           the spread pays out at quarterly expiry, period.
+    FIX 3: Separate premium payments from payout events cleanly.
     """
     spy_close = spy_df["Close"].squeeze()
-    pnl_events = {}
-    last_renew  = None
-    ref_price   = None
-    portfolio_at_renew = INITIAL_CAPITAL
+    pnl_events    = {}
+    premium_total = 0.0
+    payout_total  = 0.0
+    payout_log    = []
 
-    for i, date in enumerate(trading_dates):
+    days_since_renew = 0
+    ref_price        = None
+    portfolio_at_renew = INITIAL_CAPITAL
+    open_spread      = False
+
+    for date in trading_dates:
         if date not in spy_close.index:
             continue
-        spy_px = float(spy_close.loc[date])
-        port_val = portfolio_values_by_date.get(date, INITIAL_CAPITAL)
+        spy_px   = float(spy_close.loc[date])
+        port_val = portfolio_by_date.get(date, INITIAL_CAPITAL)
 
-        # Renew spread every PUT_RENEW_DAYS trading days
-        renew = (last_renew is None) or (i - trading_dates.index(last_renew) >= PUT_RENEW_DAYS)
-        if renew:
-            # Pay premium
+        if not open_spread or days_since_renew >= PUT_RENEW_DAYS:
+            # Close expiring spread: compute payout based on SPY vs ref at quarter open
+            if open_spread and ref_price is not None:
+                drop = (ref_price - spy_px) / ref_price
+                if drop > PUT_LOWER_PCT:
+                    payout_frac = min(drop - PUT_LOWER_PCT,
+                                      PUT_UPPER_PCT - PUT_LOWER_PCT) / (PUT_UPPER_PCT - PUT_LOWER_PCT)
+                    payout = portfolio_at_renew * PUT_MAX_PAYOUT_PCT * payout_frac
+                    pnl_events[date] = pnl_events.get(date, 0.0) + payout
+                    payout_total += payout
+                    payout_log.append(
+                        f"{date}: PAYOUT ${payout:,.0f} "
+                        f"(ref={ref_price:.2f} -> now={spy_px:.2f}, drop={drop:.1%})"
+                    )
+
+            # Open new spread: pay premium
             premium = port_val * PUT_COST_PER_QUARTER
-            pnl_events[date] = pnl_events.get(date, 0) - premium
-            ref_price         = spy_px
+            pnl_events[date] = pnl_events.get(date, 0.0) - premium
+            premium_total   += premium
+            ref_price        = spy_px
             portfolio_at_renew = port_val
-            last_renew        = date
+            days_since_renew = 0
+            open_spread      = True
+        else:
+            days_since_renew += 1
 
-        if ref_price is None:
-            continue
+    # Final expiry for last open spread
+    if open_spread and ref_price is not None and trading_dates:
+        last_date = trading_dates[-1]
+        if last_date in spy_close.index:
+            spy_px = float(spy_close.loc[last_date])
+            drop   = (ref_price - spy_px) / ref_price
+            if drop > PUT_LOWER_PCT:
+                payout_frac = min(drop - PUT_LOWER_PCT,
+                                  PUT_UPPER_PCT - PUT_LOWER_PCT) / (PUT_UPPER_PCT - PUT_LOWER_PCT)
+                payout = portfolio_at_renew * PUT_MAX_PAYOUT_PCT * payout_frac
+                pnl_events[last_date] = pnl_events.get(last_date, 0.0) + payout
+                payout_total += payout
+                payout_log.append(
+                    f"{last_date}: FINAL PAYOUT ${payout:,.0f} "
+                    f"(ref={ref_price:.2f} -> now={spy_px:.2f}, drop={drop:.1%})"
+                )
 
-        # Check for payout: SPY dropped > 5% from ref_price
-        drop_pct = (ref_price - spy_px) / ref_price
-        if drop_pct > PUT_LOWER_STRIKE_PCT:
-            # Payout scales linearly from 5% to 15% drop, capped at 10% of portfolio
-            payout_pct = min(drop_pct - PUT_LOWER_STRIKE_PCT,
-                             PUT_UPPER_STRIKE_PCT - PUT_LOWER_STRIKE_PCT)
-            payout_frac = payout_pct / (PUT_UPPER_STRIKE_PCT - PUT_LOWER_STRIKE_PCT)
-            payout = portfolio_at_renew * PUT_MAX_PAYOUT_PCT * payout_frac
-            pnl_events[date] = pnl_events.get(date, 0) + payout
-            # Reset ref after payout to avoid double-counting
-            ref_price = spy_px
-            last_renew = date
-
+    net = payout_total - premium_total
+    print(f"  [PutSpread] Premiums: -${premium_total:,.0f} | "
+          f"Payouts: +${payout_total:,.0f} | Net: ${net:,.0f}")
+    for line in payout_log:
+        print(f"    {line}")
     return pnl_events
 
 
 # ---------------------------------------------------------------------------
-# 6. Helpers
+# 7. Helpers
 # ---------------------------------------------------------------------------
 def calc_commission(shares, price):
     return max(shares * COMMISSION_RATE, COMMISSION_MIN)
 
-def get_tier(consec_down, test_id="BASELINE_V35I3", atr_pct=0.02, atr_rank=0.5):
-    """Returns tier config dict. Test A modifies targets/hold_days dynamically."""
+def get_tier(consec_down, test_id, atr_pct=0.02, atr_rank=0.5):
     if consec_down >= TIER1_MIN_DOWN:
-        partial_trigger = TIER1_PARTIAL_TRIGGER
-        if test_id in ("D_PARTIAL_TUNE", "G_COMBO_ACD"):
-            partial_trigger = D_PARTIAL_TRIGGER
+        ptrigger = D_PARTIAL_TRIGGER if test_id in ("D_PARTIAL_TUNE", "G_COMBO_ACD", "H_COMBO_BCD") else TIER1_PARTIAL_TRIGGER
         cfg = {"tier": 1, "profit_target": TIER1_TARGET, "hold_days": TIER1_HOLD_DAYS,
                "partial_enabled": True, "partial_frac": TIER1_PARTIAL_FRAC,
-               "partial_trigger": partial_trigger}
+               "partial_trigger": ptrigger}
     elif consec_down >= TIER2_MIN_DOWN:
         cfg = {"tier": 2, "profit_target": TIER2_TARGET, "hold_days": TIER2_HOLD_DAYS,
                "partial_enabled": False, "partial_frac": 0.0, "partial_trigger": TIER2_TARGET}
@@ -458,33 +458,24 @@ def get_tier(consec_down, test_id="BASELINE_V35I3", atr_pct=0.02, atr_rank=0.5):
         cfg = {"tier": 3, "profit_target": TIER3_TARGET, "hold_days": TIER3_HOLD_DAYS,
                "partial_enabled": False, "partial_frac": 0.0, "partial_trigger": TIER3_TARGET}
 
-    # Test A / F / G: override profit_target and hold_days with vol-adjusted values
     if test_id in ("A_VOL_EXIT", "F_COMBO_ACB", "G_COMBO_ACD"):
-        vol_target = float(np.clip(atr_pct * A_TARGET_K, A_TARGET_MIN, A_TARGET_MAX))
-        cfg["profit_target"] = vol_target
-        if atr_rank < 0.25:
-            cfg["hold_days"] = A_HOLD_LOW
-        elif atr_rank < 0.75:
-            cfg["hold_days"] = A_HOLD_MID
-        else:
-            cfg["hold_days"] = A_HOLD_HIGH
+        vol_tgt = float(np.clip(atr_pct * A_TARGET_K, A_TARGET_MIN, A_TARGET_MAX))
+        cfg["profit_target"] = vol_tgt
+        cfg["hold_days"]     = A_HOLD_LOW if atr_rank < 0.25 else (A_HOLD_HIGH if atr_rank > 0.75 else A_HOLD_MID)
         if cfg["partial_enabled"]:
-            cfg["partial_trigger"] = vol_target * 0.5  # partial at 50% of target
-
+            cfg["partial_trigger"] = vol_tgt * 0.5
     return cfg
 
-def get_position_size(today, vix_df, drawdown_pct=0.0, size_multiplier=1.0):
+def get_position_size(today, vix_df, size_multiplier=1.0):
     month = pd.Timestamp(today).month
-    earnings_month = month in EARNINGS_MONTHS
-    base = POSITION_SIZE
+    base  = POSITION_SIZE
     try:
         vc = vix_df["Close"].squeeze()
-        if today in vc.index:
-            if float(vc.loc[today]) < VIX_LOW:
-                base = POSITION_SIZE_HIGH
+        if today in vc.index and float(vc.loc[today]) < VIX_LOW:
+            base = POSITION_SIZE_HIGH
     except Exception:
         pass
-    if earnings_month and base > POSITION_SIZE_EARNINGS:
+    if month in EARNINGS_MONTHS and base > POSITION_SIZE_EARNINGS:
         base = POSITION_SIZE_EARNINGS
     return min(base * size_multiplier, TOP_SIGNAL_HARD_CAP)
 
@@ -493,15 +484,11 @@ def sector_ok(tkr, date, sector_data):
     if etf is None or etf not in sector_data:
         return True
     df = sector_data[etf]
-    if date not in df.index:
-        return True
-    return bool(df.loc[date, "ok"])
+    return bool(df.loc[date, "ok"]) if date in df.index else True
 
 def count_sector_pos(tkr, open_positions):
     etf = TICKER_TO_SECTOR.get(tkr)
-    if etf is None:
-        return 0
-    return sum(1 for t in open_positions if TICKER_TO_SECTOR.get(t) == etf)
+    return 0 if etf is None else sum(1 for t in open_positions if TICKER_TO_SECTOR.get(t) == etf)
 
 def check_vix_spike(today, vix_df, last_spike):
     try:
@@ -514,26 +501,7 @@ def check_vix_spike(today, vix_df, last_spike):
             return True, last_spike
     return False, last_spike
 
-def is_tom_window(today, trading_dates_set_with_idx):
-    """
-    Returns True if today is in the turn-of-month window:
-    last trading day of the month through the next B_TOM_DAYS_AFTER trading days.
-    """
-    ts = pd.Timestamp(today)
-    # Last trading day of month: next day is a different month
-    # We check if this day is within B_TOM_DAYS_AFTER of any month-end trading day
-    # Approximation: is today in [last_bday_of_month - 0, last_bday_of_month + 3]?
-    # We use pandas month-end offset
-    month_end = ts + pd.offsets.MonthEnd(0)
-    days_from_month_end = (month_end - ts).days
-    # Also check days after month start
-    month_start = ts.replace(day=1)
-    days_from_month_start = (ts - month_start).days
-    # TOM window: last 1 trading day of month or first 3 trading days of next month
-    # Approximate: within 5 calendar days of month end
-    return days_from_month_end <= 1 or days_from_month_start <= B_TOM_DAYS_AFTER
-
-def get_vix_today(today, vix_df):
+def get_vix(today, vix_df):
     try:
         vc = vix_df["Close"].squeeze()
         if today in vc.index:
@@ -542,9 +510,7 @@ def get_vix_today(today, vix_df):
         pass
     return 20.0
 
-def near_earnings(tkr, date, earnings_map, blackout_days=None):
-    if blackout_days is None:
-        blackout_days = EARNINGS_BLACKOUT
+def near_earnings(tkr, date, earnings_map, blackout_days):
     if tkr not in earnings_map:
         return False
     d = pd.Timestamp(date).normalize()
@@ -552,14 +518,13 @@ def near_earnings(tkr, date, earnings_map, blackout_days=None):
 
 
 # ---------------------------------------------------------------------------
-# 7. Core backtest engine
+# 8. Core backtest engine
 # ---------------------------------------------------------------------------
 def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
                  test_id="BASELINE_V35I3"):
     print(f"\n[Backtest] Running {test_id} ...")
 
-    # Determine per-test overrides
-    earnings_blackout_days = E_EARNINGS_BLACKOUT if test_id == "E_EARNINGS_EXT" else EARNINGS_BLACKOUT
+    blackout_days = E_EARNINGS_BLACKOUT if test_id == "E_EARNINGS_EXT" else EARNINGS_BLACKOUT
 
     spy_regime = spy_df["spy_ok"].to_dict()
     all_dates: set = set()
@@ -567,21 +532,30 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
         all_dates.update(df.index)
     trading_dates = sorted(all_dates)
 
+    tom_set = build_tom_set(trading_dates) if test_id in ("B_TOM_SIZING", "F_COMBO_ACB", "H_COMBO_BCD") else set()
+
+    # Diagnostic: count low-VIX days for test C
+    if test_id in ("C_VIX_RSI", "F_COMBO_ACB", "G_COMBO_ACD", "H_COMBO_BCD"):
+        vix_close = vix_df["Close"].squeeze()
+        low_vix_days = sum(1 for d in trading_dates
+                           if d in vix_close.index and float(vix_close.loc[d]) < C_VIX_THRESH)
+        print(f"  VIX < {C_VIX_THRESH} on {low_vix_days} days "
+              f"({100*low_vix_days/max(len(trading_dates),1):.1f}% of all trading days)")
+
     signals = {}
     min_bars = MA_WINDOW + VOL_MA_PERIOD + ATR_PERIOD + MIN_CONSEC_DOWN + 5
     for tkr, df in price_data.items():
         if len(df) > min_bars:
             signals[tkr] = generate_signals(df)
 
-    portfolio_value   = INITIAL_CAPITAL
-    portfolio_peak    = None
-    current_drawdown  = 0.0
-    open_positions    = {}
-    trades            = []
-    cooldown_map      = {}
-    last_vix_spike    = None
+    portfolio_value     = INITIAL_CAPITAL
+    portfolio_peak      = None
+    open_positions      = {}
+    trades              = []
+    cooldown_map        = {}
+    last_vix_spike      = None
     last_velocity_crash = None
-    portfolio_by_date = {}  # for put spread
+    portfolio_by_date   = {}
 
     for today in tqdm(trading_dates, desc=f"Sim {test_id}"):
         portfolio_by_date[today] = portfolio_value
@@ -596,22 +570,16 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
                 if not np.isnan(spy_5d) and spy_5d < VELOCITY_CRASH_5D_THRESHOLD:
                     last_velocity_crash = today
             if last_velocity_crash is not None:
-                days_since = (pd.Timestamp(today) - pd.Timestamp(last_velocity_crash)).days
-                if days_since <= VELOCITY_CRASH_PAUSE_DAYS:
+                if (pd.Timestamp(today) - pd.Timestamp(last_velocity_crash)).days <= VELOCITY_CRASH_PAUSE_DAYS:
                     velocity_paused = True
         except Exception:
             pass
 
         if portfolio_peak is None:
             if portfolio_value != INITIAL_CAPITAL:
-                portfolio_peak   = portfolio_value
-                current_drawdown = 0.0
+                portfolio_peak = portfolio_value
         else:
-            if portfolio_value > portfolio_peak:
-                portfolio_peak   = portfolio_value
-                current_drawdown = 0.0
-            else:
-                current_drawdown = (portfolio_value - portfolio_peak) / portfolio_peak
+            portfolio_peak = max(portfolio_peak, portfolio_value)
 
         # ---- Exits ----
         to_close = []
@@ -621,15 +589,15 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
             tkr_df = signals[tkr]
             if today not in tkr_df.index:
                 continue
-            row        = tkr_df.loc[today]
-            exit_price = float(row["Close"])
+            row         = tkr_df.loc[today]
+            exit_price  = float(row["Close"])
             entry_price = pos["entry_price"]
-            days_held  = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
-            pos_pct    = (exit_price - entry_price) / entry_price
-            shares_rem = pos["shares_remaining"]
-            early      = days_held < MIN_HOLD_BEFORE_EXIT
-            time_stop  = days_held >= pos["hold_days"]
-            profit_hit = (not early) and pos_pct >= pos["profit_target"]
+            days_held   = (pd.Timestamp(today) - pd.Timestamp(pos["entry_date"])).days
+            pos_pct     = (exit_price - entry_price) / entry_price
+            shares_rem  = pos["shares_remaining"]
+            early       = days_held < MIN_HOLD_BEFORE_EXIT
+            time_stop   = days_held >= pos["hold_days"]
+            profit_hit  = (not early) and pos_pct >= pos["profit_target"]
 
             if (pos["partial_enabled"] and not pos["partial_done"]
                     and not early and pos_pct >= pos["partial_trigger"]):
@@ -658,8 +626,7 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
             )
             if full_exit:
                 comm = calc_commission(shares_rem, exit_price)
-                pnl  = ((exit_price - entry_price) * shares_rem
-                        - comm - pos["entry_commission"])
+                pnl  = (exit_price - entry_price) * shares_rem - comm - pos["entry_commission"]
                 reason = "time_stop" if time_stop else "profit_target"
                 trades.append({
                     "ticker": tkr, "entry_date": pos["entry_date"], "exit_date": today,
@@ -685,17 +652,12 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
             continue
 
         # ---- Entries ----
-        vix_today = get_vix_today(today, vix_df)
-        # Test C / F / G: tighten RSI threshold in low-VIX regime
-        rsi_threshold_today = RSI_THRESHOLD
-        if test_id in ("C_VIX_RSI", "F_COMBO_ACB", "G_COMBO_ACD"):
-            if vix_today < C_VIX_TIGHT:
-                rsi_threshold_today = C_RSI_TIGHT
-
-        # Test B / F: turn-of-month flag
-        tom_today = False
-        if test_id in ("B_TOM_SIZING", "F_COMBO_ACB"):
-            tom_today = is_tom_window(today, None)
+        vix_now = get_vix(today, vix_df)
+        rsi_thresh = (C_RSI_THRESH
+                      if test_id in ("C_VIX_RSI", "F_COMBO_ACB", "G_COMBO_ACD", "H_COMBO_BCD")
+                      and vix_now < C_VIX_THRESH
+                      else RSI_THRESHOLD)
+        tom_today = today in tom_set
 
         candidates = []
         for tkr, tkr_df in signals.items():
@@ -704,28 +666,26 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
             row = tkr_df.loc[today]
             if not row["signal"]:
                 continue
-            # Test C/F/G: re-check RSI with today's threshold
-            if test_id in ("C_VIX_RSI", "F_COMBO_ACB", "G_COMBO_ACD"):
-                if float(row["rsi2"]) >= rsi_threshold_today:
-                    continue
+            if float(row["rsi2"]) >= rsi_thresh:
+                continue
             if tkr in cooldown_map:
                 if (pd.Timestamp(today) - pd.Timestamp(cooldown_map[tkr])).days < REENTRY_COOLDOWN_DAYS:
                     continue
-            if near_earnings(tkr, today, earnings_map, earnings_blackout_days):
+            if near_earnings(tkr, today, earnings_map, blackout_days):
                 continue
             if not sector_ok(tkr, today, sector_data):
                 continue
             if count_sector_pos(tkr, open_positions) >= MAX_SECTOR_POSITIONS:
                 continue
 
-            rsi2    = float(row["rsi2"])
-            atr_pct = float(row["atr_pct"])
-            score   = rsi2 / atr_pct if atr_pct > 0 else rsi2 * 1000
+            rsi2     = float(row["rsi2"])
+            atr_pct  = float(row["atr_pct"])
+            score    = rsi2 / atr_pct if atr_pct > 0 else rsi2 * 1000
             atr_rank = float(row.get("atr_pct_rank", 0.5))
             candidates.append((score, tkr, int(row["consec_down"]), rsi2, atr_pct, atr_rank))
 
         candidates.sort(key=lambda x: x[0])
-        n = len(candidates)
+        n     = len(candidates)
         top_n = max(1, int(n * TOP_SIGNAL_PCT))
 
         for rank, (score, tkr, consec_val, rsi_val, atr_pct_val, atr_rank) in enumerate(candidates):
@@ -744,52 +704,40 @@ def run_backtest(price_data, spy_df, vix_df, sector_data, earnings_map,
             if gap_pct < GAP_DOWN_MAX or gap_pct > GAP_UP_MAX:
                 continue
 
-            tier_cfg = get_tier(consec_val, test_id, atr_pct_val, atr_rank)
-
-            # Sizing
-            size_mult = 1.0
-            if n >= MIN_CANDIDATES_FOR_TOP and rank < top_n:
-                size_mult = TOP_SIGNAL_MULTIPLIER
+            tier_cfg  = get_tier(consec_val, test_id, atr_pct_val, atr_rank)
+            size_mult = TOP_SIGNAL_MULTIPLIER if (n >= MIN_CANDIDATES_FOR_TOP and rank < top_n) else 1.0
             if tom_today:
-                size_mult *= B_TOM_SIZE_MULT
+                size_mult *= B_TOM_MULT
 
-            pos_size = get_position_size(today, vix_df, current_drawdown, size_mult)
-            shares   = (portfolio_value * pos_size) / entry_price
+            pos_size   = get_position_size(today, vix_df, size_mult)
+            shares     = (portfolio_value * pos_size) / entry_price
             entry_comm = calc_commission(shares, entry_price)
 
             open_positions[tkr] = {
-                "entry_date": tkr_df.index[today_idx + 1],
-                "entry_price": entry_price,
-                "shares": shares,
-                "shares_remaining": shares,
-                "rsi2_at_entry": rsi_val,
-                "consec_down_at_entry": consec_val,
-                "profit_target": tier_cfg["profit_target"],
-                "hold_days": tier_cfg["hold_days"],
-                "partial_enabled": tier_cfg["partial_enabled"],
-                "partial_frac": tier_cfg["partial_frac"],
-                "partial_trigger": tier_cfg["partial_trigger"],
-                "partial_done": False,
-                "tier": tier_cfg["tier"],
-                "entry_commission": entry_comm,
+                "entry_date":            tkr_df.index[today_idx + 1],
+                "entry_price":           entry_price,
+                "shares":                shares,
+                "shares_remaining":      shares,
+                "rsi2_at_entry":         rsi_val,
+                "consec_down_at_entry":  consec_val,
+                "profit_target":         tier_cfg["profit_target"],
+                "hold_days":             tier_cfg["hold_days"],
+                "partial_enabled":       tier_cfg["partial_enabled"],
+                "partial_frac":          tier_cfg["partial_frac"],
+                "partial_trigger":       tier_cfg["partial_trigger"],
+                "partial_done":          False,
+                "tier":                  tier_cfg["tier"],
+                "entry_commission":      entry_comm,
             }
 
     print(f"[Backtest] {test_id}: {len(trades)} MR trades")
     trades_df = pd.DataFrame(trades)
-
-    # Apply put spread overlay to all tests
-    if not trades_df.empty:
-        put_pnl = simulate_put_spread(trading_dates, portfolio_by_date, spy_df)
-        put_total = sum(put_pnl.values())
-        print(f"[Backtest] {test_id}: put spread net P&L = ${put_total:,.0f}")
-    else:
-        put_pnl = {}
-
+    put_pnl   = simulate_put_spread(trading_dates, portfolio_by_date, spy_df) if not trades_df.empty else {}
     return trades_df, put_pnl
 
 
 # ---------------------------------------------------------------------------
-# 8. Metrics
+# 9. Metrics
 # ---------------------------------------------------------------------------
 def compute_metrics(trades_df, put_pnl, test_id):
     if trades_df.empty:
@@ -797,63 +745,31 @@ def compute_metrics(trades_df, put_pnl, test_id):
 
     trades_df = trades_df.sort_values("exit_date").reset_index(drop=True)
 
-    # Build equity curve including put spread P&L
+    # Merge MR + put spread events chronologically
+    events = [(str(row["exit_date"]), float(row["pnl_usd"])) for _, row in trades_df.iterrows()]
+    for d, pnl in put_pnl.items():
+        events.append((str(d), float(pnl)))
+    events.sort(key=lambda x: x[0])
+
     equity = INITIAL_CAPITAL
-    equity_curve = []
-    all_dates_sorted = sorted(set(trades_df["exit_date"].tolist()) | set(put_pnl.keys()))
-    put_dates = set(put_pnl.keys())
+    eq_rows = []
+    for d, pnl in events:
+        equity += pnl
+        eq_rows.append({"date": d, "equity": equity})
 
-    # Step through trades chronologically
-    for _, row in trades_df.iterrows():
-        # Apply any put P&L on or before this trade date first
-        d = row["exit_date"]
-        equity += row["pnl_usd"]
-        equity_curve.append({"date": d, "equity": equity})
+    eq_df = pd.DataFrame(eq_rows)
+    eq_df["date"] = pd.to_datetime(eq_df["date"])
+    eq_df = eq_df.sort_values("date").reset_index(drop=True)
 
-    # Add put pnl events to equity curve
-    for d, pnl in sorted(put_pnl.items()):
-        equity_curve.append({"date": d, "equity_adj": pnl})
-
-    # Rebuild equity curve properly
-    equity = INITIAL_CAPITAL
-    combined = []
-    trade_iter = iter(trades_df.iterrows())
-    put_iter   = iter(sorted(put_pnl.items()))
-
-    trade_row  = next(trade_iter, None)
-    put_item   = next(put_iter, None)
-
-    while trade_row is not None or put_item is not None:
-        take_trade = False
-        if trade_row is not None and put_item is not None:
-            take_trade = str(trade_row[1]["exit_date"]) <= str(put_item[0])
-        elif trade_row is not None:
-            take_trade = True
-
-        if take_trade:
-            equity += trade_row[1]["pnl_usd"]
-            combined.append({"date": trade_row[1]["exit_date"], "equity": equity})
-            trade_row = next(trade_iter, None)
-        else:
-            equity += put_item[1]
-            combined.append({"date": put_item[0], "equity": equity})
-            put_item = next(put_iter, None)
-
-    eq_df = pd.DataFrame(combined)
-    if eq_df.empty:
-        return {"test": test_id, "error": "Empty equity curve"}
-
+    final_eq = equity
     start_dt = pd.to_datetime(trades_df["entry_date"].min())
     end_dt   = pd.to_datetime(trades_df["exit_date"].max())
     years    = max((end_dt - start_dt).days / 365.25, 1e-6)
-    final_eq = equity
     cagr     = (final_eq / INITIAL_CAPITAL) ** (1 / years) - 1
 
     winners  = trades_df[trades_df["pnl_usd"] > 0]
     losers   = trades_df[trades_df["pnl_usd"] <= 0]
     win_rate = len(winners) / len(trades_df) * 100
-    avg_win  = winners["pnl_pct"].mean() if len(winners) else 0
-    avg_loss = losers["pnl_pct"].mean()  if len(losers)  else 0
 
     eq_df["peak"] = eq_df["equity"].cummax()
     eq_df["dd"]   = (eq_df["equity"] - eq_df["peak"]) / eq_df["peak"] * 100
@@ -863,9 +779,7 @@ def compute_metrics(trades_df, put_pnl, test_id):
     gl = abs(losers["pnl_usd"].sum())
     pf = gp / gl if gl > 0 else float("inf")
 
-    eq_dt = eq_df.copy()
-    eq_dt["date"] = pd.to_datetime(eq_dt["date"])
-    eq_dt = eq_dt.set_index("date").sort_index()
+    eq_dt   = eq_df.set_index("date").sort_index()
     monthly = eq_dt["equity"].resample("ME").last().ffill().pct_change().dropna()
     sharpe  = monthly.mean() / monthly.std() * np.sqrt(12) if monthly.std() > 0 else 0
     down    = monthly[monthly < 0]
@@ -875,7 +789,6 @@ def compute_metrics(trades_df, put_pnl, test_id):
     year_stats = {}
     for yr in sorted(trades_df["exit_year"].unique()):
         y_df = trades_df[trades_df["exit_year"] == yr]
-        y_win = y_df[y_df["pnl_usd"] > 0]
         year_stats[str(yr)] = {
             "trades":   len(y_df),
             "win_rate": round((y_df["pnl_usd"] > 0).mean() * 100, 1),
@@ -893,8 +806,8 @@ def compute_metrics(trades_df, put_pnl, test_id):
         "sortino_ratio":    round(sortino, 2),
         "win_rate_pct":     round(win_rate, 2),
         "profit_factor":    round(pf, 2),
-        "avg_win_pct":      round(avg_win, 2),
-        "avg_loss_pct":     round(avg_loss, 2),
+        "avg_win_pct":      round(winners["pnl_pct"].mean() if len(winners) else 0, 2),
+        "avg_loss_pct":     round(losers["pnl_pct"].mean()  if len(losers)  else 0, 2),
         "avg_days_held":    round(trades_df["days_held"].mean(), 2),
         "put_spread_net":   round(sum(put_pnl.values()), 2),
         "year_stats":       year_stats,
@@ -902,17 +815,18 @@ def compute_metrics(trades_df, put_pnl, test_id):
 
 
 # ---------------------------------------------------------------------------
-# 9. Save + print
+# 10. Save + print
 # ---------------------------------------------------------------------------
 TEST_DESCRIPTIONS = {
     "BASELINE_V35I3": "V35 + Idea3 put spread — control (target: 19.71% CAGR, $4,513k, -52.87% MaxDD)",
-    "A_VOL_EXIT":     "Vol-adjusted exits: target=1.8×ATR (1.5%-6%), hold=6/8/12d by ATR rank",
-    "B_TOM_SIZING":   "Turn-of-month sizing: entries in TOM window get 1.15× size (Lakonishok 1988)",
-    "C_VIX_RSI":      "VIX<15 regime RSI tightening: require RSI<15 (from V36-T2: +$86k +0.08% CAGR)",
-    "D_PARTIAL_TUNE": "Tier 1 partial trigger 1.0%→0.8% (captures more partials earlier)",
-    "E_EARNINGS_EXT": "Earnings blackout 3→5 days (README flagged as remaining test)",
-    "F_COMBO_ACB":    "Combo: vol exits + VIX RSI tightening + TOM sizing",
-    "G_COMBO_ACD":    "Combo: vol exits + VIX RSI tightening + partial trigger tune",
+    "A_VOL_EXIT":     "Vol-adjusted exits: target=1.8xATR (1.5%-6%), hold=6/8/12d by ATR rank",
+    "B_TOM_SIZING":   "Turn-of-month sizing: TOM window entries get 1.15x size (Lakonishok 1988)",
+    "C_VIX_RSI":      "VIX<15 RSI tightening: require RSI<15 instead of RSI<20",
+    "D_PARTIAL_TUNE": "Tier 1 partial trigger 1.0% -> 0.8%",
+    "E_EARNINGS_EXT": "Earnings blackout 3 -> 5 days",
+    "F_COMBO_ACB":    "Combo: vol exits + VIX RSI tight + TOM sizing",
+    "G_COMBO_ACD":    "Combo: vol exits + VIX RSI tight + partial tune",
+    "H_COMBO_BCD":    "Combo: TOM sizing + VIX RSI tight + partial tune (no vol exits)",
 }
 
 def save_outputs(all_metrics, all_trades):
@@ -921,13 +835,19 @@ def save_outputs(all_metrics, all_trades):
             df.to_csv(OUTPUT_DIR / f"trades_{test_id.lower()}.csv", index=False)
 
     result = {
-        "run_date":  datetime.date.today().isoformat(),
-        "baseline":  "V35+I3 (19.71% CAGR, $4,513,155, MaxDD -52.87%, Sharpe 0.74)",
-        "suite":     "Ideas V5",
-        "tests":     all_metrics,
+        "run_date": datetime.date.today().isoformat(),
+        "baseline": "V35+I3 (19.71% CAGR, $4,513,155, MaxDD -52.87%, Sharpe 0.74)",
+        "suite":    "Ideas V5 (fixed)",
+        "tests":    all_metrics,
     }
     with open(OUTPUT_DIR / "comparison.json", "w") as f:
         json.dump(result, f, indent=2, default=str)
+
+    tests_order = ["BASELINE_V35I3","A_VOL_EXIT","B_TOM_SIZING","C_VIX_RSI",
+                   "D_PARTIAL_TUNE","E_EARNINGS_EXT","F_COMBO_ACB","G_COMBO_ACD","H_COMBO_BCD"]
+    by_test = {m["test"]: m for m in all_metrics}
+    col_w   = 20
+    n_cols  = sum(1 for t in tests_order if t in by_test)
 
     KEY = [
         ("cagr_pct",          "CAGR %"),
@@ -935,30 +855,23 @@ def save_outputs(all_metrics, all_trades):
         ("max_drawdown_pct",  "Max DD %"),
         ("sharpe_ratio",      "Sharpe"),
         ("win_rate_pct",      "Win Rate %"),
-        ("profit_factor",     "Profit Factor"),
+        ("profit_factor",     "PF"),
         ("trades_per_year",   "Trades/yr"),
         ("avg_days_held",     "Avg Days"),
         ("put_spread_net",    "Put Net P&L"),
     ]
 
-    tests_order = ["BASELINE_V35I3","A_VOL_EXIT","B_TOM_SIZING","C_VIX_RSI",
-                   "D_PARTIAL_TUNE","E_EARNINGS_EXT","F_COMBO_ACB","G_COMBO_ACD"]
-    by_test = {m["test"]: m for m in all_metrics}
-    col_w = 18
-
-    print("\n" + "=" * 130)
-    print("  IDEAS V5 — RESULTS vs V35+I3 BASELINE")
-    print("=" * 130)
+    print("\n" + "=" * 140)
+    print("  IDEAS V5 (FIXED) — RESULTS vs V35+I3 BASELINE")
+    print("=" * 140)
     for t in tests_order:
         if t in by_test:
             print(f"  {t:<18} {TEST_DESCRIPTIONS.get(t,'')}")
     print()
 
-    n_cols = sum(1 for t in tests_order if t in by_test)
-    header = f"  {'Metric':<22}" + "".join(f"{t:>{col_w}}" for t in tests_order if t in by_test)
-    print(header)
+    hdr = f"  {'Metric':<22}" + "".join(f"{t:>{col_w}}" for t in tests_order if t in by_test)
+    print(hdr)
     print("  " + "-" * (22 + col_w * n_cols))
-
     baseline = by_test.get("BASELINE_V35I3", {})
     for key, label in KEY:
         row = f"  {label:<22}"
@@ -973,35 +886,25 @@ def save_outputs(all_metrics, all_trades):
                 sign  = "+" if delta >= 0 else ""
                 cell  = f"{val:.2f}({sign}{delta:.2f})"
             else:
-                if key == "final_equity":
-                    cell = f"${val:,.0f}"
-                elif key == "put_spread_net":
-                    cell = f"${val:,.0f}"
-                else:
-                    cell = f"{val:.2f}"
+                cell = f"${val:,.0f}" if key in ("final_equity", "put_spread_net") else f"{val:.2f}"
             row += f"{cell:>{col_w}}"
         print(row)
 
-    print("=" * 130)
-    print(f"\n  Saved to: {OUTPUT_DIR.resolve()}")
+    print("=" * 140)
+    print(f"\n  Saved to: {OUTPUT_DIR.resolve()}\n")
 
-    # Per-year table
-    print("\n  PER-YEAR P&L (MR trades only, excl. put spread)")
     all_years = sorted({yr for m in all_metrics for yr in m.get("year_stats", {}).keys()})
+    print("  PER-YEAR P&L (MR trades only)")
     h2 = f"  {'Year':<8}" + "".join(f"{t:>{col_w}}" for t in tests_order if t in by_test)
     print(h2)
     print("  " + "-" * (8 + col_w * n_cols))
     for yr in all_years:
         row = f"  {yr:<8}"
         for t in tests_order:
-            m  = by_test.get(t, {})
-            ys = m.get("year_stats", {}).get(yr, {})
+            ys  = by_test.get(t, {}).get("year_stats", {}).get(yr, {})
             pnl = ys.get("pnl_usd")
             wr  = ys.get("win_rate")
-            if pnl is None:
-                row += f"{'—':>{col_w}}"
-            else:
-                cell = f"${pnl:,.0f}({wr}%)"
-                row += f"{cell:>{col_w}}"
+            cell = "—" if pnl is None else f"${pnl:,.0f}({wr}%)"
+            row += f"{cell:>{col_w}}"
         print(row)
-    print("=" * 130 + "\n")
+    print("=" * 140 + "\n")
