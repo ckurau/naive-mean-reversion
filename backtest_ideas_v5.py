@@ -188,7 +188,7 @@ def get_vix_level(today, vix_df) -> float:
 # =============================================================================
 # Core backtest — V35 loop with injected overrides
 # =============================================================================
-def run_backtest_v5(price_data: dict, spy_df: pd.DataFrame, vix_df: pd.DataFrame,
+def run_backtest(price_data: dict, spy_df: pd.DataFrame, vix_df: pd.DataFrame,
                     sector_data: dict, earnings_map: dict, cfg: dict) -> pd.DataFrame:
 
     test_name   = cfg["name"]
