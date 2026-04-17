@@ -154,8 +154,8 @@ TURNOVER_WEIGHT       = 1.5    # weight of turnover component in composite score
 # Idea 6: Cross-asset correlation regime
 CORR_LOOKBACK         = 20     # days of returns for correlation computation
 CORR_TARGET           = 0.20   # neutral correlation level
-CORR_FLOOR            = 0.50   # minimum scale when correlation spikes
-CORR_SENSITIVITY      = 1.5    # aggressiveness of scaling
+CORR_FLOOR            = 0.70   # minimum scale when correlation spikes
+CORR_SENSITIVITY      = 0.5    # aggressiveness of scaling
 
 # Idea 7: Time-stop recycling
 RECYCLE_SIZE_FRAC     = 0.50   # half-size for recycled entries
