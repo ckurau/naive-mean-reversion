@@ -1,5 +1,5 @@
-# backtest_ideas_v5_run.py
-# Ideas V5 runner — 7 tests vs V35+I3 baseline in one workflow run.
+# backtest_ideas_v5_run.py (fixed)
+# Ideas V5 runner — 8 tests vs V35+I3 baseline.
 # Push both this file and backtest_ideas_v5.py to repo root.
 # Trigger "Ideas V5 Backtest" workflow.
 
@@ -18,12 +18,14 @@ TESTS = [
     "E_EARNINGS_EXT",
     "F_COMBO_ACB",
     "G_COMBO_ACD",
+    "H_COMBO_BCD",
 ]
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("  Ideas V5 Backtest Suite")
+    print("  Ideas V5 Backtest Suite (fixed)")
     print("  Baseline: V35+I3 (19.71% CAGR, $4,513,155, MaxDD -52.87%)")
+    print("  Key fixes: put spread payout logic, TOM exact window, C/E overrides")
     print("=" * 70)
     for t, desc in TEST_DESCRIPTIONS.items():
         print(f"  {t:<18} {desc}")
@@ -48,10 +50,11 @@ if __name__ == "__main__":
         metrics = compute_metrics(trades_df, put_pnl, test_id)
         all_metrics.append(metrics)
         all_trades[test_id] = trades_df
-        print(f"  → {test_id}: CAGR {metrics.get('cagr_pct','?')}%  "
+        print(f"  -> {test_id}: CAGR {metrics.get('cagr_pct','?')}%  "
               f"Equity ${metrics.get('final_equity',0):,.0f}  "
               f"MaxDD {metrics.get('max_drawdown_pct','?')}%  "
-              f"Sharpe {metrics.get('sharpe_ratio','?')}")
+              f"Sharpe {metrics.get('sharpe_ratio','?')}  "
+              f"PutNet ${metrics.get('put_spread_net',0):,.0f}")
 
     if all_metrics:
         save_outputs(all_metrics, all_trades)
