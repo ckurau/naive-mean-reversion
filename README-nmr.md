@@ -17,14 +17,19 @@ The put spread is not a backtest variant — it is executed live via `hedge_quar
 ```
 backtest-nmr.py           Thin wrapper → imports backtest_nmr_lib.py (V35)
 backtest_nmr_lib.py       All V35 backtest logic and parameters
-backtest_ideas_v2.py      Multi-test runner: 4 new drawdown ideas vs V35
+backtest_ideas_v2.py      Multi-test runner: Ideas V2 (put spread, twin engine, port vol, sector streak)
+backtest_ideas_v3.py      Multi-test runner: Ideas V3 (VIX TS, 52wk high, gap capture, analyst, calls)
+backtest_ideas_v4.py      Multi-test runner: Ideas V4 (overnight, salience, dispersion, skew, turnover, corr, recycle)
 ideas_v2_backtest.yml     GitHub Actions workflow for ideas_v2 tests
+ideas_v3_backtest.yml     GitHub Actions workflow for ideas_v3 tests
+ideas_v4_backtest.yml     GitHub Actions workflow for ideas_v4 tests
 scan_evening.py           Live: evening signal scan + LOO order submission (6:00 PM PT)
 trade_morning.py          Live: morning exit orders + fill confirmation (6:15 AM PT)
 hedge_quarterly.py        Live: quarterly SPY put spread entry/roll (6:05 PM PT)
 check_signals.py          Diagnostic: preview tonight's signals (read-only, no orders)
 check_today.py            Diagnostic: show today's closed trades + open positions
 check_log.py              Diagnostic: show today's trade.log entries
+list_tasks.py             Diagnostic: show Windows Task Scheduler entries and trigger times
 walkforward.py            Walk-forward validation runner
 preflight.py              Pre-flight system check
 positions_check.py        CLI: view open/closed positions + P&L
@@ -211,6 +216,52 @@ Tested 4 new drawdown-reduction ideas against V35 baseline. Run via `backtest_id
 
 ---
 
+## Ideas V3: Full Research Results (April 2026)
+
+Tested 6 new ideas (VIX term structure, 52wk high proximity, gap capture sub-tier, analyst dispersion, call spread overlay) against V35+I3 baseline. Run via `backtest_ideas_v3.py`. 17 total tests.
+
+| Test | CAGR | MaxDD | Sharpe | Final Equity | Notes |
+|---|---|---|---|---|---|
+| Baseline V35 | 18.72% | -55.89% | 0.71 | $3,995,384 | Reference |
+| **Baseline V35+I3** | **19.53%** | **-53.06%** | **0.73** | **$4,364,842** | **Current best** |
+| IdeaD VixTS | 18.66% | -55.75% | 0.70 | $3,949,405 | Nearly identical to baseline |
+| IdeaE 52wkHigh | 15.42% | -54.66% | 0.64 | $2,180,577 | -4pp CAGR for 1.2pp MaxDD gain |
+| IdeaB GapCapture | 14.74% | -57.76% | 0.62 | $2,295,612 | Contaminates cooldown tracking |
+| IdeaC Analyst | 18.72% | -55.89% | 0.71 | $3,995,384 | Zero effect (static data) |
+| IdeaF CallSpread | 18.53% | -53.13% | 0.71 | $3,446,559 | -$548k equity for 2.76pp MaxDD |
+| IdeaF+I3 | 19.29% | -51.49% | 0.74 | $3,759,789 | Best Sharpe, -$605k vs puts-only |
+| IdeaD+E+I3 | 16.15% | -52.71% | 0.67 | $2,299,335 | Combination worse than either alone |
+| Kitchen_Sink | 12.98% | -47.59% | 0.61 | $1,230,392 | Every idea combined — worst equity |
+
+**Conclusion:** No V3 idea improves on V35+I3. The ranking enhancements (Ideas 1, 2, 4, 5 in V4) were identified as a root cause: with 60 positions and rarely more than 20–30 candidates, re-ranking has no effect. Idea 3 (put spread) remains the confirmed ceiling.
+
+---
+
+## Ideas V4: Full Research Results (April 2026)
+
+Tested 7 signal quality ideas grounded in SSRN/academic research: overnight return decomposition, salience/sector-relative ranking, VVIX dispersion regime, return skewness filter, turnover-adjusted ranking, cross-asset correlation regime scaling, time-stop recycling. 24 total tests including combinations.
+
+Core finding confirmed: **ranking enhancements (Ideas 1, 2, 4, 5) have zero effect when the 60-position cap is rarely binding.** On a typical day with 10–30 candidates and 60 slots, all candidates get filled regardless of rank. These ideas would require dropping the position cap to ~30 to have measurable impact.
+
+| Test | CAGR | MaxDD | Sharpe | Final Equity | Notes |
+|---|---|---|---|---|---|
+| Baseline V35 | 18.88% | -55.89% | 0.71 | $4,112,818 | Reference |
+| **Baseline V35+I3** | **19.69%** | **-52.86%** | **0.74** | **$4,492,222** | **Current best (confirmed)** |
+| Idea1 Overnight | 18.87% | -55.89% | 0.71 | $4,101,836 | Identical to baseline |
+| Idea2 Salience | 18.87% | -55.89% | 0.71 | $4,101,836 | Identical to baseline |
+| Idea3 Dispersion | 18.49% | -59.89% | 0.69 | $3,831,462 | MaxDD worsens 4pp |
+| Idea4 Skewness | 18.87% | -55.89% | 0.71 | $4,101,836 | Identical to baseline |
+| Idea5 Turnover | 18.87% | -55.89% | 0.71 | $4,101,836 | Identical to baseline |
+| Idea6 CorrRegime | 15.13% | -50.34% | 0.66 | $2,062,953 | 5.55pp MaxDD gain costs -$2M equity |
+| Idea7 Recycle | 18.73% | -55.89% | 0.71 | $4,003,538 | Small net drag |
+| Idea6+I3 (floor=0.70) | 18.37% | -51.08% | 0.72 | $3,540,958 | 1.78pp MaxDD, costs -$951k |
+| SignalCombo+I3 | 19.67% | -52.87% | 0.74 | $4,479,092 | Identical to V35+I3 |
+| Kitchen_Sink | 15.49% | -50.94% | 0.67 | $2,085,309 | Everything combined — not worth it |
+
+**Conclusion:** V35 + Idea3 put spread is definitively confirmed as the research ceiling. The correlation regime scaling (Idea6) has a structurally correct mechanism but misses recovery entries at every calibration tested, converting MaxDD improvement into equity loss. No further signal/sizing research is warranted.
+
+---
+
 ## Drawdown Research: Confirmed Structural — Do Not Retry
 
 After exhaustive testing across V35–V40 sessions and April 2026 research, the following conclusion is definitive: **the MR strategy's max drawdown cannot be reduced without sacrificing CAGR within the signal/sizing framework.** The put spread hedge is the exception because it operates outside the signal framework as insurance.
@@ -270,6 +321,19 @@ Every approach below has been tested and confirmed to reduce equity or fail to i
 | Portfolio-level vol targeting (Ideas V2 Idea 2) | 3pp DD improvement but 3pp CAGR cost; structural tension |
 | Per-sector streak filtering (Ideas V2 Idea 4) | Neutral — statistically zero effect |
 | Ideas 2+3 combo | MaxDD -49.6% but CAGR -2.4pp and $1.6M less equity vs Idea3 alone |
+| VIX term structure scaling — any floor/sensitivity (Ideas V3 IdeaD) | Effect too gentle even at 0.25 floor; VIX rarely deeply inverted during grinds |
+| 52-week high proximity filter — any threshold (Ideas V3 IdeaE) | -4pp CAGR, -$2M equity for 1.2pp MaxDD improvement; blocks too many good setups |
+| Gap capture sub-tier (Ideas V3 IdeaB) | Contaminates MR cooldown tracking; worse CAGR and MaxDD |
+| Analyst dispersion re-ranking (Ideas V3 IdeaC) | Requires historical data; static yfinance data has zero effect |
+| Call spread overlay standalone (Ideas V3 IdeaF) | -$548k equity for 2.76pp MaxDD improvement; net drag in bull markets |
+| Call spread + put spread collar (Ideas V3 IdeaF+I3) | Best Sharpe (0.74) but -$605k vs puts-only; complexity not justified |
+| Overnight return decomposition ranking (Ideas V4 Idea1) | Zero effect — 60-position cap rarely binding; ranking doesn't matter |
+| Salience/sector-relative ranking (Ideas V4 Idea2) | Zero effect — same reason as above |
+| VVIX/VIX dispersion regime scaling (Ideas V4 Idea3) | MaxDD worsens 4pp; VVIX spikes during crashes regardless of dispersion |
+| Return skewness ranking (Ideas V4 Idea4) | Zero effect — 60-position cap rarely binding |
+| Turnover-adjusted ranking (Ideas V4 Idea5) | Zero effect — 60-position cap rarely binding |
+| Cross-asset correlation regime scaling (Ideas V4 Idea6) | Correct mechanism, wrong magnitude at any calibration; 1.78pp MaxDD gain costs -$951k equity |
+| Time-stop recycling (Ideas V4 Idea7) | Small net drag; exhausted sellers thesis fails at 1-2 day horizon |
 
 ---
 
@@ -353,7 +417,9 @@ V35 + hedge at ~$4.5M peak equity:
 .
 ├── backtest-nmr.py               # Thin wrapper — imports from backtest_nmr_lib.py
 ├── backtest_nmr_lib.py           # All V35 backtest logic and parameters
-├── backtest_ideas_v2.py          # Ideas V2 multi-test runner (4 ideas)
+├── backtest_ideas_v2.py          # Ideas V2 multi-test runner (14 tests)
+├── backtest_ideas_v3.py          # Ideas V3 multi-test runner (17 tests)
+├── backtest_ideas_v4.py          # Ideas V4 multi-test runner (24 tests)
 ├── backtest_ideas.py             # Original ideas test (equity curve, vol scaling, turn-of-month)
 ├── backtest_bear_momentum.py     # Bear regime overlay tests (all failed — abandoned)
 ├── walkforward.py                # Walk-forward validation runner
@@ -363,7 +429,7 @@ V35 + hedge at ~$4.5M peak equity:
 ├── check_signals.py              # Diagnostic: preview tonight's signals
 ├── check_today.py                # Diagnostic: today's closed trades + open positions
 ├── check_log.py                  # Diagnostic: today's trade.log entries
-├── list_tasks.py                 # Diagnostic: Task Scheduler entries
+├── list_tasks.py                 # Diagnostic: Task Scheduler entries and trigger times
 ├── preflight.py                  # Pre-flight system check
 ├── positions_check.py            # CLI: view open/closed positions + P&L
 ├── diag.py                       # SPY regime / DB diagnostic
@@ -372,17 +438,16 @@ V35 + hedge at ~$4.5M peak equity:
 ├── README-nmr.md                 # This file
 ├── results/                      # V35 backtest outputs
 ├── results_ideas/                # Original ideas backtest outputs
-├── results_ideas_v2/             # Ideas V2 backtest outputs (14 tests)
-│   ├── comparison.json
-│   └── Idea3_PutSpread/
-│       ├── metrics.json
-│       ├── trades.csv
-│       ├── trades_all.csv        # Includes SPY_PUT_SPREAD rows
-│       └── equity_curve.csv
+├── results_ideas_v2/             # Ideas V2 outputs (14 tests)
+├── results_ideas_v3/             # Ideas V3 outputs (17 tests)
+├── results_ideas_v4/             # Ideas V4 outputs (24 tests)
+│   └── comparison.json           # All test summary (each dir has trades.csv, metrics.json, equity_curve.csv)
 └── .github/workflows/
     ├── backtest.yml              # Main V35 backtest workflow
     ├── ideas_backtest.yml        # Original ideas workflow
-    └── ideas_v2_backtest.yml     # Ideas V2 workflow (14 tests, tunable params)
+    ├── ideas_v2_backtest.yml     # Ideas V2 workflow (14 tests, tunable params)
+    ├── ideas_v3_backtest.yml     # Ideas V3 workflow (17 tests, tunable params)
+    └── ideas_v4_backtest.yml     # Ideas V4 workflow (24 tests, tunable params)
 ```
 
 ---
@@ -403,6 +468,27 @@ Tunable dispatch inputs:
 - `pvol_target` — portfolio vol target (default 0.15)
 - `sector_streak_trigger` — losses before sector size cut (default 3)
 - `tests_to_run` — comma-separated test names to run subset (e.g. `Baseline_V35,Idea3_PutSpread`)
+
+### Ideas V3 Backtest (GitHub Actions)
+Actions → Ideas V3 Backtest → Run workflow
+
+Tunable dispatch inputs:
+- `put_cost` — put spread quarterly cost (default 0.015)
+- `vix_ts_floor` — Idea D VIX term structure min scale (default 0.40)
+- `high_proximity_pct` — Idea E 52wk high max distance (default 0.20)
+- `call_vix_max` — Idea F max VIX to sell call spread (default 15.0)
+- `tests_to_run` — comma-separated subset
+
+### Ideas V4 Backtest (GitHub Actions)
+Actions → Ideas V4 Backtest → Run workflow
+
+Tunable dispatch inputs:
+- `overnight_boost` — Idea1 score multiplier for high-overnight stocks (default 0.70)
+- `salience_threshold` — Idea2 min sector underperformance (default 0.03)
+- `skew_weight` — Idea4 skewness component weight (default 1.5)
+- `turnover_weight` — Idea5 turnover component weight (default 1.5)
+- `corr_floor` — Idea6 min size scale at peak correlation (default 0.70)
+- `tests_to_run` — comma-separated subset
 
 ### Local Backtest
 ```
@@ -426,6 +512,7 @@ Ensure Gateway is running before 6:00 PM PT (evening scan) and remains open thro
 yfinance>=0.2.40
 pandas>=2.1.0
 numpy>=1.26.0
+scipy>=1.11.0
 requests>=2.31.0
 tqdm>=4.66.0
 lxml>=4.9.0
