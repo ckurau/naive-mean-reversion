@@ -21,7 +21,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Ideas V5 backtest
-        run: python backtest_ideas_v5_run.py
+        run: python backtest_ideas_v5.py
 
       - name: Commit and push results
         run: |
