@@ -1,0 +1,41 @@
+name: V47 Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_walkforward:
+        description: 'Run walk-forward validation (adds ~6-8 hours)'
+        required: false
+        default: 'false'
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run V47 backtest
+        run: python backtest-nmr-v47.py
+
+      - name: Run V47 walk-forward
+        if: ${{ github.event.inputs.run_walkforward == 'true' }}
+        run: python walkforward_v47.py
+
+      - name: Commit and push results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/v47/
+          git diff --cached --quiet || git commit -m "V47 results [skip ci]"
+          git push
