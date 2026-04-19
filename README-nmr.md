@@ -12,8 +12,6 @@ V47 = V35 + four confirmed positive sizing overlays (TOM sizing, DOW sizing, par
 
 The put spread is executed live via `hedge_quarterly.py` alongside the MR strategy in paper trading.
 
-> ⚠️ **`scan_evening.py` has NOT yet been updated to V47 parameters. See sync checklist below.**
-
 ---
 
 ## Architecture
