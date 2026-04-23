@@ -1,0 +1,17 @@
+{
+  "date": "2026-04-23",
+  "portfolio_value": 100000,
+  "starting_equity": 100000,
+  "open_positions": 0,
+  "max_positions": 60,
+  "vix": 0,
+  "win_rate": 0,
+  "total_closed_trades": 0,
+  "total_pnl_usd": 0,
+  "hedge_pnl_30d": 0,
+  "exits_today": 0,
+  "entries_filled_today": 0,
+  "entries_missed_today": 0,
+  "entries_missed": "[]",
+  "log_entries": "[]"
+}
