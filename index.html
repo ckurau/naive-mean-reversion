@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>NMR Dashboard</title>
+<style>
+:root {
+  --bg: #0d0d0d;
+  --surface: #161616;
+  --surface2: #1e1e1e;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8e8e8;
+  --muted: #888;
+  --green: #3ecf6e;
+  --green-dim: rgba(62,207,110,0.12);
+  --red: #f06060;
+  --red-dim: rgba(240,96,96,0.12);
+  --amber: #f5a623;
+  --amber-dim: rgba(245,166,35,0.12);
+  --blue: #5b9cf6;
+  --blue-dim: rgba(91,156,246,0.1);
+  --teal: #34d0b3;
+  --font: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --mono: 'SF Mono', 'Fira Mono', 'Consolas', monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+/* Layout */
+.app { max-width: 960px; margin: 0 auto; padding: 16px 14px 40px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; color: var(--text); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+.pill-ok { background: var(--green-dim); color: var(--green); }
+.pill-err { background: var(--red-dim); color: var(--red); }
+.pill-load { background: var(--amber-dim); color: var(--amber); }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.refresh-btn { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: var(--font); }
+.refresh-btn:active { background: var(--surface2); }
+.ts { font-size: 11px; color: var(--muted); }
+
+/* Metric cards */
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+@media(max-width: 500px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.mc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.mc-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.mc-value { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; line-height: 1; }
+.mc-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+.pos-bar { height: 3px; background: var(--surface2); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.pos-fill { height: 100%; border-radius: 2px; background: var(--green); transition: width 0.5s; }
+.pos-fill.warn { background: var(--amber); }
+.pos-fill.full { background: var(--red); }
+.green { color: var(--green); }
+.red { color: var(--red); }
+.amber { color: var(--amber); }
+.blue { color: var(--blue); }
+
+/* Sections */
+.section { margin-bottom: 18px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.section-head h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.section-head select { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: var(--font); }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+th { font-size: 10px; font-weight: 500; color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface2); text-transform: uppercase; letter-spacing: 0.05em; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:active td { background: var(--surface2); }
+
+/* Badges */
+.badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+.b-t1 { background: rgba(52,208,179,0.15); color: var(--teal); }
+.b-t2 { background: var(--blue-dim); color: var(--blue); }
+.b-t3 { background: var(--amber-dim); color: var(--amber); }
+.b-fill { background: var(--green-dim); color: var(--green); }
+.b-miss { background: var(--red-dim); color: var(--red); }
+.b-pt { background: var(--green-dim); color: var(--green); }
+.b-ts { background: var(--amber-dim); color: var(--amber); }
+.b-partial { background: var(--blue-dim); color: var(--blue); }
+
+/* Hedge grid */
+.hedge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media(max-width: 400px) { .hedge-grid { grid-template-columns: 1fr; } }
+.hcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.hcard-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.hcard-value { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; }
+
+/* Log */
+.log-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; font-family: var(--mono); font-size: 10px; max-height: 200px; overflow-y: auto; line-height: 1.7; color: var(--muted); }
+.log-ok { color: var(--green); }
+.log-err { color: var(--red); }
+.log-warn { color: var(--amber); }
+
+/* Reject reason */
+.reason-cell { white-space: normal; word-break: break-word; max-width: 260px; font-size: 11px; color: var(--muted); }
+.gap-tag { display: inline-block; margin-left: 4px; font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--red-dim); color: var(--red); }
+
+/* Empty state */
+.empty { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
+
+/* Spinner */
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border2); border-top-color: var(--muted); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Chart */
+.chart-wrap { position: relative; height: 140px; }
+canvas { display: block; }
+
+/* Regime banner */
+.regime-banner { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: var(--radius); margin-bottom: 18px; font-size: 12px; font-weight: 500; }
+.regime-ok { background: var(--green-dim); border: 1px solid rgba(62,207,110,0.2); color: var(--green); }
+.regime-block { background: var(--red-dim); border: 1px solid rgba(240,96,96,0.2); color: var(--red); }
+.regime-warn { background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.2); color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h1>NMR Paper Trader</h1>
+      <span class="pill pill-load" id="conn-pill"><span class="dot"></span><span id="conn-txt">Loading</span></span>
+    </div>
+    <div class="header-right">
+      <span class="ts" id="ts">—</span>
+      <button class="refresh-btn" onclick="loadAll()">&#8635;</button>
+    </div>
+  </div>
+
+  <div id="regime-banner" class="regime-banner regime-warn">
+    <span>⬤</span><span id="regime-txt">Checking market regime...</span>
+  </div>
+
+  <div class="metrics">
+    <div class="mc">
+      <div class="mc-label">Portfolio</div>
+      <div class="mc-value" id="m-pv">—</div>
+      <div class="mc-sub" id="m-pnl">—</div>
+    </div>
+    <div class="mc">
+      <div class="mc-label">Positions</div>
+      <div class="mc-value" id="m-op">—</div>
+      <div class="mc-sub" id="m-slots">—</div>
+      <div class="pos-bar"><div class="pos-fill" id="pos-bar" style="width:0%"></div></div>
+    </div>
+    <div class="mc">
+      <div class="mc-label">Win Rate</div>
+      <div class="mc-value" id="m-wr">—</div>
+      <div class="mc-sub" id="m-trades">—</div>
+    </div>
+    <div class="mc">
+      <div class="mc-label">VIX</div>
+      <div class="mc-value" id="m-vix">—</div>
+      <div class="mc-sub" id="m-vix-sub">—</div>
+    </div>
+    <div class="mc">
+      <div class="mc-label">Today</div>
+      <div class="mc-value" id="m-today">—</div>
+      <div class="mc-sub" id="m-today-sub">—</div>
+    </div>
+    <div class="mc">
+      <div class="mc-label">Hedge P&amp;L 30d</div>
+      <div class="mc-value" id="m-hpnl">—</div>
+      <div class="mc-sub">SPY put + VIX call</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Open MR Positions</h2><span class="ts" id="pos-count">—</span></div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticker</th><th>Tier</th><th>Entry $</th><th>Target $</th><th>Days left</th><th>P&amp;L%</th></tr></thead>
+          <tbody id="pos-body"><tr><td colspan="6" class="empty"><span class="spinner"></span></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Last Scan — LOO Orders</h2></div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticker</th><th>Tier</th><th>RSI(2)</th><th>Limit $</th><th>Size%</th><th>Status</th></tr></thead>
+          <tbody id="scan-body"><tr><td colspan="6" class="empty"><span class="spinner"></span></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Hedge Positions (Idea G)</h2></div>
+    <div class="hedge-grid">
+      <div class="hcard">
+        <div class="hcard-label">SPY Put Spread</div>
+        <div class="hcard-value" id="hg-put">Loading...</div>
+      </div>
+      <div class="hcard">
+        <div class="hcard-label">VIX Call Spread</div>
+        <div class="hcard-value" id="hg-call">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>Trade Log</h2>
+      <select id="log-filter" onchange="renderTradeLog()">
+        <option value="all">All</option>
+        <option value="profit_target">Profit target</option>
+        <option value="time_stop">Time stop</option>
+        <option value="partial_exit">Partial exit</option>
+      </select>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticker</th><th>Entry</th><th>Exit</th><th>Entry$</th><th>Exit$</th><th>P&amp;L$</th><th>P&amp;L%</th><th>Reason</th></tr></thead>
+          <tbody id="log-body"><tr><td colspan="8" class="empty"><span class="spinner"></span></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Entry Rejections (why orders didn't fill)</h2></div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticker</th><th>Date</th><th>Limit$</th><th>Open$</th><th>Reason</th></tr></thead>
+          <tbody id="reject-body"><tr><td colspan="5" class="empty">No rejections yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Equity Curve</h2></div>
+    <div class="card" style="padding:14px">
+      <div class="chart-wrap">
+        <canvas id="eq-chart" role="img" aria-label="Equity curve of paper trading account over time"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Execution Log</h2></div>
+    <div class="log-box" id="exec-log">Loading...</div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// ============================================================
+// CONFIG — change REPO_USER/REPO_NAME if you rename the repo
+// ============================================================
+const REPO_USER = 'ckurau';
+const REPO_NAME = 'naive-mean-reversion';
+const BRANCH    = 'main';
+const RAW = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/${BRANCH}/paper_trading`;
+
+// ============================================================
+// State
+// ============================================================
+let allTrades = [], allPositions = [], summary = {}, rejections = [];
+let eqChart = null;
+
+// ============================================================
+// Helpers
+// ============================================================
+const fmt$ = n => isNaN(+n) ? '—' : '$' + (+n).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtK = n => isNaN(+n) ? '—' : '$' + ((+n)/1000).toFixed(1) + 'k';
+const fmtPct = n => isNaN(+n) ? '—' : (n >= 0 ? '+' : '') + (+n).toFixed(2) + '%';
+const fmtDate = s => s ? s.slice(0,10) : '—';
+const pClass = n => +n > 0 ? 'green' : +n < 0 ? 'red' : '';
+
+function setPill(state, msg) {
+  const p = document.getElementById('conn-pill');
+  const t = document.getElementById('conn-txt');
+  p.className = 'pill ' + (state === 'ok' ? 'pill-ok' : state === 'err' ? 'pill-err' : 'pill-load');
+  t.textContent = msg;
+}
+
+async function fetchCSV(url) {
+  const r = await fetch(url + '?_=' + Date.now());
+  if (!r.ok) throw new Error(r.status);
+  return r.text();
+}
+
+async function fetchJSON(url) {
+  const r = await fetch(url + '?_=' + Date.now());
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const hdrs = lines[0].split(',');
+  return lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    hdrs.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    return obj;
+  });
+}
+
+// ============================================================
+// Render functions
+// ============================================================
+function renderRegimeBanner() {
+  const banner = document.getElementById('regime-banner');
+  const txt = document.getElementById('regime-txt');
+  const spy_ok = summary.spy_above_200d;
+  const velocity = summary.velocity_paused;
+  const vix = parseFloat(summary.vix || 0);
+
+  if (velocity === true || velocity === 'true') {
+    banner.className = 'regime-banner regime-block';
+    txt.textContent = 'ENTRIES BLOCKED — Velocity crash pause (SPY 5d return < -12%)';
+  } else if (spy_ok === false || spy_ok === 'false') {
+    banner.className = 'regime-banner regime-block';
+    txt.textContent = 'ENTRIES BLOCKED — SPY below 200-day MA (bear market regime)';
+  } else if (vix >= 25) {
+    banner.className = 'regime-banner regime-warn';
+    txt.textContent = `High-VIX regime (VIX ${vix.toFixed(1)}) — 5% position sizing active`;
+  } else {
+    banner.className = 'regime-banner regime-ok';
+    txt.textContent = `Market regime OK — entries allowed | VIX ${vix.toFixed(1)} | 9% position sizing`;
+  }
+}
+
+function renderMetrics() {
+  const pv = parseFloat(summary.portfolio_value || 100000);
+  const start = parseFloat(summary.starting_equity || 100000);
+  const pnl = pv - start;
+  const op = parseInt(summary.open_positions || 0);
+  const slots = 60 - op;
+  const pct = op / 60 * 100;
+  const wr = parseFloat(summary.win_rate || 0);
+  const closed = parseInt(summary.total_closed_trades || 0);
+  const vix = parseFloat(summary.vix || 0);
+  const hpnl = parseFloat(summary.hedge_pnl_30d || 0);
+
+  document.getElementById('m-pv').textContent = fmtK(pv);
+  const pnlEl = document.getElementById('m-pnl');
+  pnlEl.textContent = (pnl >= 0 ? '+' : '') + fmt$(pnl) + ' total P&L';
+  pnlEl.className = 'mc-sub ' + pClass(pnl);
+
+  document.getElementById('m-op').textContent = op + ' / 60';
+  document.getElementById('m-slots').textContent = slots + ' slots free';
+  const bar = document.getElementById('pos-bar');
+  bar.style.width = pct.toFixed(0) + '%';
+  bar.className = 'pos-fill' + (pct > 90 ? ' full' : pct > 70 ? ' warn' : '');
+
+  const wrEl = document.getElementById('m-wr');
+  wrEl.textContent = closed > 0 ? wr.toFixed(1) + '%' : '—';
+  wrEl.className = 'mc-value ' + (closed >= 30 ? (wr >= 57 ? 'green' : wr >= 55 ? 'amber' : 'red') : '');
+  document.getElementById('m-trades').textContent = closed + ' closed trades';
+
+  document.getElementById('m-vix').textContent = vix > 0 ? vix.toFixed(1) : '—';
+  document.getElementById('m-vix-sub').textContent = vix < 15 ? 'Low (RSI thresh tightened)' : vix < 25 ? '9% sizing active' : '5% sizing active';
+
+  const filled = parseInt(summary.entries_filled_today || 0);
+  const missed = parseInt(summary.entries_missed_today || 0);
+  const exits  = parseInt(summary.exits_today || 0);
+  document.getElementById('m-today').textContent = `${filled}F / ${missed}M / ${exits}E`;
+  document.getElementById('m-today-sub').textContent = 'Filled / Missed / Exits';
+
+  const hEl = document.getElementById('m-hpnl');
+  hEl.textContent = fmt$(hpnl);
+  hEl.className = 'mc-value ' + pClass(hpnl);
+}
+
+function renderPositions() {
+  const tbody = document.getElementById('pos-body');
+  const mrPos = allPositions.filter(p => !['SPY_PUT_SPREAD','VIX_CALL_SPREAD'].includes(p.ticker));
+  document.getElementById('pos-count').textContent = mrPos.length + ' open';
+  if (!mrPos.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No open MR positions</td></tr>';
+    return;
+  }
+  const today = new Date();
+  tbody.innerHTML = mrPos.map(p => {
+    const ep = parseFloat(p.entry_price || 0);
+    const target = parseFloat(p.profit_target || 0.02);
+    const holdDays = parseInt(p.hold_days || 8);
+    const entryDate = new Date(p.entry_date);
+    const daysHeld = Math.max(0, Math.round((today - entryDate) / 86400000));
+    const daysLeft = Math.max(0, holdDays - daysHeld);
+    const tPrice = (ep * (1 + target)).toFixed(2);
+    const tier = parseInt(p.tier || 3);
+    const badgeCls = tier === 1 ? 'b-t1' : tier === 2 ? 'b-t2' : 'b-t3';
+    const pnlPct = parseFloat(p.pnl_pct || 0);
+    return `<tr>
+      <td style="font-weight:600">${p.ticker}</td>
+      <td><span class="badge ${badgeCls}">T${tier}</span></td>
+      <td>$${ep.toFixed(2)}</td>
+      <td>$${tPrice}</td>
+      <td class="${daysLeft <= 1 ? 'amber' : ''}">${daysLeft}d</td>
+      <td class="${pClass(pnlPct)}">${fmtPct(pnlPct)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderScanResults() {
+  const tbody = document.getElementById('scan-body');
+  let candidates = [];
+  try { candidates = JSON.parse(summary.scan_candidates || '[]'); } catch(e) {}
+  if (!candidates.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Scan data in summary.json — check scan_evening.py pushes scan_candidates</td></tr>';
+    return;
+  }
+  tbody.innerHTML = candidates.slice(0, 20).map(c => {
+    const tier = parseInt(c.tier || 3);
+    const badgeCls = tier === 1 ? 'b-t1' : tier === 2 ? 'b-t2' : 'b-t3';
+    const statusCls = c.status === 'filled' ? 'b-fill' : 'b-miss';
+    return `<tr>
+      <td style="font-weight:600">${c.ticker}</td>
+      <td><span class="badge ${badgeCls}">T${tier}</span></td>
+      <td>${parseFloat(c.rsi2||0).toFixed(1)}</td>
+      <td>$${parseFloat(c.limit_price||0).toFixed(2)}</td>
+      <td>${parseFloat(c.size_pct||0).toFixed(1)}%</td>
+      <td><span class="badge ${statusCls}">${c.status === 'filled' ? 'Filled' : 'Not filled'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderHedge() {
+  const puts  = allPositions.find(p => p.ticker === 'SPY_PUT_SPREAD');
+  const calls = allPositions.find(p => p.ticker === 'VIX_CALL_SPREAD');
+
+  let putTxt = 'No active position';
+  if (puts) {
+    putTxt = `$${puts.long_strike||'?'}P / $${puts.short_strike||'?'}P  exp ${fmtDate(puts.expiry_date || puts.entry_date)}`;
+  } else if (summary.put_spread_long) {
+    putTxt = `$${summary.put_spread_long}P / $${summary.put_spread_short}P  exp ${summary.put_spread_expiry||'—'}  cost $${parseFloat(summary.put_spread_cost||0).toFixed(2)}`;
+  }
+  document.getElementById('hg-put').textContent = putTxt;
+
+  let callTxt = 'No active position';
+  if (calls) {
+    callTxt = `${calls.long_strike||20}C / ${calls.short_strike||40}C  exp ${fmtDate(calls.expiry_date || calls.entry_date)}`;
+  } else if (summary.vix_call_long) {
+    callTxt = `${summary.vix_call_long}C / ${summary.vix_call_short}C  exp ${summary.vix_call_expiry||'—'}`;
+  }
+  document.getElementById('hg-call').textContent = callTxt;
+}
+
+function renderTradeLog() {
+  const filter = document.getElementById('log-filter').value;
+  const tbody  = document.getElementById('log-body');
+  let trades = allTrades.filter(t => !['SPY_PUT_SPREAD','VIX_CALL_SPREAD'].includes(t.ticker));
+  if (filter !== 'all') trades = trades.filter(t => t.exit_reason === filter);
+  trades = [...trades].sort((a, b) => new Date(b.exit_date) - new Date(a.exit_date));
+
+  if (!trades.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No completed trades yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = trades.slice(0, 60).map(t => {
+    const pnl  = parseFloat(t.pnl_usd || 0);
+    const pnlP = parseFloat(t.pnl_pct || 0);
+    const tier = parseInt(t.tier || 3);
+    const badgeCls = tier === 1 ? 'b-t1' : tier === 2 ? 'b-t2' : 'b-t3';
+    const rCls = t.exit_reason === 'profit_target' ? 'b-pt' : t.exit_reason === 'time_stop' ? 'b-ts' : 'b-partial';
+    return `<tr>
+      <td style="font-weight:600">${t.ticker} <span class="badge ${badgeCls}">T${tier}</span></td>
+      <td>${fmtDate(t.entry_date)}</td>
+      <td>${fmtDate(t.exit_date)}</td>
+      <td>$${parseFloat(t.entry_price||0).toFixed(2)}</td>
+      <td>$${parseFloat(t.exit_price||0).toFixed(2)}</td>
+      <td class="${pClass(pnl)}">${fmt$(pnl)}</td>
+      <td class="${pClass(pnlP)}">${fmtPct(pnlP)}</td>
+      <td><span class="badge ${rCls}">${t.exit_reason||'—'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRejections() {
+  const tbody = document.getElementById('reject-body');
+  // Try summary.entries_missed first (today), then rejections.csv
+  let items = [];
+  try { items = JSON.parse(summary.entries_missed || '[]'); } catch(e) {}
+  const csvItems = rejections.map(r => ({
+    ticker: r.ticker, date: r.date,
+    limit_price: r.limit_price, open_price: r.open_price,
+    gap_pct: r.gap_pct, reason: r.reason
+  }));
+  const allItems = [...items, ...csvItems.filter(r => !items.find(i => i.ticker === r.ticker && i.date === r.date))];
+  allItems.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  if (!allItems.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No rejection data yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allItems.slice(0, 40).map(r => {
+    const gapPct = parseFloat(r.gap_pct || 0);
+    const gapTag = gapPct > 0 ? `<span class="gap-tag">+${gapPct.toFixed(2)}% gap</span>` : '';
+    const openP  = parseFloat(r.open_price || 0);
+    return `<tr>
+      <td style="font-weight:600">${r.ticker}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td>$${parseFloat(r.limit_price||0).toFixed(2)}</td>
+      <td>${openP > 0 ? '$' + openP.toFixed(2) : '—'}</td>
+      <td class="reason-cell">${r.reason || '—'}${gapTag}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderEquity() {
+  const closed = [...allTrades]
+    .filter(t => t.exit_date && t.pnl_usd)
+    .sort((a, b) => new Date(a.exit_date) - new Date(b.exit_date));
+
+  const canvas = document.getElementById('eq-chart');
+  if (!closed.length) {
+    canvas.parentElement.innerHTML = '<div class="empty" style="height:140px;display:flex;align-items:center;justify-content:center">No closed trades yet</div>';
+    return;
+  }
+
+  let equity = parseFloat(summary.starting_equity || 100000);
+  const labels = [fmtDate(closed[0].entry_date || closed[0].exit_date)];
+  const data   = [equity];
+  closed.forEach(t => {
+    equity += parseFloat(t.pnl_usd || 0);
+    labels.push(fmtDate(t.exit_date));
+    data.push(Math.round(equity));
+  });
+
+  if (eqChart) eqChart.destroy();
+  eqChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: '#3ecf6e',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        backgroundColor: 'rgba(62,207,110,0.06)',
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt$(c.raw) } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 6, font: { size: 10 }, color: '#666' }, grid: { display: false } },
+        y: { ticks: { callback: v => '$' + Math.round(v/1000) + 'k', font: { size: 10 }, color: '#666' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderExecLog() {
+  const el = document.getElementById('exec-log');
+  let lines = [];
+  try { lines = JSON.parse(summary.log_entries || '[]'); } catch(e) {}
+  if (!lines.length) { el.textContent = 'No log data yet.'; return; }
+  el.innerHTML = lines.map(l => {
+    let cls = '';
+    if (/error|fail|exception|crash/i.test(l)) cls = 'log-err';
+    else if (/warn|not fill|blocked|gap|missed/i.test(l)) cls = 'log-warn';
+    else if (/fill|success|submitted|confirmed|push/i.test(l)) cls = 'log-ok';
+    return `<div class="${cls}">${l}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ============================================================
+// Main load
+// ============================================================
+async function loadAll() {
+  document.getElementById('ts').textContent = 'Refreshing...';
+  setPill('load', 'Loading');
+
+  try {
+    const [tradesRes, posRes, sumRes, rejRes] = await Promise.allSettled([
+      fetchCSV(RAW + '/trades.csv'),
+      fetchCSV(RAW + '/open_positions.csv'),
+      fetchJSON(RAW + '/summary.json'),
+      fetchCSV(RAW + '/rejections.csv'),
+    ]);
+
+    if (tradesRes.status === 'fulfilled') allTrades     = parseCSV(tradesRes.value);
+    if (posRes.status    === 'fulfilled') allPositions  = parseCSV(posRes.value);
+    if (sumRes.status    === 'fulfilled') summary        = sumRes.value;
+    if (rejRes.status    === 'fulfilled') rejections     = parseCSV(rejRes.value);
+
+    const anyOk = [tradesRes, posRes, sumRes].some(r => r.status === 'fulfilled');
+    if (!anyOk) throw new Error('All fetches failed');
+
+    setPill('ok', 'Live');
+    document.getElementById('ts').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    renderRegimeBanner();
+    renderMetrics();
+    renderPositions();
+    renderScanResults();
+    renderHedge();
+    renderTradeLog();
+    renderRejections();
+    renderEquity();
+    renderExecLog();
+
+  } catch(e) {
+    setPill('err', 'Error');
+    document.getElementById('ts').textContent = e.message;
+    document.getElementById('exec-log').textContent =
+      `Could not load data from GitHub.\n\nExpected files at:\n` +
+      `  ${RAW}/summary.json\n  ${RAW}/trades.csv\n  ${RAW}/open_positions.csv\n\n` +
+      `Make sure trade_morning.py is running and pushing successfully.\n\nError: ${e.message}`;
+  }
+}
+
+// Auto-refresh every 5 minutes
+loadAll();
+setInterval(loadAll, 5 * 60 * 1000);
+</script>
+</body>
+</html>
