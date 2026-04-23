@@ -30,9 +30,9 @@ trade_morning.py          Live: 6:15 AM PT — exit orders + fill confirmation (
 ```
 
 **Three-script live execution (unchanged schedule):**
-- `scan_evening.py`   — 6:00 PM PT, scans universe, submits LOO buy orders
+- `scan_evening.py`    — 6:00 PM PT, scans universe, submits LOO buy orders
 - `hedge_quarterly.py` — 6:05 PM PT, manages SPY put spread + VIX call spread
-- `trade_morning.py`  — 6:15 AM PT, submits MOO exits, confirms LOO fills
+- `trade_morning.py`   — 6:15 AM PT, submits MOO exits, confirms LOO fills
 
 ---
 
@@ -265,12 +265,78 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 | VIX call spread | 20/40-strike, monthly renewal |
 | Options approval | Level 3 required for both SPY puts and VIX calls |
 | Database | C:\nmr-trader\positions.db — SQLite |
+| Scripts location | C:\nmr-trader\ |
+| Git repo (local) | C:\naive-mean-reversion\ |
+| Dashboard | https://ckurau.github.io/naive-mean-reversion/ |
+
+### Infrastructure Setup (completed April 2026)
+
+| Component | Detail |
+|---|---|
+| Git repo location | `C:\naive-mean-reversion\` — cloned from GitHub, branch `main` |
+| Scripts location | `C:\nmr-trader\` — separate folder, not a git repo |
+| GitHub push | `trade_morning.py` writes to `C:\naive-mean-reversion\paper_trading\` and pushes after each run |
+| Dashboard URL | https://ckurau.github.io/naive-mean-reversion/ (GitHub Pages, public) |
+| Dashboard file | `index.html` in repo root — reads from `paper_trading/` via raw.githubusercontent.com |
+| Mobile access | Bookmark dashboard URL in Safari → Share → Add to Home Screen |
+| PC sleep | Disabled on AC power (`powercfg /change standby-timeout-ac 0`) |
+| Gateway | Leave running 24/7 on paper account port 4002 |
+
+### GitHub Push — How It Works
+
+`trade_morning.py` runs at 6:15 AM PT and after confirming fills it:
+
+1. Writes `C:\naive-mean-reversion\paper_trading\summary.json` — portfolio value, VIX, win rate, today's fills/misses, log entries
+2. Writes `paper_trading\trades.csv` — full trade log from SQLite
+3. Writes `paper_trading\open_positions.csv` — current open positions
+4. Writes `paper_trading\rejections.csv` — LOO orders that didn't fill with gap % reason
+5. Git commits and pushes to `origin main`
+
+Dashboard at `https://ckurau.github.io/naive-mean-reversion/` auto-refreshes every 5 minutes.
+
+**Key config in trade_morning.py:**
+```python
+GITHUB_PUSH      = True
+GITHUB_REPO_PATH = r'C:\naive-mean-reversion'
+OUTPUT_DIR       = r'C:\naive-mean-reversion\paper_trading'
+GITHUB_BRANCH    = 'main'
+```
+
+### Critical Bug Fixed (April 2026)
+
+A stray PowerShell command was embedded as a Python line in `trade_morning.py` at line 405, causing a `NameError` crash immediately before fill confirmation. This meant LOO orders were submitted every evening but never confirmed the next morning — positions were never saved to the DB, resulting in zero trades recorded despite orders being sent to IBKR for weeks.
+
+**Fix:** Replaced with the correct sequence:
+```python
+ib.reqExecutions()
+ib.sleep(3)
+filled_syms = {f.contract.symbol: f for f in ib.fills()}
+```
 
 ### Going Live — Three Changes Only
 
 1. `IBKR_PORT = 4001` (was 4002 paper) — change in all three scripts
 2. Switch Gateway from Paper to Live account
 3. Level 3 options approval on real account before running hedge_quarterly.py live
+
+### Pass Criteria for Moving to Live Capital
+
+| Check | Target | Action if failing |
+|---|---|---|
+| Win rate | 57–63% over 100+ trades | Stop — review signal logic |
+| Trades per month | 65–90 | Check universe fetch and signal parameters |
+| Worst single month | Better than -15% | Review if repeated |
+| Script ran every trading day | 100% | Fix Gateway startup |
+| Slippage vs prior close | Under 0.6% avg | Higher for small-caps expected |
+
+### Rejection Logging
+
+When a LOO order doesn't fill, `trade_morning.py` records:
+- Ticker, date, limit price, actual open price
+- Gap % (open price vs limit price)
+- Reason string (e.g. "Gapped up 1.23% above LOO limit")
+
+Visible in dashboard "Entry Rejections" panel and in `paper_trading/rejections.csv`.
 
 ---
 
@@ -280,9 +346,11 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 |---|---|---|
 | 6:00 PM | scan_evening.py | Scans signals, submits LOO orders |
 | 6:05 PM | hedge_quarterly.py | Manages SPY put spread + VIX call spread |
-| 6:15 AM | trade_morning.py | Submits exits, confirms LOO fills |
+| 6:15 AM | trade_morning.py | Submits exits, confirms LOO fills, pushes to GitHub |
 
 **Recommendation: leave Gateway running 24/7.**
+
+Gateway auto-restarts at ~11:45 PM ET daily. IBC (StartGateway.bat) handles the restart automatically. Paper account port: 4002. Live account port: 4001.
 
 ---
 
@@ -332,7 +400,7 @@ V48 with Idea G overlay:
 - The VIX call spread fires when VIX spikes above 20 intraday — catches early crash days
 - 2022: MR lost ~$1.6M; puts paid $659k; VIX calls paid ~$1.2M (multiple months) — net drawdown significantly cushioned
 - 2025: MR lost ~$777k; puts paid $1.13M; VIX calls paid ~$1.4M — combined portfolio was net positive
-- Combined overlay carry cost: ~$0.75%/quarter (puts) + ~0.30%/month (VIX calls) ≈ 6.6% annually
+- Combined overlay carry cost: ~0.75%/quarter (puts) + ~0.30%/month (VIX calls) ≈ 6.6% annually
 - Overlay carry is offset by put payouts in good years and dramatically overcompensated in crash years
 
 **VIX call carry cost reality:** The 0.3%/month model assumes stable pricing. In practice VIX calls are cheapest when VIX < 15 (exactly when you want them) and most expensive when VIX is already elevated. The $5/contract max debit cap in hedge_quarterly.py prevents paying up in expensive vol regimes. Expect some months with no VIX call position when calls are overpriced.
@@ -347,6 +415,16 @@ V48 with Idea G overlay:
 | check_today.py | `venv\Scripts\python.exe check_today.py` | Today's trades + open positions |
 | check_log.py | `venv\Scripts\python.exe check_log.py` | Today's trade.log entries |
 | positions_check.py | `venv\Scripts\python.exe positions_check.py` | Open positions + P&L (includes hedge) |
+
+**Quick DB check (run from C:\nmr-trader with venv active):**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT ticker, entry_price, shares, tier FROM open_positions', conn).to_string()); conn.close()"
+```
+
+**Check pending LOO entries:**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT ticker, limit_price, shares, tier FROM pending_entries', conn).to_string()); conn.close()"
+```
 
 ---
 
