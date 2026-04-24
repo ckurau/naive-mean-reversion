@@ -248,7 +248,7 @@ canvas { display: block; }
   <div class="section">
     <div class="section-head"><h2>Equity Curve</h2></div>
     <div class="card" style="padding:14px">
-      <div class="chart-wrap">
+      <div class="chart-wrap" id="equity-wrap">
         <canvas id="eq-chart" role="img" aria-label="Equity curve of paper trading account over time"></canvas>
       </div>
     </div>
@@ -525,11 +525,17 @@ function renderEquity() {
     .filter(t => t.exit_date && t.pnl_usd)
     .sort((a, b) => new Date(a.exit_date) - new Date(b.exit_date));
 
-  const canvas = document.getElementById('eq-chart');
+  const wrap = document.getElementById('equity-wrap');
   if (!closed.length) {
-    canvas.parentElement.innerHTML = '<div class="empty" style="height:140px;display:flex;align-items:center;justify-content:center">No closed trades yet</div>';
+    if (eqChart) { eqChart.destroy(); eqChart = null; }
+    wrap.innerHTML = '<canvas id="eq-chart" role="img" aria-label="Equity curve"></canvas><div class="empty" style="height:140px;display:flex;align-items:center;justify-content:center">No closed trades yet</div>';
     return;
   }
+  // Ensure canvas exists (may have been replaced on a previous no-data render)
+  if (!document.getElementById('eq-chart')) {
+    wrap.innerHTML = '<canvas id="eq-chart" role="img" aria-label="Equity curve"></canvas>';
+  }
+  const canvas = document.getElementById('eq-chart');
 
   let equity = parseFloat(summary.starting_equity || 100000);
   const labels = [fmtDate(closed[0].entry_date || closed[0].exit_date)];
