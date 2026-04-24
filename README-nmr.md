@@ -284,17 +284,22 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 
 ### GitHub Push — How It Works
 
-`trade_morning.py` runs at 6:15 AM PT and after confirming fills it:
+Both `scan_evening.py` and `trade_morning.py` push to GitHub.
 
-1. Writes `C:\naive-mean-reversion\paper_trading\summary.json` — portfolio value, VIX, win rate, today's fills/misses, log entries
-2. Writes `paper_trading\trades.csv` — full trade log from SQLite
-3. Writes `paper_trading\open_positions.csv` — current open positions
-4. Writes `paper_trading\rejections.csv` — LOO orders that didn't fill with gap % reason
+**`scan_evening.py` pushes at ~6:10 PM PT** (after scan completes):
+- Updates `summary.json` with tonight's scan candidates, VIX, regime flags, and order count
+- Dashboard "Last Scan" panel populates immediately after evening run
+
+**`trade_morning.py` pushes at ~6:35 AM PT** (after fill confirmation):
+1. Writes `paper_trading/summary.json` — portfolio value, VIX, win rate, today's fills/misses, log entries, hedge positions
+2. Writes `paper_trading/trades.csv` — full trade log from SQLite
+3. Writes `paper_trading/open_positions.csv` — current open positions
+4. Writes `paper_trading/rejections.csv` — LOO orders that didn't fill with gap % reason
 5. Git commits and pushes to `origin main`
 
 Dashboard at `https://ckurau.github.io/naive-mean-reversion/` auto-refreshes every 5 minutes.
 
-**Key config in trade_morning.py:**
+**Key config in both scripts:**
 ```python
 GITHUB_PUSH      = True
 GITHUB_REPO_PATH = r'C:\naive-mean-reversion'
@@ -302,15 +307,38 @@ OUTPUT_DIR       = r'C:\naive-mean-reversion\paper_trading'
 GITHUB_BRANCH    = 'main'
 ```
 
-### Critical Bug Fixed (April 2026)
+### Bugs Fixed (April 2026)
 
-A stray PowerShell command was embedded as a Python line in `trade_morning.py` at line 405, causing a `NameError` crash immediately before fill confirmation. This meant LOO orders were submitted every evening but never confirmed the next morning — positions were never saved to the DB, resulting in zero trades recorded despite orders being sent to IBKR for weeks.
+**Bug 1 — Stray PowerShell line in trade_morning.py (root cause of zero trades)**
+A PowerShell command was embedded as a Python line at line 405, causing a `NameError` crash immediately before fill confirmation. LOO orders were submitted every evening but never confirmed the next morning — positions were never saved to the DB for weeks.
 
-**Fix:** Replaced with the correct sequence:
+Fix:
 ```python
 ib.reqExecutions()
 ib.sleep(3)
 filled_syms = {f.contract.symbol: f for f in ib.fills()}
+```
+
+**Bug 2 — ClientId mismatch between scan_evening.py and trade_morning.py**
+`scan_evening.py` submits LOO orders with `clientId=10`. IBKR only returns fills to the same clientId that placed the order. `trade_morning.py` was connecting with `clientId=1`, so `ib.fills()` always returned empty even when orders genuinely filled.
+
+Fix: set `IBKR_CLIENT_ID = 10` in `trade_morning.py` to match `scan_evening.py`.
+
+**Bug 3 — LOO orders wiped by IBKR nightly session reset**
+LOO orders submitted by `scan_evening.py` at 6 PM PT were cancelled by IBKR's nightly reset at ~11:45 PM ET, so no orders were present at the 9:30 AM ET open. Confirmed by checking `ib.openOrders()` the morning after — always returned 0.
+
+Fix: add `outsideRth=True` to the LOO order in `scan_evening.py`:
+```python
+order = Order(
+    action='BUY', totalQuantity=shares,
+    orderType='LOO', lmtPrice=limit_price, tif='OPG',
+    outsideRth=True,
+)
+```
+
+**Check open orders any morning (run before 6:15 AM to verify orders survived overnight):**
+```bat
+python -c "from ib_async import IB; ib=IB(); ib.connect('127.0.0.1',4002,clientId=10); ib.sleep(2); orders=ib.openOrders(); print(f'Open orders: {len(orders)}'); [print(f'  {o.contract.symbol} {o.order.action} {o.order.totalQuantity}sh @ {o.order.lmtPrice}') for o in orders]; ib.disconnect()"
 ```
 
 ### Going Live — Three Changes Only
@@ -415,6 +443,11 @@ V48 with Idea G overlay:
 | check_today.py | `venv\Scripts\python.exe check_today.py` | Today's trades + open positions |
 | check_log.py | `venv\Scripts\python.exe check_log.py` | Today's trade.log entries |
 | positions_check.py | `venv\Scripts\python.exe positions_check.py` | Open positions + P&L (includes hedge) |
+
+**Check open orders survived overnight (run before 6:15 AM PT):**
+```bat
+python -c "from ib_async import IB; ib=IB(); ib.connect('127.0.0.1',4002,clientId=10); ib.sleep(2); orders=ib.openOrders(); print(f'Open orders: {len(orders)}'); [print(f'  {o.contract.symbol} {o.order.action} {o.order.totalQuantity}sh @ {o.order.lmtPrice}') for o in orders]; ib.disconnect()"
+```
 
 **Quick DB check (run from C:\nmr-trader with venv active):**
 ```bat
