@@ -92,8 +92,8 @@ TOP_SIGNAL_MULTIPLIER    = 1.30
 TOP_SIGNAL_HARD_CAP      = 0.12
 MIN_CANDIDATES_FOR_C5    = 5
 
-OUTPUT_DIR = Path("results")
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR = Path("results/v49")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # =============================================================================
 # OVERLAY CONFIG — V49
