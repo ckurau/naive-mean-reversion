@@ -1,1 +1,13 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+12,SRPT,2026-04-24,20.52,20.649999618530273,0.634,Gapped up 0.63% above LOO limit (open $20.65 > limit $20.52)
+11,SBCF,2026-04-24,32.18,32.04999923706055,-0.404,Open $32.05 was at/below limit $32.18 — possible Gateway disconnect or order routing issue
+10,RTX,2026-04-24,180.2,181.36000061035156,0.644,Gapped up 0.64% above LOO limit (open $181.36 > limit $180.20)
+9,OSIS,2026-04-24,287.78,285.8699951171875,-0.664,Open $285.87 was at/below limit $287.78 — possible Gateway disconnect or order routing issue
+8,LUV,2026-04-24,37.94,38.25,0.817,Gapped up 0.82% above LOO limit (open $38.25 > limit $37.94)
+7,LMT,2026-04-24,532.44,533.9099731445312,0.276,Gapped up 0.28% above LOO limit (open $533.91 > limit $532.44)
+6,LHX,2026-04-24,331.87,333.1099853515625,0.374,Gapped up 0.37% above LOO limit (open $333.11 > limit $331.87)
+5,ILMN,2026-04-24,126.07,124.63999938964844,-1.134,Open $124.64 was at/below limit $126.07 — possible Gateway disconnect or order routing issue
+4,HON,2026-04-24,215.41,212.80999755859375,-1.207,Open $212.81 was at/below limit $215.41 — possible Gateway disconnect or order routing issue
+3,EPRT,2026-04-24,31.66,32.63999938964844,3.095,Gapped up 3.10% above LOO limit (open $32.64 > limit $31.66)
+2,AMRX,2026-04-24,12.71,12.579999923706055,-1.023,Open $12.58 was at/below limit $12.71 — possible Gateway disconnect or order routing issue
+1,ALGT,2026-04-24,79.13,78.62999725341797,-0.632,Open $78.63 was at/below limit $79.13 — possible Gateway disconnect or order routing issue
