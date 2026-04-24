@@ -4,39 +4,106 @@ A survivorship-bias-free backtest of a Naive Mean Reversion strategy across all 
 
 ---
 
-## Current Version: V48 — Idea G (Dynamic Put Spread + VIX Call Overlay)
+## Current Version: V7.3 — Idea G + GOLD + SECROT Overlays
 
-**Active strategy: V47 base logic + dynamic SPY put spread strikes + monthly VIX call spread.**
+**Active strategy: V47 base logic + dynamic SPY put spread strikes + monthly VIX call spread + GLD trend overlay + sector rotation momentum overlay.**
 
 V47 = V35 + four confirmed positive sizing overlays (TOM sizing, DOW sizing, partial trigger tuning, VIX RSI tightening).
 Idea G = V47 + Idea D (VIX-regime-conditional put spread strikes) + Idea A (monthly VIX 20/40-call spread).
+V7.3 = Idea G + GOLD overlay (7% GLD when GLD > 200d MA + rates falling) + SECROT overlay (top-3 SPDR sectors by 3m momentum, 3% each, bull regime only).
 
 Walk-forward validated through V47: 7/8 OOS windows positive, OOS avg CAGR 20.91%.
 Idea G confirmed via backtest_ideas_v7_2.py (full history through April 2026).
+V7.3 confirmed via backtest_ideas_v7_3.py (full history through April 2026).
 
 ---
 
 ## Architecture
 
 ```
+backtest_ideas_v7_3.py    V7.3 combined backtest (Idea G + GOLD + SECROT overlays, single combined equity)
 backtest_ideas_v7_2.py    Idea G combined backtest (V47 + dynamic put spread + VIX calls)
 backtest_nmr_lib_v47.py   All V47 backtest logic and parameters (unchanged)
 backtest-nmr-v47.py       Thin wrapper for V47 MR-only backtest
 walkforward_v47.py        Walk-forward validation for V47
 
-scan_evening.py           Live: 6:00 PM PT — MR signal scan + LOO orders (V47 parameters)
+scan_evening.py           Live: 6:00 PM PT — MR signal scan, queues signals to DB (NO orders placed)
 hedge_quarterly.py        Live: 6:05 PM PT — SPY put spread (dynamic strikes) + VIX call spread
-trade_morning.py          Live: 6:15 AM PT — exit orders + fill confirmation (unchanged from V47)
+overlay_etf.py            Live: 6:10 PM PT — GOLD (GLD) + SECROT (sector ETF) overlay orders via MOC
+trade_morning.py          Live: 6:00 AM PT — places MOO entry orders, submits exits, confirms fills
 ```
 
-**Three-script live execution (unchanged schedule):**
-- `scan_evening.py`    — 6:00 PM PT, scans universe, submits LOO buy orders
+**Four-script live execution:**
+- `scan_evening.py`    — 6:00 PM PT, scans universe, saves signal candidates to DB (no IBKR orders)
 - `hedge_quarterly.py` — 6:05 PM PT, manages SPY put spread + VIX call spread
-- `trade_morning.py`   — 6:15 AM PT, submits MOO exits, confirms LOO fills
+- `overlay_etf.py`     — 6:10 PM PT, manages GLD and SPDR sector ETF positions via MOC orders
+- `trade_morning.py`   — 6:00 AM PT, places MOO entry orders, submits MOO exits, confirms fills, pushes to GitHub
+
+**Critical timing note:** MOO/LOO (OPG) orders are only valid 7:00–9:28 AM ET. Orders submitted at 6 PM PT (9 PM ET) return ValidationError 321 and are silently dropped. scan_evening.py saves signals to DB only. trade_morning.py places MOO orders at 6:00 AM PT (9:00 AM ET) — within the valid window.
 
 ---
 
 ## Best Confirmed Results
+
+### V7.3 — Full History Run (April 2026) — COMBINED EQUITY
+
+| Metric | Value | Notes |
+|---|---|---|
+| CAGR (MR-only basis) | 24.51% | Consistent with V48 MR-only |
+| CAGR (combined equity) | 27.64% | MR + all overlays |
+| Final Equity (combined) | $23,116,132 | MR + SPY puts + VIX calls + GOLD + SECROT |
+| Max Drawdown (combined) | -52.22% | **Improved +4.69pp vs V48** |
+| Sharpe (combined) | 0.97 | Improved from 0.74 (V48) |
+| Win Rate | 60.26% | MR-only |
+| Profit Factor | 1.05 | MR-only |
+| MR trades P&L | +$11,066,347 | 22,035 trades |
+| SPY put premiums paid | -$4,337,433 | |
+| SPY put payouts received | +$7,302,370 | |
+| SPY put net P&L | +$2,964,937 | |
+| VIX call premiums paid | -$5,019,365 | |
+| VIX call payouts received | +$9,733,200 | |
+| VIX call net P&L | +$4,713,835 | |
+| GOLD overlay net P&L | +$1,861,720 | 3,288 days in position |
+| SECROT overlay net P&L | +$2,409,293 | 12,510 day-sector records |
+| Total overlay net P&L | +$11,949,785 | SPY puts + VIX calls + GOLD + SECROT |
+
+**V7.3 vs V48/Idea G baseline:**
+
+| Metric | V48/Idea G | V7.3 | Delta |
+|---|---|---|---|
+| CAGR (MR-only) | 24.38% | 24.51% | +0.13pp |
+| CAGR (combined) | — | 27.64% | — |
+| Final Equity | $18,323,346 | $23,116,132 | **+$4,792,786** |
+| Max Drawdown | -56.91% | -52.22% | **+4.69pp ✓ IMPROVED** |
+| Sharpe | 0.74 | 0.97 | +0.23 |
+
+### V7.3 Year-by-Year (Combined Equity)
+
+| Year | End Equity | P&L |
+|---|---|---|
+| 2004 | $120,315 | +$20,315 |
+| 2005 | $165,216 | +$44,902 |
+| 2006 | $229,553 | +$64,337 |
+| 2007 | $296,237 | +$66,683 |
+| 2008 | $415,916 | +$119,679 |
+| 2009 | $703,183 | +$287,267 |
+| 2010 | $935,109 | +$231,926 |
+| 2011 | $1,352,028 | +$416,919 |
+| 2012 | $1,671,619 | +$319,591 |
+| 2013 | $2,733,317 | +$1,061,698 |
+| 2014 | $3,166,651 | +$433,334 |
+| 2015 | $4,061,752 | +$895,101 |
+| 2016 | $4,603,014 | +$541,262 |
+| 2017 | $6,646,103 | +$2,043,089 |
+| 2018 | $6,032,276 | -$613,828 |
+| 2019 | $10,672,344 | +$4,640,069 |
+| 2020 | $16,734,584 | +$6,062,240 |
+| 2021 | $19,874,931 | +$3,140,347 |
+| 2022 | $17,600,653 | -$2,274,279 |
+| 2023 | $18,040,759 | +$440,106 |
+| 2024 | $23,589,167 | +$5,548,409 |
+| 2025 | $24,551,699 | +$962,532 |
+| 2026 | $23,116,132 | -$1,435,567 |
 
 ### V48 / Idea G — Full History Run (April 2026) — COMBINED EQUITY
 
@@ -102,7 +169,8 @@ trade_morning.py          Live: 6:15 AM PT — exit orders + fill confirmation (
 
 | Strategy | CAGR | Equity | MaxDD | Sharpe | Best For |
 |---|---|---|---|---|---|
-| **V48 / Idea G (current, combined)** | **24.38%** | **$18.3M** | **-56.91%** | **0.74** | **Max wealth, taxable, full overlay** |
+| **V7.3 (current, combined)** | **27.64%** | **$23.1M** | **-52.22%** | **0.97** | **Max wealth, all overlays** |
+| V48 / Idea G (previous best) | 24.38% | $18.3M | -56.91% | 0.74 | Idea G only, no ETF overlays |
 | V47 + Idea 3 (previous benchmark) | 22.40% | $9.9M | -60.89%* | 0.74 | Previous recommended |
 | V47 (no hedge) | 19.54% | $4.6M | -56.84% | 0.72 | Max wealth, taxable, no hedge |
 | C_TurnOfMonth | 16.20% | $2.5M | -48.91% | 0.71 | Middle ground |
@@ -112,9 +180,9 @@ trade_morning.py          Live: 6:15 AM PT — exit orders + fill confirmation (
 
 ---
 
-## V48 Strategy Rules
+## V7.3 Strategy Rules
 
-All V47 rules apply unchanged. Idea G adds two overlay instruments managed by `hedge_quarterly.py`.
+All V47 and Idea G rules apply unchanged. V7.3 adds two ETF overlay instruments managed by `overlay_etf.py`.
 
 ### MR Rules (V47, unchanged)
 
@@ -123,7 +191,7 @@ All V47 rules apply unchanged. Idea G adds two overlay instruments managed by `h
 | Universe | S&P 500 + S&P 400 MidCap + S&P 600 SmallCap (current + historical) |
 | Trend filter | Stock must be above its 200-day SMA |
 | Entry signal | 4+ consecutive down days AND RSI(2) < 20 AND ATR > 1% AND volume > 20-day avg AND dollar volume > $5M/day |
-| Entry execution | Buy at open of next day via LOO order (limit = prior close × 1.005) |
+| Entry execution | Buy at open via MOO order placed at 6:00 AM PT (9:00 AM ET pre-market window) |
 | Gap filters | Skip if next open gaps down > 1.0% OR gaps up > 2% |
 | Exit — all tiers | 2% profit target, 8-day time stop |
 | Tier 1 partial | 6+ down days: 50% at **0.8%**, remainder at 2% |
@@ -145,7 +213,7 @@ All V47 rules apply unchanged. Idea G adds two overlay instruments managed by `h
 | Velocity crash pause | SPY 5-day return < -12% → pause entries 5 days |
 | Earnings month cap | Position size capped at 2.4% in Jan/Apr/Jul/Oct |
 
-### Idea G: Dynamic SPY Put Spread (hedge_quarterly.py)
+### Idea G: Dynamic SPY Put Spread (hedge_quarterly.py, unchanged)
 
 | Parameter | Value |
 |---|---|
@@ -164,7 +232,7 @@ All V47 rules apply unchanged. Idea G adds two overlay instruments managed by `h
 | VIX 15–25 (baseline) | 5% OTM | 15% OTM | Same as V47+I3 (unchanged) |
 | VIX > 25 (expensive options) | 8% OTM | 20% OTM | Wide strikes = stay under $15 debit cap |
 
-### Idea G: Monthly VIX Call Spread (hedge_quarterly.py, NEW)
+### Idea G: Monthly VIX Call Spread (hedge_quarterly.py, unchanged)
 
 | Parameter | Value |
 |---|---|
@@ -194,6 +262,56 @@ The quarterly SPY put spread fires when SPY drops 3–15% from its quarterly ref
 - Premiums paid: -$4,935,793
 - Payouts received: +$9,430,338
 - Net P&L: **+$4,494,545**
+
+### V7.3: GOLD Overlay (overlay_etf.py, NEW)
+
+| Parameter | Value |
+|---|---|
+| Instrument | GLD (SPDR Gold ETF) |
+| Allocation | 7% of portfolio equity while in position |
+| Entry signal | GLD > GLD 200-day MA AND TLT 20-day slope ≥ 0 (nominal rates falling) |
+| Exit signal | GLD breaks below 200-day MA |
+| Order type | MOC (Market on Close) via overlay_etf.py at 6:10 PM PT |
+| Sizing reference | Current combined portfolio value (mark-to-market) |
+| Backtest P&L | +$1,861,720 over full history (3,288 days in position) |
+
+**Why GOLD complements MR:** Gold's negative correlation with equities during drawdowns (2008: +5.5%, 2020: +24.5%) provides partial hedging when MR is most exposed. The TLT slope filter prevents entering during rising rate environments where gold underperforms. Completely orthogonal to MR signals — fires on different triggers, different assets, different timeframe.
+
+### V7.3: SECROT Overlay (overlay_etf.py, NEW)
+
+| Parameter | Value |
+|---|---|
+| Instruments | Top-3 SPDR sector ETFs (XLK, XLV, XLF, XLE, XLI, XLY, XLP, XLU, XLB, XLRE, XLC) |
+| Allocation | 3% per sector (9% total when fully allocated) |
+| Signal | Rank all 11 SPDR sectors by 63-day (3-month) momentum, long top 3 |
+| Rebalance | Monthly (first trading day of each month) |
+| Regime filter | Only active when SPY > SPY 200-day MA (matches MR bull regime filter) |
+| Exit to cash | When SPY breaks below 200-day MA |
+| Order type | MOC (Market on Close) via overlay_etf.py at 6:10 PM PT |
+| Backtest P&L | +$2,409,293 over full history (12,510 day-sector records) |
+
+**Why SECROT complements MR:** Sector momentum captures systematic rotation between sectors that MR doesn't exploit. The bull regime filter means SECROT exits to cash exactly when MR stops entering — they share the same SPY 200d MA gating logic. Combined MaxDD improved +4.69pp vs V48 despite adding long equity exposure, because sector momentum's regime exit removes equity beta during the worst drawdown periods.
+
+---
+
+## V7.3 Overlay Research (backtest_ideas_v7_3.py)
+
+### Methodology
+All overlays were tested as purely additive P&L streams on top of the Idea G combined equity curve. Sizing references the current combined portfolio value at each date (mark-to-market). This is the correct approach — overlays sized on combined equity compound properly with the underlying MR+hedge portfolio.
+
+### Result vs V49 (Separate Baseline Test)
+
+A separate V49 backtest tested GOLD, SECROT, and DIVCAP on top of V35 MR-only (no Idea G hedges). That test showed MaxDD worsening because the overlays added linear long exposure without the crash protection of SPY puts and VIX calls. When V7.3 adds the same overlays on top of Idea G (which already has crash protection), the combined MaxDD improves — the overlays' long equity exposure is hedged by the existing put/call overlays. This is the correct architecture.
+
+### V7.3 Overlay P&L Summary (backtest, 2004–2026)
+
+| Overlay | Backtest Net P&L | Notes |
+|---|---|---|
+| SPY put spread | +$2,964,937 | Dynamic strikes (Idea D) |
+| VIX call spread | +$4,713,835 | 20/40 monthly |
+| GOLD (GLD) | +$1,861,720 | 7% alloc, trend+carry signal |
+| SECROT (sectors) | +$2,409,293 | 3%×3, monthly rebalance |
+| **Total overlays** | **+$11,949,785** | vs MR-only $11,066,347 |
 
 ---
 
@@ -229,6 +347,12 @@ Full results from `backtest_ideas_v7_2.py`. All MaxDD figures on combined equity
 | Idea_E — Gap-behavior sizing | Confirmed dead V7 + V7.1. Fires during crash-recovery. Add to DNR. |
 | Idea_F — Day-5 partial time-stop | CAGR -2.49pp, MaxDD worsened |
 | Idea_B CDaR scaling | Too much CAGR drag (-1.95pp) for MaxDD gain (+3.80pp) |
+| TSMOM (multi-asset trend following) | Tested in V49 research on V35 baseline. Minimal CAGR add, MaxDD worsened on MR-only basis due to correlated long exposure without crash hedges. Valid concept — test again layered on Idea G if revisited. |
+| VRP harvest (sell SPY puts monthly) | Tested in V49 research. Requires options pricing model not available in standard yfinance backtest. Synthetic results unreliable. May be worth testing with real options data. |
+| VIX term structure carry (SVXY) | Tested in V49 research. SVXY structural decay periods hard to model accurately with synthetic data; 2018 SVXY restructuring creates survivorship issues. DNR in current framework. |
+| Earnings Announcement Drift | Tested in V49 research using SPY gap days as proxy — too crude. Real EAD requires individual earnings dates and post-gap continuation data not available in bulk yfinance. |
+| MR Short Book (short overbought sectors) | Tested in V49 research. RSI(2) > 80 + 4 consecutive up days on sector ETFs fires too rarely to generate meaningful P&L. |
+| DIVCAP (dividend capture XLU/XLP) | Tested in V49 research on V35. +$20,301 over full history — not worth the complexity. |
 | [all other V3/V4 ideas — see prior README versions] | Various — see research history |
 
 ---
@@ -236,7 +360,10 @@ Full results from `backtest_ideas_v7_2.py`. All MaxDD figures on combined equity
 ## Critical Research Lessons
 
 ### Combined equity MaxDD is the correct measure for overlay strategies
-When the portfolio holds both MR positions and put/call overlays simultaneously, MaxDD should be computed on the combined equity curve (MR P&L + overlay payouts). VIX call payouts received during crash months lift the combined equity through the trough — the MR-only MaxDD overstates the true investor experience. V48 reports combined equity MaxDD throughout.
+When the portfolio holds both MR positions and put/call overlays simultaneously, MaxDD should be computed on the combined equity curve (MR P&L + overlay payouts). VIX call payouts received during crash months lift the combined equity through the trough — the MR-only MaxDD overstates the true investor experience. V48 and V7.3 report combined equity MaxDD throughout.
+
+### ETF overlays must be layered on top of crash-protected baseline
+V49 tested GOLD and SECROT on top of V35 MR-only and found MaxDD worsened (long equity exposure without hedges). V7.3 layers the same overlays on top of Idea G (SPY puts + VIX calls already present) and MaxDD improved +4.69pp. The lesson: additive long overlays need the underlying crash protection to work as intended. Always test overlays on the most complete baseline.
 
 ### The 60-position cap is the key architectural constraint
 With 60 positions and 10–30 candidates per day, all candidates fill regardless of rank. Any idea that works through signal re-ranking has zero effect. The only improvement axis is how much capital is deployed (sizing overlays) and insurance (hedge overlays). This eliminated 6+ ideas in V4/V5 and is why Idea G succeeds — it operates entirely outside the MR signal framework.
@@ -257,10 +384,12 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 |---|---|
 | Broker | Interactive Brokers (IBKR) paper account |
 | Starting equity | $100,000 |
-| Scripts | scan_evening.py (6:00 PM) + hedge_quarterly.py (6:05 PM) + trade_morning.py (6:15 AM) |
-| Scheduler | Windows Task Scheduler — three tasks |
-| Entry orders | Limit On Open (LOO), limit = prior_close × 1.005 |
-| Exit orders | MOO |
+| Scripts | scan_evening.py (6:00 PM) + hedge_quarterly.py (6:05 PM) + overlay_etf.py (6:10 PM) + trade_morning.py (6:00 AM) |
+| Scheduler | Windows Task Scheduler — four tasks |
+| Entry order queuing | scan_evening.py saves signals to DB at 6:00 PM PT (no IBKR orders) |
+| Entry order execution | trade_morning.py places MOO orders at 6:00 AM PT (9:00 AM ET, within OPG window) |
+| Exit orders | MOO (Market on Open) |
+| ETF overlays | MOC (Market on Close) via overlay_etf.py at 6:10 PM PT |
 | SPY put spread | Dynamic strikes per VIX regime, quarterly renewal |
 | VIX call spread | 20/40-strike, monthly renewal |
 | Options approval | Level 3 required for both SPY puts and VIX calls |
@@ -268,6 +397,18 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 | Scripts location | C:\nmr-trader\ |
 | Git repo (local) | C:\naive-mean-reversion\ |
 | Dashboard | https://ckurau.github.io/naive-mean-reversion/ |
+
+### Task Scheduler — Days of Week
+
+| Task | Time (PT) | Sun | Mon | Tue | Wed | Thu | Fri | Sat |
+|---|---|---|---|---|---|---|---|---|
+| IBC Gateway | 6:00 AM | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| Scan Evening | 6:00 PM | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
+| Hedge Quarterly | 6:05 PM | — | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| Overlay ETF | 6:10 PM | — | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| NMR Trader (trade_morning) | 6:00 AM | — | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+
+**Scan Evening runs Sunday** because it queues signals for Monday's open. Friday scan is skipped — Saturday market is closed.
 
 ### Infrastructure Setup (completed April 2026)
 
@@ -278,7 +419,7 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 | GitHub push | `trade_morning.py` writes to `C:\naive-mean-reversion\paper_trading\` and pushes after each run |
 | Dashboard URL | https://ckurau.github.io/naive-mean-reversion/ (GitHub Pages, public) |
 | Dashboard file | `index.html` in repo root — reads from `paper_trading/` via raw.githubusercontent.com |
-| Mobile access | Bookmark dashboard URL in Safari → Share → Add to Home Screen |
+| Mobile access | Open dashboard URL in Safari → Share → Add to Home Screen (works as home screen app) |
 | PC sleep | Disabled on AC power (`powercfg /change standby-timeout-ac 0`) |
 | Gateway | Leave running 24/7 on paper account port 4002 |
 
@@ -287,14 +428,14 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 Both `scan_evening.py` and `trade_morning.py` push to GitHub.
 
 **`scan_evening.py` pushes at ~6:10 PM PT** (after scan completes):
-- Updates `summary.json` with tonight's scan candidates, VIX, regime flags, and order count
-- Dashboard "Last Scan" panel populates immediately after evening run
+- Updates `summary.json` with tonight's scan candidates, VIX, regime flags, signal count, GOLD overlay status (in/out, GLD price vs MA200, TLT slope), SECROT overlay status (active sectors + 3m momentum)
+- Dashboard "Last Scan" and overlay panels populate immediately after evening run
 
 **`trade_morning.py` pushes at ~6:35 AM PT** (after fill confirmation):
-1. Writes `paper_trading/summary.json` — portfolio value, VIX, win rate, today's fills/misses, log entries, hedge positions
-2. Writes `paper_trading/trades.csv` — full trade log from SQLite
-3. Writes `paper_trading/open_positions.csv` — current open positions
-4. Writes `paper_trading/rejections.csv` — LOO orders that didn't fill with gap % reason
+1. Writes `paper_trading/summary.json` — portfolio value, VIX, win rate, today's fills/misses, log entries, hedge positions, GOLD/SECROT P&L breakdown (30d + all-time)
+2. Writes `paper_trading/trades.csv` — full trade log from SQLite (includes OVL_GOLD, OVL_SECROT_* tickers)
+3. Writes `paper_trading/open_positions.csv` — current open MR positions
+4. Writes `paper_trading/rejections.csv` — entry orders that didn't fill
 5. Git commits and pushes to `origin main`
 
 Dashboard at `https://ckurau.github.io/naive-mean-reversion/` auto-refreshes every 5 minutes.
@@ -336,14 +477,45 @@ order = Order(
 )
 ```
 
-**Check open orders any morning (run before 6:15 AM to verify orders survived overnight):**
-```bat
-python -c "from ib_async import IB; ib=IB(); ib.connect('127.0.0.1',4002,clientId=10); ib.sleep(2); orders=ib.openOrders(); print(f'Open orders: {len(orders)}'); [print(f'  {o.contract.symbol} {o.order.action} {o.order.totalQuantity}sh @ {o.order.lmtPrice}') for o in orders]; ib.disconnect()"
+**Bug 4 — LOO and MOO orders return ValidationError 321 at 6 PM PT**
+Both LOO (Limit on Open) and MOO (Market on Open) use the OPG time-in-force, which is only valid during the pre-market window: **7:00 AM to 9:28 AM ET**. Submitting OPG orders at 6 PM PT (9 PM ET) causes `ValidationError: 'bF': cause - Invalid order type was entered` on every single order. Orders are silently dropped — no fill, no error in logs, no IBKR notification. This was the root cause of zero trades for weeks.
+
+Diagnosis: `verify_all.py` MOO order test returned `ValidationError` at 6 PM PT. Same error for LOO. Confirmed via IBKR API documentation: OPG orders require 7:00–9:28 AM ET submission window.
+
+Fix: **Moved order placement from `scan_evening.py` to `trade_morning.py`.**
+- `scan_evening.py` (6:00 PM PT) — saves signal candidates to `pending_entries` DB only, places no IBKR orders
+- `trade_morning.py` (6:00 AM PT = 9:00 AM ET) — reads pending signals, places MOO orders within the valid OPG window, waits until 6:35 AM PT for fills
+
+**Bug 5 — trade_morning.py Task Scheduler set to 6:15 AM PT (too late)**
+Task Scheduler was triggering `trade_morning.py` at 6:15 AM PT (9:15 AM ET), leaving only 13 minutes before the 9:28 AM ET OPG cutoff. Connection, portfolio read, exit processing, and MOO placement could easily exceed 13 minutes.
+
+Fix: Change Task Scheduler trigger to **6:00 AM PT (9:00 AM ET)**, giving 28 minutes of buffer within the valid OPG window.
+
+### Verify Script
+
+Run `verify_all.py` after any script change to confirm everything works before market open:
+
+```cmd
+C:\nmr-trader\venv\Scripts\python.exe C:\nmr-trader\verify_all.py
 ```
+
+Expected output: 8 PASS, 0 WARN, 0 FAIL.
+
+Checks performed:
+1. All imports (ib_async, yfinance, pandas, numpy, sqlite3, requests)
+2. Market regime (SPY price vs 200d MA, 5d velocity, VIX)
+3. IBKR Gateway connection + portfolio value read
+4. Order API test (LMT DAY order placed and immediately cancelled — confirms API works at any time of day)
+5. Database state (open positions, pending entries, cooldowns, trade log, rejections)
+6. Task Scheduler entries found and last-run status
+7. Signal dry run (28 large-cap test tickers, no orders)
+8. Trade log readable + last 30 lines
+
+**Note on order test timing:** The verify script tests with a LMT DAY order (valid at any time). MOO/OPG orders will ValidationError if tested outside 7:00–9:28 AM ET — this is expected and normal. Do not test MOO orders in the verify script outside market hours.
 
 ### Going Live — Three Changes Only
 
-1. `IBKR_PORT = 4001` (was 4002 paper) — change in all three scripts
+1. `IBKR_PORT = 4001` (was 4002 paper) — change in all four scripts
 2. Switch Gateway from Paper to Live account
 3. Level 3 options approval on real account before running hedge_quarterly.py live
 
@@ -359,10 +531,10 @@ python -c "from ib_async import IB; ib=IB(); ib.connect('127.0.0.1',4002,clientI
 
 ### Rejection Logging
 
-When a LOO order doesn't fill, `trade_morning.py` records:
-- Ticker, date, limit price, actual open price
-- Gap % (open price vs limit price)
-- Reason string (e.g. "Gapped up 1.23% above LOO limit")
+When a MOO entry order fills at a price that gapped significantly vs the prior close, `trade_morning.py` records:
+- Ticker, date, prior close (stored as reference price), actual open price
+- Gap % (open price vs prior close)
+- Reason string
 
 Visible in dashboard "Entry Rejections" panel and in `paper_trading/rejections.csv`.
 
@@ -372,13 +544,48 @@ Visible in dashboard "Entry Rejections" panel and in `paper_trading/rejections.c
 
 | Time (PT) | Script | Action |
 |---|---|---|
-| 6:00 PM | scan_evening.py | Scans signals, submits LOO orders |
+| 6:00 PM | scan_evening.py | Scans signals, saves candidates to DB, pushes overlay status to dashboard |
 | 6:05 PM | hedge_quarterly.py | Manages SPY put spread + VIX call spread |
-| 6:15 AM | trade_morning.py | Submits exits, confirms LOO fills, pushes to GitHub |
+| 6:10 PM | overlay_etf.py | Manages GLD (GOLD overlay) + SPDR sector ETF (SECROT overlay) via MOC orders |
+| 6:00 AM | trade_morning.py | Places MOO entry orders, submits exit orders, confirms fills, pushes to GitHub |
 
 **Recommendation: leave Gateway running 24/7.**
 
 Gateway auto-restarts at ~11:45 PM ET daily. IBC (StartGateway.bat) handles the restart automatically. Paper account port: 4002. Live account port: 4001.
+
+**IBKR Gateway auto-logoff:** Disable auto-logoff in Gateway settings (Settings → Lock and Exit → uncheck auto-logoff or set to never). Gateway must be live at 6:00 PM PT Sunday for the evening scan and at 6:00 AM PT Monday for trade_morning. If Gateway logs off, scripts cannot connect and no trades occur.
+
+---
+
+## Diagnostic Scripts
+
+| Script | Command | Purpose |
+|---|---|---|
+| verify_all.py | `venv\Scripts\python.exe verify_all.py` | Full system check — run after any change |
+| check_signals.py | `venv\Scripts\python.exe check_signals.py` | Preview tonight's signals |
+| check_today.py | `venv\Scripts\python.exe check_today.py` | Today's trades + open positions |
+| check_log.py | `venv\Scripts\python.exe check_log.py` | Today's trade.log entries |
+| positions_check.py | `venv\Scripts\python.exe positions_check.py` | Open positions + P&L (includes hedge) |
+
+**Check pending MOO entries (run morning of, after scan_evening queued signals):**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT ticker, limit_price, shares, tier FROM pending_entries', conn).to_string()); conn.close()"
+```
+
+**Quick DB check (open positions):**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT ticker, entry_price, shares, tier FROM open_positions', conn).to_string()); conn.close()"
+```
+
+**Check GOLD overlay state:**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT * FROM gold_position', conn).to_string()); conn.close()"
+```
+
+**Check SECROT positions:**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT * FROM secrot_positions', conn).to_string()); conn.close()"
+```
 
 ---
 
@@ -404,7 +611,7 @@ Gateway auto-restarts at ~11:45 PM ET daily. IBC (StartGateway.bat) handles the 
 
 ## Optimism Bias Warnings
 
-V48's 24.38% CAGR is the in-sample ceiling, not the live expectation.
+V7.3's 27.64% combined CAGR is the in-sample ceiling, not the live expectation.
 
 | Source | Estimated CAGR Impact |
 |---|---|
@@ -413,51 +620,29 @@ V48's 24.38% CAGR is the in-sample ceiling, not the live expectation.
 | Overfitting across 70+ iterations | -2 to -3% |
 | VIX call pricing vs model assumptions | -0.5 to -1% |
 | TOM/DOW/VIX parameters tuned to history | -1 to -2% |
+| GOLD/SECROT overlay parameter fitting | -0.5 to -1% |
 | **Realistic live estimate** | **~10–14% CAGR gross** |
 
-Apply ~26% walk-forward decay: 24.38% × 0.74 = ~18% live gross (upper bound).
+Apply ~26% walk-forward decay: 27.64% × 0.74 = ~20% live gross (upper bound).
 After short-term capital gains tax (32–37%), realistic net: ~10–12%.
 
 ---
 
 ## The Honest Risk Picture
 
-V48 with Idea G overlay:
-- ~-57% combined MaxDD means ~$10.5M paper loss peak-to-trough at $18.3M equity
+V7.3 with all overlays:
+- -52.22% combined MaxDD means ~$12M paper loss peak-to-trough at $23.1M equity
 - The SPY put spread fires when SPY drops 3–15% from quarterly reference
 - The VIX call spread fires when VIX spikes above 20 intraday — catches early crash days
+- GOLD overlay adds +7% GLD exposure during trend — adds positive return in most crash years
+- SECROT adds up to +9% sector ETF exposure in bull regime — exits to cash in bear
 - 2022: MR lost ~$1.6M; puts paid $659k; VIX calls paid ~$1.2M (multiple months) — net drawdown significantly cushioned
 - 2025: MR lost ~$777k; puts paid $1.13M; VIX calls paid ~$1.4M — combined portfolio was net positive
 - Combined overlay carry cost: ~0.75%/quarter (puts) + ~0.30%/month (VIX calls) ≈ 6.6% annually
+- GOLD and SECROT carry no explicit premium cost — P&L depends on asset performance
 - Overlay carry is offset by put payouts in good years and dramatically overcompensated in crash years
 
 **VIX call carry cost reality:** The 0.3%/month model assumes stable pricing. In practice VIX calls are cheapest when VIX < 15 (exactly when you want them) and most expensive when VIX is already elevated. The $5/contract max debit cap in hedge_quarterly.py prevents paying up in expensive vol regimes. Expect some months with no VIX call position when calls are overpriced.
-
----
-
-## Diagnostic Scripts
-
-| Script | Command | Purpose |
-|---|---|---|
-| check_signals.py | `venv\Scripts\python.exe check_signals.py` | Preview tonight's signals |
-| check_today.py | `venv\Scripts\python.exe check_today.py` | Today's trades + open positions |
-| check_log.py | `venv\Scripts\python.exe check_log.py` | Today's trade.log entries |
-| positions_check.py | `venv\Scripts\python.exe positions_check.py` | Open positions + P&L (includes hedge) |
-
-**Check open orders survived overnight (run before 6:15 AM PT):**
-```bat
-python -c "from ib_async import IB; ib=IB(); ib.connect('127.0.0.1',4002,clientId=10); ib.sleep(2); orders=ib.openOrders(); print(f'Open orders: {len(orders)}'); [print(f'  {o.contract.symbol} {o.order.action} {o.order.totalQuantity}sh @ {o.order.lmtPrice}') for o in orders]; ib.disconnect()"
-```
-
-**Quick DB check (run from C:\nmr-trader with venv active):**
-```bat
-python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT ticker, entry_price, shares, tier FROM open_positions', conn).to_string()); conn.close()"
-```
-
-**Check pending LOO entries:**
-```bat
-python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT ticker, limit_price, shares, tier FROM pending_entries', conn).to_string()); conn.close()"
-```
 
 ---
 
@@ -473,9 +658,12 @@ python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\
 | Ideas V7 | VIX call spread model bug (payout overflow). CDaR too aggressive. Idea E gap-behavior confirmed dead. |
 | Ideas V7.1 | Fixed VIX call model. CDaR retuned. Idea D dynamic strikes confirmed: +0.42pp CAGR, +$460k, +0.67pp MaxDD. |
 | Ideas V7.2 | Combined equity MaxDD (correct measure). Idea G (D+A) confirmed: +1.94pp CAGR, +$8.35M, +0.27pp MaxDD. **V48 chosen.** |
+| V49 research | 8 external overlays tested on V35 MR baseline. GOLD (+0.66pp), SECROT (+0.85pp) showed best individual CAGR add. MaxDD worsened on MR-only baseline (no crash protection). Added to DNR table with notes. |
+| Ideas V7.3 | GOLD + SECROT tested on Idea G baseline (correct: crash protection already present). MaxDD improved +4.69pp, CAGR +0.13pp MR-only / +3.26pp combined, Final equity +$4.79M. **V7.3 chosen as current strategy.** |
+| Live bugs found | LOO/MOO ValidationError 321 at 6 PM PT (OPG window closed). Fix: move order placement to trade_morning.py at 6:00 AM PT. Verify with verify_all.py (8/8 PASS confirmed April 2026). |
 
 ---
 
 ## Disclaimer
 
-Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. The VIX call spread and dynamic SPY put spread require Level 3 options approval. Combined carry cost of ~6.6% annually is a real drag in flat markets. V48 is suitable only for those who understand and can hold through drawdowns of -57%+ on the combined portfolio.
+Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. The VIX call spread and dynamic SPY put spread require Level 3 options approval. Combined carry cost of ~6.6% annually is a real drag in flat markets. V7.3 is suitable only for those who understand and can hold through drawdowns of -52%+ on the combined portfolio.
