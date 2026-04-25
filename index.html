@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NMR Paper Trader — V7.3</title>
+<title>NMR Paper Trader — V7.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -185,6 +185,13 @@ header {
   gap: 12px;
   margin-bottom: 12px;
 }
+.overlay-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 800px) { .overlay-grid-4 { grid-template-columns: 1fr; } }
 @media (max-width: 800px) { .overlay-grid { grid-template-columns: 1fr; } }
 
 .overlay-panel {
@@ -359,12 +366,12 @@ canvas { display: block; }
   <div>
     <div class="logo">NMR <span>/</span> Naive Mean Reversion</div>
     <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:0.08em;">
-      V47 BASE · IDEA G HEDGE · GOLD · SECROT
+      V47 BASE · IDEA G · GOLD · SECROT · TLT BEAR · FACTOR · VIX SCALE
     </div>
   </div>
   <div class="header-meta">
     <span id="regime-badge" class="regime-bull">⬤ Checking...</span>
-    <span class="version-badge">V7.3</span>
+    <span class="version-badge">V7.4</span>
     <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
     <span id="last-updated">—</span>
   </div>
@@ -375,19 +382,19 @@ canvas { display: block; }
   <span>
     <span class="bt-ref-label">Backtest (2004–2026)</span>
   </span>
-  <span><span class="bt-ref-label">CAGR (combined)</span><span class="bt-ref-val">27.64%</span></span>
+  <span><span class="bt-ref-label">CAGR (combined)</span><span class="bt-ref-val">32.85%</span></span>
   <span class="bt-ref-sep">|</span>
-  <span><span class="bt-ref-label">Final equity</span><span class="bt-ref-val">$23,116,132</span></span>
+  <span><span class="bt-ref-label">Final equity</span><span class="bt-ref-val">$56,457,642</span></span>
   <span class="bt-ref-sep">|</span>
-  <span><span class="bt-ref-label">Max DD</span><span class="bt-ref-val">−52.22%</span></span>
+  <span><span class="bt-ref-label">Max DD</span><span class="bt-ref-val">−57.17%</span></span>
   <span class="bt-ref-sep">|</span>
-  <span><span class="bt-ref-label">Sharpe</span><span class="bt-ref-val">0.97</span></span>
+  <span><span class="bt-ref-label">Sharpe</span><span class="bt-ref-val">1.04</span></span>
   <span class="bt-ref-sep">|</span>
-  <span><span class="bt-ref-label">MR CAGR</span><span class="bt-ref-val">24.51%</span></span>
+  <span><span class="bt-ref-label">MR CAGR</span><span class="bt-ref-val">28.08%</span></span>
   <span class="bt-ref-sep">|</span>
-  <span><span class="bt-ref-label">GOLD P&L</span><span class="bt-ref-val">+$1,861,720</span></span>
+  <span><span class="bt-ref-label">Overlays net</span><span class="bt-ref-val">+$35,945,346</span></span>
   <span class="bt-ref-sep">|</span>
-  <span><span class="bt-ref-label">SECROT P&L</span><span class="bt-ref-val">+$2,409,293</span></span>
+  <span><span class="bt-ref-label">VIX calls net</span><span class="bt-ref-val">+$14,524,734</span></span>
 </div>
 
 <!-- KPI grid -->
@@ -420,7 +427,7 @@ canvas { display: block; }
   <div class="kpi gold-kpi">
     <div class="kpi-label">All Overlays 30d</div>
     <div class="kpi-value gld" id="kpi-overlay-pnl">—</div>
-    <div class="kpi-sub">SPY puts · VIX calls · GOLD · SECROT</div>
+    <div class="kpi-sub">SPY puts · VIX calls · GOLD · TLT · SECROT · Factor</div>
   </div>
 </div>
 
@@ -481,10 +488,76 @@ canvas { display: block; }
   </div>
 </div>
 
+
+<!-- TLT Bear + Factor Rotation Overlays -->
+<div class="overlay-grid">
+  <!-- TLT BEAR -->
+  <div class="overlay-panel tlt-panel">
+    <div class="overlay-title teal">⬡ TLT Bear Overlay (Idea I, 8% alloc)</div>
+    <div id="tlt-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">TLT Price</span>
+      <span class="overlay-stat-value" id="tlt-price">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">TLT 50d MA</span>
+      <span class="overlay-stat-value" id="tlt-ma50">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">SPY Regime</span>
+      <span class="overlay-stat-value" id="tlt-spy-regime">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="tlt-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="tlt-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Entry: SPY &lt; 200d MA + TLT &gt; 50d MA<br>
+      Exit: SPY bull or TLT breaks 50d MA<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+
+  <!-- FACTOR ROTATION -->
+  <div class="overlay-panel factor-panel">
+    <div class="overlay-title lime">◈ Factor Rotation (Idea J, 6% alloc)</div>
+    <div id="factor-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat" style="margin-bottom:8px;">
+      <span class="overlay-stat-label">Current Winner</span>
+      <span class="overlay-stat-value" id="factor-etf">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">QQQ 63d Mom</span>
+      <span class="overlay-stat-value" id="factor-qqq-mom">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">IWM 63d Mom</span>
+      <span class="overlay-stat-value" id="factor-iwm-mom">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="factor-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="factor-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Monthly: long QQQ or IWM (stronger 3m mom)<br>
+      Bull regime only (SPY &gt; 200d MA)<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+</div>
+
 <!-- Idea G Hedge -->
 <div class="section">
   <div class="section-header" onclick="toggleSection(this)">
-    <span class="section-title">Idea G Hedge Positions</span>
+    <span class="section-title">Idea G Hedge + Idea K VIX Scaling</span>
     <div style="display:flex;gap:16px;align-items:center;">
       <span class="section-meta" id="hedge-30d-meta">30d: —</span>
       <span class="collapse-icon">▾</span>
@@ -503,11 +576,14 @@ canvas { display: block; }
         </div>
       </div>
       <div class="hedge-panel">
-        <div class="hedge-panel-title">VIX Call Spread (20/40 monthly)</div>
+        <div class="hedge-panel-title">VIX Call Spread + Idea K Scaling</div>
         <div id="vix-call-content">
           <div class="hedge-row"><span class="hedge-label">Long Strike</span><span class="hedge-val" id="vxc-long">—</span></div>
           <div class="hedge-row"><span class="hedge-label">Short Strike</span><span class="hedge-val" id="vxc-short">—</span></div>
           <div class="hedge-row"><span class="hedge-label">Expiry</span><span class="hedge-val" id="vxc-expiry">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">VIX3M</span><span class="hedge-val" id="vix3m-val">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Term Structure</span><span class="hedge-val" id="vix-term">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Idea K Alloc</span><span class="hedge-val" id="vix-call-alloc">—</span></div>
           <div class="hedge-row"><span class="hedge-label">30d Net P&L</span><span class="hedge-val" id="vxc-pnl-30d">—</span></div>
         </div>
       </div>
@@ -532,6 +608,14 @@ canvas { display: block; }
       <div class="pnl-item">
         <div class="pnl-item-label">SECROT Net</div>
         <div class="pnl-item-value" style="color:var(--purple)" id="pb-secrot">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">TLT Bear Net</div>
+        <div class="pnl-item-value teal" id="pb-tlt">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">Factor Net</div>
+        <div class="pnl-item-value lime" id="pb-factor">—</div>
       </div>
     </div>
   </div>
@@ -839,6 +923,80 @@ function renderSummary(s) {
   }
   document.getElementById('secrot-pnl-30d').innerHTML = s.secrot_pnl_30d !== undefined ? fmtPnl(s.secrot_pnl_30d) : '—';
   document.getElementById('secrot-pnl-all').innerHTML = s.secrot_pnl_all !== undefined ? fmtPnl(s.secrot_pnl_all) : '—';
+
+  // ── TLT Bear overlay (Idea I) ──
+  const tltIn = s.tlt_in_position;
+  const tltPill = document.getElementById('tlt-status-pill');
+  if (tltIn === true) {
+    tltPill.textContent = '● IN POSITION (BEAR REGIME)';
+    tltPill.className = 'status-pill pill-in';
+  } else if (tltIn === false) {
+    tltPill.textContent = '○ OUT (BULL REGIME)';
+    tltPill.className = 'status-pill pill-out';
+  } else {
+    tltPill.textContent = '— checking';
+    tltPill.className = 'status-pill pill-out';
+  }
+  document.getElementById('tlt-price').textContent = s.tlt_price ? `$${Number(s.tlt_price).toFixed(2)}` : '—';
+  document.getElementById('tlt-ma50').textContent  = s.tlt_ma50  ? `$${Number(s.tlt_ma50).toFixed(2)}`  : '—';
+  if (s.spy_bear_regime !== undefined) {
+    const regEl = document.getElementById('tlt-spy-regime');
+    regEl.innerHTML = s.spy_bear_regime
+      ? '<span class="neg">Bear — TLT eligible</span>'
+      : '<span class="pos">Bull — TLT inactive</span>';
+  }
+  document.getElementById('tlt-pnl-30d').innerHTML = s.tlt_pnl_30d !== undefined ? fmtPnl(s.tlt_pnl_30d) : '—';
+  document.getElementById('tlt-pnl-all').innerHTML = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
+  document.getElementById('pb-tlt').innerHTML      = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
+
+  // ── Factor Rotation (Idea J) ──
+  const facActive = s.factor_active;
+  const facPill   = document.getElementById('factor-status-pill');
+  if (facActive === true) {
+    facPill.textContent = '● ACTIVE';
+    facPill.className = 'status-pill pill-in';
+  } else if (facActive === false) {
+    facPill.textContent = '○ CASH (BEAR)';
+    facPill.className = 'status-pill pill-out';
+  } else {
+    facPill.textContent = '— checking';
+    facPill.className = 'status-pill pill-out';
+  }
+  const facEtf = s.factor_etf;
+  document.getElementById('factor-etf').innerHTML = facEtf
+    ? `<span class="lime"><b>${facEtf}</b></span>`
+    : (facActive === false ? '<span class="neg">Cash</span>' : '—');
+  if (s.factor_qqq_mom !== undefined) {
+    const qc = s.factor_qqq_mom >= 0 ? 'pos' : 'neg';
+    document.getElementById('factor-qqq-mom').innerHTML =
+      `<span class="${qc}">${s.factor_qqq_mom >= 0 ? '+' : ''}${Number(s.factor_qqq_mom).toFixed(1)}%</span>`;
+  }
+  if (s.factor_iwm_mom !== undefined) {
+    const ic = s.factor_iwm_mom >= 0 ? 'pos' : 'neg';
+    document.getElementById('factor-iwm-mom').innerHTML =
+      `<span class="${ic}">${s.factor_iwm_mom >= 0 ? '+' : ''}${Number(s.factor_iwm_mom).toFixed(1)}%</span>`;
+  }
+  document.getElementById('factor-pnl-30d').innerHTML = s.factor_pnl_30d !== undefined ? fmtPnl(s.factor_pnl_30d) : '—';
+  document.getElementById('factor-pnl-all').innerHTML = s.factor_pnl_all !== undefined ? fmtPnl(s.factor_pnl_all) : '—';
+  document.getElementById('pb-factor').innerHTML      = s.factor_pnl_all !== undefined ? fmtPnl(s.factor_pnl_all) : '—';
+
+  // ── VIX3M / Idea K ──
+  if (s.vix3m !== undefined && s.vix3m !== null) {
+    document.getElementById('vix3m-val').textContent = Number(s.vix3m).toFixed(2);
+  }
+  if (s.vix_backwardation !== undefined) {
+    const termEl = document.getElementById('vix-term');
+    termEl.innerHTML = s.vix_backwardation
+      ? '<span class="neg">BACKWARDATION ⚡</span>'
+      : '<span class="pos">Contango</span>';
+  }
+  if (s.vix_call_alloc_pct !== undefined) {
+    const allocEl = document.getElementById('vix-call-alloc');
+    const pct = Number(s.vix_call_alloc_pct);
+    allocEl.innerHTML = pct > 0.3
+      ? `<span class="neg">${pct.toFixed(1)}% (2x — backwardation)</span>`
+      : `<span class="pos">${pct.toFixed(1)}% (standard)</span>`;
+  }
 
   // ── Hedge positions ──
   const h30 = safeNum(s.hedge_pnl_30d);
