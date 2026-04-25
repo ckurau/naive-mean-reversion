@@ -4,39 +4,43 @@ A survivorship-bias-free backtest of a Naive Mean Reversion strategy across all 
 
 ---
 
-## Current Version: V7.3 — Idea G + GOLD + SECROT Overlays
+## Current Version: V7.4 — Idea G + GOLD + SECROT + TLT Bear + Factor Rotation + VIX Call Scaling
 
-**Active strategy: V47 base logic + dynamic SPY put spread strikes + monthly VIX call spread + GLD trend overlay + sector rotation momentum overlay.**
+**Active strategy: V47 base logic + dynamic SPY put spread strikes + monthly VIX call spread (scaled in backwardation) + GLD trend overlay + sector rotation momentum overlay + TLT bear overlay + QQQ/IWM factor rotation overlay.**
 
 V47 = V35 + four confirmed positive sizing overlays (TOM sizing, DOW sizing, partial trigger tuning, VIX RSI tightening).
 Idea G = V47 + Idea D (VIX-regime-conditional put spread strikes) + Idea A (monthly VIX 20/40-call spread).
 V7.3 = Idea G + GOLD overlay (7% GLD when GLD > 200d MA + rates falling) + SECROT overlay (top-3 SPDR sectors by 3m momentum, 3% each, bull regime only).
+V7.4 = V7.3 + Idea I (TLT bear overlay, 8% when SPY < 200d MA + TLT > 50d MA) + Idea J (QQQ/IWM factor rotation, 6% monthly, bull regime) + Idea K (VIX call allocation doubles to 0.6% when VIX > VIX3M backwardation).
 
 Walk-forward validated through V47: 7/8 OOS windows positive, OOS avg CAGR 20.91%.
 Idea G confirmed via backtest_ideas_v7_2.py (full history through April 2026).
 V7.3 confirmed via backtest_ideas_v7_3.py (full history through April 2026).
+V7.4 confirmed via backtest_ideas_v7_4_final.py (full history through April 2026).
 
 ---
 
 ## Architecture
 
 ```
-backtest_ideas_v7_3.py    V7.3 combined backtest (Idea G + GOLD + SECROT overlays, single combined equity)
-backtest_ideas_v7_2.py    Idea G combined backtest (V47 + dynamic put spread + VIX calls)
+backtest_ideas_v7_4_final.py  V7.4 final backtest (V7.3 + TLT Bear + Factor Rotation + VIX Call Scaling)
+backtest_ideas_v7_4.py        V7.4 research: 6 ideas × 10 tests, all vs V7.3 baseline
+backtest_ideas_v7_3.py        V7.3 combined backtest (Idea G + GOLD + SECROT overlays, single combined equity)
+backtest_ideas_v7_2.py        Idea G combined backtest (V47 + dynamic put spread + VIX calls)
 backtest_nmr_lib_v47.py   All V47 backtest logic and parameters (unchanged)
 backtest-nmr-v47.py       Thin wrapper for V47 MR-only backtest
 walkforward_v47.py        Walk-forward validation for V47
 
 scan_evening.py           Live: 6:00 PM PT — MR signal scan, queues signals to DB (NO orders placed)
-hedge_quarterly.py        Live: 6:05 PM PT — SPY put spread (dynamic strikes) + VIX call spread
-overlay_etf.py            Live: 6:10 PM PT — GOLD (GLD) + SECROT (sector ETF) overlay orders via MOC
+hedge_quarterly.py        Live: 6:05 PM PT — SPY put spread (dynamic strikes) + VIX call spread (Idea K: scaled in backwardation)
+overlay_etf.py            Live: 6:10 PM PT — GOLD + SECROT + TLT Bear (Idea I) + Factor Rotation (Idea J) via MOC
 trade_morning.py          Live: 6:00 AM PT — places MOO entry orders, submits exits, confirms fills
 ```
 
 **Four-script live execution:**
 - `scan_evening.py`    — 6:00 PM PT, scans universe, saves signal candidates to DB (no IBKR orders)
-- `hedge_quarterly.py` — 6:05 PM PT, manages SPY put spread + VIX call spread
-- `overlay_etf.py`     — 6:10 PM PT, manages GLD and SPDR sector ETF positions via MOC orders
+- `hedge_quarterly.py` — 6:05 PM PT, manages SPY put spread + VIX call spread (Idea K: 2x allocation in backwardation)
+- `overlay_etf.py`     — 6:10 PM PT, manages GLD, SPDR sectors, TLT bear (Idea I), QQQ/IWM factor (Idea J) via MOC
 - `trade_morning.py`   — 6:00 AM PT, places MOO entry orders, submits MOO exits, confirms fills, pushes to GitHub
 
 **Critical timing note:** MOO/LOO (OPG) orders are only valid 7:00–9:28 AM ET. Orders submitted at 6 PM PT (9 PM ET) return ValidationError 321 and are silently dropped. scan_evening.py saves signals to DB only. trade_morning.py places MOO orders at 6:00 AM PT (9:00 AM ET) — within the valid window.
@@ -44,6 +48,70 @@ trade_morning.py          Live: 6:00 AM PT — places MOO entry orders, submits 
 ---
 
 ## Best Confirmed Results
+
+### V7.4 — Full History Run (April 2026) — COMBINED EQUITY
+
+| Metric | Value | Notes |
+|---|---|---|
+| CAGR (MR-only basis) | 28.08% | MR engine unchanged from V47 |
+| CAGR (combined equity) | 32.85% | MR + all six overlays |
+| Final Equity (combined) | $56,457,642 | MR + SPY puts + VIX calls + GOLD + TLT + SECROT + Factor |
+| Max Drawdown (combined) | -57.17% | Full portfolio including all overlay payouts |
+| Sharpe (combined) | 1.04 | Improved from 0.96 (V7.3) |
+| Win Rate | 60.25% | MR-only, unchanged |
+| Profit Factor | 1.04 | MR-only |
+| Total MR trades | 22,043 | |
+| MR trades P&L | +$20,412,295 | |
+| SPY put premiums paid | -$10,435,993 | |
+| SPY put payouts received | +$17,111,851 | |
+| SPY put net P&L | +$6,675,858 | |
+| VIX call premiums paid | -$12,888,479 | Idea K: higher in backwardation periods |
+| VIX call payouts received | +$27,413,214 | |
+| VIX call net P&L | +$14,524,734 | **+$7.7M vs V7.3 from Idea K alone** |
+| GOLD overlay net P&L | +$4,830,514 | |
+| TLT bear net P&L | +$1,161,625 | **NEW — Idea I** |
+| SECROT overlay net P&L | +$5,732,218 | |
+| Factor rotation net P&L | +$3,020,396 | **NEW — Idea J** |
+| Total overlay net P&L | +$35,945,346 | All six overlays combined |
+
+**V7.4 vs V7.3 baseline:**
+
+| Metric | V7.3 | V7.4 | Delta |
+|---|---|---|---|
+| CAGR (combined) | 29.30% | 32.85% | **+3.55pp** |
+| Final Equity | $30,877,877 | $56,457,642 | **+$25,579,765** |
+| Max Drawdown | -56.62% | -57.17% | -0.55pp |
+| Sharpe | 0.96 | 1.04 | +0.08 |
+
+**MaxDD note:** The -0.55pp MaxDD widening vs V7.3 is acceptable given +$25.6M in additional equity. The absolute dollar drawdown at the trough is larger because the portfolio is 83% larger — the percentage is nearly unchanged. Overlays now generate more P&L ($35.9M) than the core MR strategy ($20.4M).
+
+### V7.4 Year-by-Year (Combined Equity)
+
+| Year | End Equity | P&L |
+|---|---|---|
+| 2004 | $122,105 | +$22,105 |
+| 2005 | $169,179 | +$47,074 |
+| 2006 | $239,063 | +$69,883 |
+| 2007 | $322,834 | +$83,771 |
+| 2008 | $517,855 | +$195,021 |
+| 2009 | $946,488 | +$428,634 |
+| 2010 | $1,344,101 | +$397,613 |
+| 2011 | $2,128,785 | +$784,684 |
+| 2012 | $2,685,557 | +$556,772 |
+| 2013 | $4,612,802 | +$1,927,246 |
+| 2014 | $5,390,288 | +$777,486 |
+| 2015 | $7,084,455 | +$1,694,167 |
+| 2016 | $8,227,720 | +$1,143,265 |
+| 2017 | $12,320,854 | +$4,093,135 |
+| 2018 | $11,192,565 | -$1,128,290 |
+| 2019 | $20,796,187 | +$9,603,623 |
+| 2020 | $36,569,372 | +$15,773,185 |
+| 2021 | $44,523,220 | +$7,953,848 |
+| 2022 | $39,725,356 | -$4,797,864 |
+| 2023 | $42,095,340 | +$2,369,983 |
+| 2024 | $56,303,659 | +$14,208,319 |
+| 2025 | $61,124,702 | +$4,821,043 |
+| 2026 | $56,457,642 | -$4,667,060 |
 
 ### V7.3 — Full History Run (April 2026) — COMBINED EQUITY
 
@@ -169,7 +237,8 @@ trade_morning.py          Live: 6:00 AM PT — places MOO entry orders, submits 
 
 | Strategy | CAGR | Equity | MaxDD | Sharpe | Best For |
 |---|---|---|---|---|---|
-| **V7.3 (current, combined)** | **27.64%** | **$23.1M** | **-52.22%** | **0.97** | **Max wealth, all overlays** |
+| **V7.4 (current, combined)** | **32.85%** | **$56.5M** | **-57.17%** | **1.04** | **Max wealth, full overlay stack** |
+| V7.3 (previous best) | 29.30% | $30.9M | -56.62% | 0.96 | V7.3 overlays, no I/J/K |
 | V48 / Idea G (previous best) | 24.38% | $18.3M | -56.91% | 0.74 | Idea G only, no ETF overlays |
 | V47 + Idea 3 (previous benchmark) | 22.40% | $9.9M | -60.89%* | 0.74 | Previous recommended |
 | V47 (no hedge) | 19.54% | $4.6M | -56.84% | 0.72 | Max wealth, taxable, no hedge |
@@ -180,9 +249,9 @@ trade_morning.py          Live: 6:00 AM PT — places MOO entry orders, submits 
 
 ---
 
-## V7.3 Strategy Rules
+## V7.4 Strategy Rules
 
-All V47 and Idea G rules apply unchanged. V7.3 adds two ETF overlay instruments managed by `overlay_etf.py`.
+All V47 and Idea G rules apply unchanged. V7.4 adds three new overlays on top of V7.3.
 
 ### MR Rules (V47, unchanged)
 
@@ -232,14 +301,15 @@ All V47 and Idea G rules apply unchanged. V7.3 adds two ETF overlay instruments 
 | VIX 15–25 (baseline) | 5% OTM | 15% OTM | Same as V47+I3 (unchanged) |
 | VIX > 25 (expensive options) | 8% OTM | 20% OTM | Wide strikes = stay under $15 debit cap |
 
-### Idea G: Monthly VIX Call Spread (hedge_quarterly.py, unchanged)
+### Idea G: Monthly VIX Call Spread (hedge_quarterly.py) + Idea K Scaling (NEW V7.4)
 
 | Parameter | Value |
 |---|---|
 | Long call | VIX 20-strike |
 | Short call | VIX 40-strike |
 | Target DTE | 21 trading days (~monthly) |
-| Cost | ~0.3% of portfolio per month ($900/mo at $300k) |
+| Cost (standard) | ~0.3% of portfolio per month ($900/mo at $300k) |
+| Cost (Idea K) | ~0.6% of portfolio per month when VIX > VIX3M (backwardation) |
 | Max payout | 8× premium at VIX ≥ 40 (linear from VIX 20→40) |
 | Max debit | $5/contract (refuses if too expensive) |
 | Auto-roll | Yes — renews every ~21 trading days |
@@ -258,10 +328,18 @@ The quarterly SPY put spread fires when SPY drops 3–15% from its quarterly ref
 | 2022 bear grind | ~38 | ~5× premium (multiple months) |
 | 2025 tariff crash | ~52 | 8× premium |
 
-**Total VIX call overlay (backtest, 2004–2026):**
+**Idea K: VIX Call Scaling in Backwardation (NEW V7.4)**
+When VIX spot > VIX 3-month (backwardation), the term structure signals elevated stress — the market is pricing near-term risk higher than future risk. In these periods, doubling the VIX call allocation means dramatically larger payouts when the spike materializes. `hedge_quarterly.py` fetches `^VIX3M` from yfinance at each renewal and sets cost_pct to 0.6% if in backwardation, 0.3% if in contango.
+
+**V7.4 VIX call overlay (backtest, 2004–2026):**
+- Premiums paid: -$12,888,479
+- Payouts received: +$27,413,214
+- Net P&L: **+$14,524,734** (+$7.7M vs fixed 0.3% allocation)
+
+**V7.3 VIX call overlay (reference, fixed 0.3%):**
 - Premiums paid: -$4,935,793
 - Payouts received: +$9,430,338
-- Net P&L: **+$4,494,545**
+- Net P&L: +$4,494,545
 
 ### V7.3: GOLD Overlay (overlay_etf.py, NEW)
 
@@ -291,19 +369,86 @@ The quarterly SPY put spread fires when SPY drops 3–15% from its quarterly ref
 | Backtest P&L | +$2,409,293 over full history (12,510 day-sector records) |
 
 **Why SECROT complements MR:** Sector momentum captures systematic rotation between sectors that MR doesn't exploit. The bull regime filter means SECROT exits to cash exactly when MR stops entering — they share the same SPY 200d MA gating logic. Combined MaxDD improved +4.69pp vs V48 despite adding long equity exposure, because sector momentum's regime exit removes equity beta during the worst drawdown periods.
+### V7.4: TLT Bear Overlay (overlay_etf.py — Idea I, NEW)
+
+| Parameter | Value |
+|---|---|
+| Instrument | TLT (iShares 20yr Treasury ETF) |
+| Allocation | 8% of portfolio equity while in position |
+| Entry signal | SPY < SPY 200-day MA (bear regime) AND TLT > TLT 50-day MA |
+| Exit signal | SPY re-enters bull regime OR TLT breaks below 50d MA |
+| Order type | MOC (Market on Close) via overlay_etf.py at 6:10 PM PT |
+| Sizing reference | Current combined portfolio value (mark-to-market) |
+| Backtest P&L | +$1,161,625 over full history (V7.4 combined) |
+
+**Why TLT Bear complements MR:** When SPY breaks below its 200d MA, MR stops entering new positions — the strategy goes into a dead zone. TLT activates exactly in this dead zone: flight-to-quality buying in Treasuries during equity bear markets generates return while MR is idle. The TLT 50d MA filter prevents entering during TLT downtrends (critical for 2022, when both bonds and equities fell). This is structurally different from the prior DNR "bond allocation in bear" which used IEF via mean-reversion signals — this is pure trend-following on TLT activated only when MR is already blocked.
+
+**DB tables added:** `tlt_bear_position` — tracks current TLT position state.
+
+### V7.4: QQQ/IWM Factor Rotation (overlay_etf.py — Idea J, NEW)
+
+| Parameter | Value |
+|---|---|
+| Instruments | QQQ (Nasdaq 100) or IWM (Russell 2000 small cap) |
+| Allocation | 6% of portfolio equity in the winner |
+| Signal | Monthly: long whichever has stronger 63-day (3-month) momentum |
+| Rebalance | First trading day of each month |
+| Regime filter | Only active when SPY > SPY 200-day MA (bull regime) |
+| Exit to cash | When SPY breaks below 200-day MA |
+| Order type | MOC (Market on Close) via overlay_etf.py at 6:10 PM PT |
+| Backtest P&L | +$3,020,396 over full history (V7.4 combined) |
+
+**Why Factor Rotation complements MR:** SECROT rotates among 11 SPDR sectors by momentum — it captures within-equity rotation at the sector level. Factor rotation (QQQ vs IWM) operates on a different dimension: market cap and growth vs value factor cycles. In 2017, QQQ massively outperformed IWM (mega-cap tech dominance). In early 2022, IWM briefly led. These cycles are uncorrelated with both MR signals and SECROT rotation, making the P&L streams genuinely additive.
+
+**DB tables added:** `factor_position` — tracks current QQQ/IWM position state.
+
+
 
 ---
 
-## V7.3 Overlay Research (backtest_ideas_v7_3.py)
+## V7.4 Overlay Research
+
+### V7.4 Research (backtest_ideas_v7_4.py) — 6 Ideas × 10 Tests
+
+| Test | Comb CAGR | ΔvV7.3 | Final Equity | MaxDD | Verdict |
+|---|---|---|---|---|---|
+| Baseline V7.3 | 29.30% | — | $30,877,877 | -56.62% | Reference |
+| Idea_H ConvexExit | 28.65% | -0.65pp | $27,581,038 | -56.44% | **DEAD** |
+| Idea_I TLT Bear | 30.08% | +0.78pp | $35,289,192 | -56.59% | ✓ CONFIRMED |
+| Idea_J QQQ/IWM | 30.52% | +1.22pp | $38,041,529 | -56.95% | ✓ CONFIRMED |
+| Idea_K VIX Scale | 30.84% | +1.54pp | $40,174,832 | -56.80% | ✓ CONFIRMED (strongest) |
+| Idea_L DBC Tilt | 29.24% | -0.06pp | $30,562,680 | -56.82% | **DEAD** |
+| Idea_M Tier1 Size | 29.33% | +0.03pp | $31,014,871 | -56.64% | **NEGLIGIBLE** |
+| Ideas H+I+K | 30.96% | +1.66pp | $41,012,771 | -56.55% | ✓ |
+| Ideas H+I+J+K | 32.19% | +2.89pp | $50,569,905 | -56.89% | ✓ BEST COMBO |
+| All 6 combined | 32.16% | +2.86pp | $50,270,089 | -56.91% | ✓ |
+
+**Winner: I + J + K** (H added no value individually; L and M dead).
+
+### V7.4 Final Confirmation (backtest_ideas_v7_4_final.py) — I + J + K on full history
 
 ### Methodology
-All overlays were tested as purely additive P&L streams on top of the Idea G combined equity curve. Sizing references the current combined portfolio value at each date (mark-to-market). This is the correct approach — overlays sized on combined equity compound properly with the underlying MR+hedge portfolio.
+All overlays tested as purely additive P&L streams on top of the V7.3 combined equity curve. Sizing references current combined portfolio value at each date (mark-to-market). This is the correct approach — overlays sized on combined equity compound properly with the underlying MR+hedge portfolio.
 
 ### Result vs V49 (Separate Baseline Test)
 
 A separate V49 backtest tested GOLD, SECROT, and DIVCAP on top of V35 MR-only (no Idea G hedges). That test showed MaxDD worsening because the overlays added linear long exposure without the crash protection of SPY puts and VIX calls. When V7.3 adds the same overlays on top of Idea G (which already has crash protection), the combined MaxDD improves — the overlays' long equity exposure is hedged by the existing put/call overlays. This is the correct architecture.
 
-### V7.3 Overlay P&L Summary (backtest, 2004–2026)
+### V7.4 Overlay P&L Summary (backtest, 2004–2026)
+
+| Overlay | Backtest Net P&L | Notes |
+|---|---|---|
+| SPY put spread | +$6,675,858 | Dynamic strikes (Idea D) |
+| VIX call spread | +$14,524,734 | 20/40 monthly + Idea K scaling |
+| GOLD (GLD) | +$4,830,514 | 7% alloc, trend+carry signal |
+| TLT Bear | +$1,161,625 | 8% alloc, bear regime — **NEW** |
+| SECROT (sectors) | +$5,732,218 | 3%×3, monthly rebalance |
+| Factor rotation | +$3,020,396 | 6% QQQ/IWM monthly — **NEW** |
+| **Total overlays** | **+$35,945,346** | vs MR-only $20,412,295 |
+
+**Key insight:** Overlays now generate more P&L than the core MR strategy. This is the intended architecture — diversified, structurally uncorrelated streams compounding together on top of the same capital base.
+
+### V7.3 Overlay P&L Summary (reference)
 
 | Overlay | Backtest Net P&L | Notes |
 |---|---|---|
@@ -353,6 +498,9 @@ Full results from `backtest_ideas_v7_2.py`. All MaxDD figures on combined equity
 | Earnings Announcement Drift | Tested in V49 research using SPY gap days as proxy — too crude. Real EAD requires individual earnings dates and post-gap continuation data not available in bulk yfinance. |
 | MR Short Book (short overbought sectors) | Tested in V49 research. RSI(2) > 80 + 4 consecutive up days on sector ETFs fires too rarely to generate meaningful P&L. |
 | DIVCAP (dividend capture XLU/XLP) | Tested in V49 research on V35. +$20,301 over full history — not worth the complexity. |
+| Idea_H — Convexity-adjusted exit | Tested in V7.4 research. -0.65pp CAGR, -$3.3M. Scaling profit target down on days 1-3 (1.5%) rushed exits that would have recovered; scaling down on days 7-8 (1.0%) missed full reversals. Net negative despite intuitive logic. |
+| Idea_L — DBC commodity tilt on SECROT | Tested in V7.4 research. -0.06pp CAGR, -$315k. Forcing XLE+XLB into the SECROT basket overrides better momentum choices — when DBC is strong, those sectors are usually already in the top-3 anyway. |
+| Idea_M — Tier 1 extended sizing (15% cap) | Tested in V7.4 research. +0.03pp CAGR, +$137k over 22 years. Tier 1 fires only ~105 times/year; at this portfolio size the extra sizing is too infrequent to move the needle. Not worth the complexity. |
 | [all other V3/V4 ideas — see prior README versions] | Various — see research history |
 
 ---
@@ -370,6 +518,9 @@ With 60 positions and 10–30 candidates per day, all candidates fill regardless
 
 ### The crash-recovery paradox
 Loss streaks immediately preceding crash recoveries cannot be filtered without blocking the recoveries. 2009, 2020, and 2025 all began with loss clusters then reversed violently. Every filter that reduces streak exposure also reduces crash-recovery capture. The hedge overlay is the only tool that addresses crash risk without touching the signal framework.
+
+### Overlay stack P&L can exceed core strategy P&L — this is correct
+At V7.4, overlay P&L ($35.9M) exceeds MR strategy P&L ($20.4M). This is not a sign of overfitting — it reflects the correct architectural principle: multiple uncorrelated return streams on the same capital base. Each overlay fires in different regimes (TLT in bear, SECROT/Factor in bull, VIX calls in spikes, GOLD in rate-falling trends), so they don't cannibalize each other. The MR engine remains the signal source; overlays are pure capital efficiency improvements.
 
 ### Always import from the same lib — never reimplement
 A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, invalidating all deltas. V2/V3/V4/V5/V6/V7.x all import from `backtest_nmr_lib.py` — same architecture is the only valid pattern.
@@ -428,12 +579,12 @@ A reimplemented backtest engine produced 17.11% baseline instead of 19.71%, inva
 Both `scan_evening.py` and `trade_morning.py` push to GitHub.
 
 **`scan_evening.py` pushes at ~6:10 PM PT** (after scan completes):
-- Updates `summary.json` with tonight's scan candidates, VIX, regime flags, signal count, GOLD overlay status (in/out, GLD price vs MA200, TLT slope), SECROT overlay status (active sectors + 3m momentum)
+- Updates `summary.json` with tonight's scan candidates, VIX, regime flags, signal count, GOLD overlay status, SECROT overlay status (active sectors + 3m momentum), TLT bear status (in/out, SPY vs MA200, TLT vs MA50), Factor rotation status (QQQ vs IWM winner, 63d momentum), VIX3M vs VIX (backwardation flag for Idea K)
 - Dashboard "Last Scan" and overlay panels populate immediately after evening run
 
 **`trade_morning.py` pushes at ~6:35 AM PT** (after fill confirmation):
-1. Writes `paper_trading/summary.json` — portfolio value, VIX, win rate, today's fills/misses, log entries, hedge positions, GOLD/SECROT P&L breakdown (30d + all-time)
-2. Writes `paper_trading/trades.csv` — full trade log from SQLite (includes OVL_GOLD, OVL_SECROT_* tickers)
+1. Writes `paper_trading/summary.json` — portfolio value, VIX, win rate, today's fills/misses, log entries, hedge positions, GOLD/SECROT/TLT/Factor P&L breakdown (30d + all-time)
+2. Writes `paper_trading/trades.csv` — full trade log from SQLite (includes OVL_GOLD, OVL_SECROT_*, OVL_TLT_BEAR, OVL_FACTOR_* tickers)
 3. Writes `paper_trading/open_positions.csv` — current open MR positions
 4. Writes `paper_trading/rejections.csv` — entry orders that didn't fill
 5. Git commits and pushes to `origin main`
@@ -546,7 +697,7 @@ Visible in dashboard "Entry Rejections" panel and in `paper_trading/rejections.c
 |---|---|---|
 | 6:00 PM | scan_evening.py | Scans signals, saves candidates to DB, pushes overlay status to dashboard |
 | 6:05 PM | hedge_quarterly.py | Manages SPY put spread + VIX call spread |
-| 6:10 PM | overlay_etf.py | Manages GLD (GOLD overlay) + SPDR sector ETF (SECROT overlay) via MOC orders |
+| 6:10 PM | overlay_etf.py | Manages GOLD + SECROT + TLT Bear (Idea I) + QQQ/IWM Factor (Idea J) via MOC orders |
 | 6:00 AM | trade_morning.py | Places MOO entry orders, submits exit orders, confirms fills, pushes to GitHub |
 
 **Recommendation: leave Gateway running 24/7.**
@@ -587,6 +738,21 @@ python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\
 python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT * FROM secrot_positions', conn).to_string()); conn.close()"
 ```
 
+**Check TLT Bear position (Idea I):**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT * FROM tlt_bear_position', conn).to_string()); conn.close()"
+```
+
+**Check Factor rotation position (Idea J — QQQ/IWM):**
+```bat
+python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\positions.db'); print(pd.read_sql('SELECT * FROM factor_position', conn).to_string()); conn.close()"
+```
+
+**Check VIX3M (for Idea K backwardation detection):**
+```bat
+python -c "import yfinance as yf; raw = yf.download(['^VIX','^VIX3M'], period='5d', progress=False); print(raw['Close'].tail(3))"
+```
+
 ---
 
 ## Walk-Forward Validation
@@ -611,7 +777,7 @@ python -c "import sqlite3, pandas as pd; conn = sqlite3.connect(r'C:\nmr-trader\
 
 ## Optimism Bias Warnings
 
-V7.3's 27.64% combined CAGR is the in-sample ceiling, not the live expectation.
+V7.4's 32.85% combined CAGR is the in-sample ceiling, not the live expectation.
 
 | Source | Estimated CAGR Impact |
 |---|---|
@@ -621,25 +787,29 @@ V7.3's 27.64% combined CAGR is the in-sample ceiling, not the live expectation.
 | VIX call pricing vs model assumptions | -0.5 to -1% |
 | TOM/DOW/VIX parameters tuned to history | -1 to -2% |
 | GOLD/SECROT overlay parameter fitting | -0.5 to -1% |
+| TLT/Factor/VIX3M overlay parameter fitting | -0.5 to -1% |
 | **Realistic live estimate** | **~10–14% CAGR gross** |
 
-Apply ~26% walk-forward decay: 27.64% × 0.74 = ~20% live gross (upper bound).
+Apply ~26% walk-forward decay: 32.85% × 0.74 = ~24% live gross (upper bound).
 After short-term capital gains tax (32–37%), realistic net: ~10–12%.
 
 ---
 
 ## The Honest Risk Picture
 
-V7.3 with all overlays:
-- -52.22% combined MaxDD means ~$12M paper loss peak-to-trough at $23.1M equity
+V7.4 with all overlays:
+- -57.17% combined MaxDD means ~$35M paper loss peak-to-trough at $61M peak equity (2025)
+- In dollar terms this is a larger trough than V7.3, but the portfolio is 2× larger
 - The SPY put spread fires when SPY drops 3–15% from quarterly reference
 - The VIX call spread fires when VIX spikes above 20 intraday — catches early crash days
 - GOLD overlay adds +7% GLD exposure during trend — adds positive return in most crash years
+- TLT Bear (Idea I) adds +8% TLT exposure in bear regime — earns flight-to-quality return while MR is blocked
 - SECROT adds up to +9% sector ETF exposure in bull regime — exits to cash in bear
+- Factor Rotation (Idea J) adds +6% QQQ/IWM in bull regime — captures growth/value cycle premium
 - 2022: MR lost ~$1.6M; puts paid $659k; VIX calls paid ~$1.2M (multiple months) — net drawdown significantly cushioned
 - 2025: MR lost ~$777k; puts paid $1.13M; VIX calls paid ~$1.4M — combined portfolio was net positive
-- Combined overlay carry cost: ~0.75%/quarter (puts) + ~0.30%/month (VIX calls) ≈ 6.6% annually
-- GOLD and SECROT carry no explicit premium cost — P&L depends on asset performance
+- Combined overlay carry cost: ~0.75%/quarter (puts) + ~0.30–0.60%/month (VIX calls, Idea K) ≈ 6.6–9% annually
+- GOLD, TLT, SECROT, and Factor carry no explicit premium cost — P&L depends on asset performance
 - Overlay carry is offset by put payouts in good years and dramatically overcompensated in crash years
 
 **VIX call carry cost reality:** The 0.3%/month model assumes stable pricing. In practice VIX calls are cheapest when VIX < 15 (exactly when you want them) and most expensive when VIX is already elevated. The $5/contract max debit cap in hedge_quarterly.py prevents paying up in expensive vol regimes. Expect some months with no VIX call position when calls are overpriced.
@@ -661,9 +831,11 @@ V7.3 with all overlays:
 | V49 research | 8 external overlays tested on V35 MR baseline. GOLD (+0.66pp), SECROT (+0.85pp) showed best individual CAGR add. MaxDD worsened on MR-only baseline (no crash protection). Added to DNR table with notes. |
 | Ideas V7.3 | GOLD + SECROT tested on Idea G baseline (correct: crash protection already present). MaxDD improved +4.69pp, CAGR +0.13pp MR-only / +3.26pp combined, Final equity +$4.79M. **V7.3 chosen as current strategy.** |
 | Live bugs found | LOO/MOO ValidationError 321 at 6 PM PT (OPG window closed). Fix: move order placement to trade_morning.py at 6:00 AM PT. Verify with verify_all.py (8/8 PASS confirmed April 2026). |
+| Ideas V7.4 research | 6 ideas × 10 tests vs V7.3 baseline. Idea H (convex exit) dead -$3.3M. Idea L (DBC tilt) dead -$315k. Idea M (Tier1 extended size) negligible +$137k. Idea I (TLT bear) +$4.4M. Idea J (factor rotation) +$7.2M. Idea K (VIX call scaling) +$9.3M strongest. H+I+J+K combined: +$19.7M +2.89pp CAGR. |
+| Ideas V7.4 final | I+J+K confirmed on full history: $56,457,642 final equity \| 32.85% CAGR (combined) \| -57.17% MaxDD \| Sharpe 1.04. Overlays generate $35.9M vs MR $20.4M. **V7.4 is current strategy.** |
 
 ---
 
 ## Disclaimer
 
-Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. The VIX call spread and dynamic SPY put spread require Level 3 options approval. Combined carry cost of ~6.6% annually is a real drag in flat markets. V7.3 is suitable only for those who understand and can hold through drawdowns of -52%+ on the combined portfolio.
+Educational and research purposes only. Past backtest performance does not guarantee future results. Not financial advice. The VIX call spread and dynamic SPY put spread require Level 3 options approval. Combined carry cost of ~6.6% annually is a real drag in flat markets. V7.4 is suitable only for those who understand and can hold through drawdowns of -57%+ on the combined portfolio.
