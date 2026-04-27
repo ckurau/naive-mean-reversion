@@ -1,0 +1,44 @@
+{
+  "run_date": "2026-04-25",
+  "version": "V7.4",
+  "strategy": "V7.3 + Idea_I TLT Bear + Idea_J QQQ/IWM Factor + Idea_K VIX Call Scaling",
+  "v73_baseline": {
+    "final_equity": 30877877,
+    "cagr_combined_pct": 29.3,
+    "max_drawdown_pct": -56.62
+  },
+  "overlay_config": {
+    "idea_i_tlt_alloc_pct": 0.08,
+    "idea_i_tlt_ma_window": 50,
+    "idea_i_entry": "SPY < 200d MA AND TLT > 50d MA",
+    "idea_j_factor_alloc_pct": 0.06,
+    "idea_j_mom_days": 63,
+    "idea_j_entry": "Long QQQ or IWM (stronger 3m mom), bull regime",
+    "idea_k_cost_normal_pct": 0.003,
+    "idea_k_cost_backwardation_pct": 0.006,
+    "idea_k_trigger": "VIX > VIX3M (backwardation)",
+    "gold_alloc_pct": 0.07,
+    "secrot_alloc_pct": 0.03,
+    "put_spread_cost_pct": 0.0075
+  },
+  "results": {
+    "cagr_mr_pct": 28.08,
+    "cagr_combined_pct": 32.85,
+    "final_equity": 56457641.56,
+    "max_drawdown_pct": -57.17,
+    "sharpe": 1.04,
+    "win_rate_pct": 60.25,
+    "profit_factor": 1.04,
+    "total_mr_trades": 22043,
+    "put_net": 6675858.22,
+    "vxc_net": 14524734.47,
+    "gold_net": 4830513.87,
+    "tlt_net": 1161625.27,
+    "secrot_net": 5732218.31,
+    "factor_net": 3020395.94,
+    "total_overlay_net": 35945346.09,
+    "delta_cagr_pp": 3.55,
+    "delta_final_equity": 25579764.56,
+    "delta_maxdd_pp": -0.55
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "run_date": "2026-04-24",
+  "version": "V7.3",
+  "strategy": "Idea G (V48 = V47 + dynamic put strikes + VIX calls) + GOLD + SECROT",
+  "baseline_v48": {
+    "final_equity": 18323346,
+    "cagr_mr_pct": 24.38,
+    "max_drawdown_pct": -56.91
+  },
+  "v7_3_results": {
+    "cagr_mr_pct": 24.51,
+    "cagr_combined_pct": 27.64,
+    "final_equity_combined": 23116132.44,
+    "max_drawdown_combined_pct": -52.22,
+    "sharpe_combined": 0.97,
+    "win_rate_pct": 60.26,
+    "profit_factor": 1.05,
+    "total_mr_trades": 22035,
+    "delta_cagr_mr_pp": 0.13,
+    "delta_final_equity": 4792786.44,
+    "delta_maxdd_pp": 4.69
+  },
+  "overlay_config": {
+    "gold_alloc_pct": 0.07,
+    "secrot_alloc_pct": 0.03,
+    "secrot_top_n": 3,
+    "secrot_mom_days": 63,
+    "put_spread_cost": 0.0075,
+    "vix_call_cost": 0.003
+  }
+}

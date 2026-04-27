@@ -1,0 +1,33 @@
+{
+  "run_date": "2026-04-26",
+  "version": "V7.5",
+  "strategy": "V7.4 + PDBC(N) + HYG(O) + WiderPut(P) + ZROZ(Q)",
+  "v74_baseline": {
+    "final_equity": 57022512,
+    "cagr_comb": 32.91,
+    "max_dd": -57.17
+  },
+  "overlay_config": {
+    "pdbc_alloc_pct": 0.05,
+    "pdbc_ma_window": 100,
+    "hyg_alloc_pct": 0.05,
+    "hyg_ratio_window": 20,
+    "put_4th_bucket": "VIX>35 \u2192 8%/25% OTM (was 8%/20%)",
+    "zroz_alloc_pct": 0.06,
+    "zroz_vix_thresh": 20.0,
+    "zroz_tlt_5d_min": 0.005
+  },
+  "results": {
+    "cagr_mr": 28.88,
+    "cagr_comb": 34.75,
+    "final_equity": 77488410.53,
+    "max_dd": -57.25,
+    "sharpe": 1.08,
+    "win_rate": 60.24,
+    "total_trades": 22041,
+    "delta_cagr": 1.84,
+    "delta_equity": 20465898.53,
+    "delta_maxdd": -0.08,
+    "total_overlay": 54047384.26
+  }
+}
