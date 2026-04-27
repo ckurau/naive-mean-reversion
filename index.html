@@ -774,7 +774,7 @@ canvas { display: block; }
     <span id="positions-last-update" style="font-size:10px;color:var(--muted);font-family:var(--mono);"></span>
   </div>
   <div style="overflow-x:auto;">
-    <table id="positions-table" style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
+    <table id="live-positions-table" style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
       <thead>
         <tr style="color:var(--muted);border-bottom:1px solid var(--border);">
           <th style="text-align:left;padding:6px 8px;">Ticker</th>
@@ -786,7 +786,7 @@ canvas { display: block; }
           <th style="text-align:center;padding:6px 8px;">Tier</th>
         </tr>
       </thead>
-      <tbody id="positions-tbody"></tbody>
+      <tbody id="live-positions-tbody"></tbody>
     </table>
   </div>
 </div>
@@ -1225,7 +1225,7 @@ function renderSummary(s) {
       const positions = typeof s.positions_detail === 'string'
         ? JSON.parse(s.positions_detail) : s.positions_detail;
       const section = document.getElementById('positions-section');
-      const tbody   = document.getElementById('positions-tbody');
+      const tbody   = document.getElementById('live-positions-tbody');
       if (section && tbody && positions.length > 0) {
         section.style.display = 'block';
         tbody.innerHTML = '';
