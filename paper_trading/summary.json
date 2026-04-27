@@ -1,15 +1,15 @@
 {
   "date": "2026-04-27",
   "strategy_version": "V7.3",
-  "portfolio_value": 100076.6,
+  "portfolio_value": 100082.2,
   "starting_equity": 100000,
   "open_positions": 13,
   "max_positions": 60,
   "vix": 18.92,
   "position_size_pct": 3.0,
   "win_rate": 0.0,
-  "total_closed_trades": 0,
-  "total_pnl_usd": 0.0,
+  "total_closed_trades": 2,
+  "total_pnl_usd": -1080.0,
   "hedge_pnl_30d": -1080.0,
   "put_pnl_30d": -935.0,
   "vxc_pnl_30d": -145.0,
@@ -111,5 +111,8 @@
   "vix_call_long": 20.0,
   "vix_call_short": 40.0,
   "vix_call_expiry": "2026-05-18",
-  "scan_candidates": "[]"
+  "scan_candidates": "[]",
+  "unrealized_pnl_usd": -30.54,
+  "last_intraday_update": "2026-04-27 07:35 PT",
+  "positions_detail": "[{\"ticker\": \"AMRX\", \"entry_price\": 12.87, \"current_price\": 12.7787, \"shares\": 312.0, \"pnl_usd\": -28.49, \"pnl_pct\": -0.71, \"tier\": 2}, {\"ticker\": \"BGC\", \"entry_price\": 11.3785, \"current_price\": 11.406, \"shares\": 347.0, \"pnl_usd\": 9.55, \"pnl_pct\": 0.24, \"tier\": 2}, {\"ticker\": \"EGP\", \"entry_price\": 200.19, \"current_price\": 199.4752, \"shares\": 15.0, \"pnl_usd\": -10.72, \"pnl_pct\": -0.36, \"tier\": 3}, {\"ticker\": \"EPRT\", \"entry_price\": 31.78, \"current_price\": 31.866, \"shares\": 96.0, \"pnl_usd\": 8.26, \"pnl_pct\": 0.27, \"tier\": 2}, {\"ticker\": \"EVR\", \"entry_price\": 345.32, \"current_price\": 344.6317, \"shares\": 9.0, \"pnl_usd\": -6.19, \"pnl_pct\": -0.2, \"tier\": 2}, {\"ticker\": \"GM\", \"entry_price\": 78.12, \"current_price\": 78.1591, \"shares\": 38.0, \"pnl_usd\": 1.49, \"pnl_pct\": 0.05, \"tier\": 2}, {\"ticker\": \"HON\", \"entry_price\": 213.12, \"current_price\": 211.4205, \"shares\": 14.0, \"pnl_usd\": -23.79, \"pnl_pct\": -0.8, \"tier\": 2}, {\"ticker\": \"IRM\", \"entry_price\": 115.84, \"current_price\": 113.6048, \"shares\": 26.0, \"pnl_usd\": -58.12, \"pnl_pct\": -1.93, \"tier\": 3}, {\"ticker\": \"LHX\", \"entry_price\": 321.0, \"current_price\": 323.453, \"shares\": 9.0, \"pnl_usd\": 22.08, \"pnl_pct\": 0.76, \"tier\": 1}, {\"ticker\": \"NVST\", \"entry_price\": 27.21, \"current_price\": 26.9961, \"shares\": 112.0, \"pnl_usd\": -23.95, \"pnl_pct\": -0.79, \"tier\": 3}, {\"ticker\": \"PLMR\", \"entry_price\": 125.99, \"current_price\": 126.9331, \"shares\": 24.0, \"pnl_usd\": 22.63, \"pnl_pct\": 0.75, \"tier\": 2}, {\"ticker\": \"SATS\", \"entry_price\": 117.88, \"current_price\": 119.89, \"shares\": 26.0, \"pnl_usd\": 52.26, \"pnl_pct\": 1.71, \"tier\": 3}, {\"ticker\": \"SBCF\", \"entry_price\": 31.57, \"current_price\": 31.6164, \"shares\": 96.0, \"pnl_usd\": 4.46, \"pnl_pct\": 0.15, \"tier\": 2}]"
 }
