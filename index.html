@@ -428,6 +428,7 @@ canvas { display: block; }
     <div class="kpi-label">All Overlays 30d</div>
     <div class="kpi-value gld" id="kpi-overlay-pnl">—</div>
     <div class="kpi-sub">SPY puts · VIX calls · GOLD · TLT · SECROT · Factor · PDBC · HYG · ZROZ</div>
+    <div class="kpi-sub" id="last-update-bar" style="font-size:10px;margin-top:4px;color:var(--muted);">Dashboard as of last push</div>
   </div>
 </div>
 
@@ -762,6 +763,31 @@ canvas { display: block; }
         <tbody id="positions-body"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">—</td></tr></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+
+<!-- Open Positions Live Table -->
+<div class="section" id="positions-section" style="display:none;margin-bottom:16px;">
+  <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <span class="section-title">⬡ Open Positions — Live Mark-to-Market</span>
+    <span id="positions-last-update" style="font-size:10px;color:var(--muted);font-family:var(--mono);"></span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table id="positions-table" style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
+      <thead>
+        <tr style="color:var(--muted);border-bottom:1px solid var(--border);">
+          <th style="text-align:left;padding:6px 8px;">Ticker</th>
+          <th style="text-align:right;padding:6px 8px;">Entry</th>
+          <th style="text-align:right;padding:6px 8px;">Current</th>
+          <th style="text-align:right;padding:6px 8px;">Shares</th>
+          <th style="text-align:right;padding:6px 8px;">P&amp;L $</th>
+          <th style="text-align:right;padding:6px 8px;">P&amp;L %</th>
+          <th style="text-align:center;padding:6px 8px;">Tier</th>
+        </tr>
+      </thead>
+      <tbody id="positions-tbody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -1170,6 +1196,71 @@ function renderSummary(s) {
       `VIX ${vl.toFixed(1)} → <span class="${vl>35?'neg':''}">${regime}</span>`;
     document.getElementById('put-short-otm').innerHTML =
       `<span class="${vl>35?'neg':''}">${shortOtm}</span>`;
+  }
+
+
+  // ── Unrealized P&L ──
+  if (s.unrealized_pnl_usd !== undefined) {
+    const upnl = Number(s.unrealized_pnl_usd);
+    const upnlEl = document.getElementById('kpi-unrealized');
+    if (upnlEl) {
+      upnlEl.innerHTML = fmtPnl(upnl);
+      upnlEl.style.fontSize = Math.abs(upnl) >= 10000 ? '22px' : '28px';
+    }
+    const subEl = document.getElementById('kpi-unrealized-sub');
+    if (subEl) subEl.textContent = (s.open_positions || 0) + ' open positions';
+  }
+
+  // ── Last intraday update time ──
+  if (s.last_intraday_update) {
+    const ubEl = document.getElementById('last-update-bar');
+    if (ubEl) ubEl.textContent = 'Last updated: ' + s.last_intraday_update;
+    const plEl = document.getElementById('positions-last-update');
+    if (plEl) plEl.textContent = s.last_intraday_update;
+  }
+
+  // ── Live positions table ──
+  if (s.positions_detail) {
+    try {
+      const positions = typeof s.positions_detail === 'string'
+        ? JSON.parse(s.positions_detail) : s.positions_detail;
+      const section = document.getElementById('positions-section');
+      const tbody   = document.getElementById('positions-tbody');
+      if (section && tbody && positions.length > 0) {
+        section.style.display = 'block';
+        tbody.innerHTML = '';
+        // Sort by P&L descending
+        positions.sort((a, b) => b.pnl_usd - a.pnl_usd);
+        let totalPnl = 0;
+        for (const p of positions) {
+          totalPnl += p.pnl_usd;
+          const pnlColor = p.pnl_usd >= 0 ? 'var(--green)' : 'var(--red)';
+          const row = document.createElement('tr');
+          row.style.borderBottom = '1px solid var(--border)';
+          row.innerHTML = `
+            <td style="padding:5px 8px;font-weight:600;">${p.ticker}</td>
+            <td style="text-align:right;padding:5px 8px;">$${Number(p.entry_price).toFixed(2)}</td>
+            <td style="text-align:right;padding:5px 8px;">$${Number(p.current_price || p.entry_price).toFixed(2)}</td>
+            <td style="text-align:right;padding:5px 8px;">${Number(p.shares).toFixed(0)}</td>
+            <td style="text-align:right;padding:5px 8px;color:${pnlColor};">${p.pnl_usd >= 0 ? '+' : ''}$${Number(p.pnl_usd).toFixed(0)}</td>
+            <td style="text-align:right;padding:5px 8px;color:${pnlColor};">${p.pnl_pct >= 0 ? '+' : ''}${Number(p.pnl_pct || 0).toFixed(2)}%</td>
+            <td style="text-align:center;padding:5px 8px;color:var(--muted);">T${p.tier}</td>
+          `;
+          tbody.appendChild(row);
+        }
+        // Total row
+        const totalRow = document.createElement('tr');
+        totalRow.style.borderTop = '2px solid var(--border)';
+        totalRow.style.fontWeight = '600';
+        const tc = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+        totalRow.innerHTML = `
+          <td colspan="4" style="padding:6px 8px;color:var(--muted);">TOTAL UNREALIZED</td>
+          <td style="text-align:right;padding:6px 8px;color:${tc};">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(0)}</td>
+          <td colspan="2"></td>
+        `;
+        tbody.appendChild(totalRow);
+      }
+    } catch(e) { console.warn('positions_detail parse error:', e); }
   }
 
   // ── VIX3M / Idea K ──
