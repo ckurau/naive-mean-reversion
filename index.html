@@ -1,52 +1,1269 @@
-# patch_index2.py
-# Adds Capital Deployed KPI card to index.html
-# Run: C:\nmr-trader\venv\Scripts\python.exe C:\nmr-trader\patch_index2.py
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NMR Paper Trader — V7.5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0a0c0f;
+  --panel:    #0f1218;
+  --border:   #1e2530;
+  --accent:   #00d4ff;
+  --green:    #00e676;
+  --red:      #ff3d5a;
+  --gold:     #ffd54f;
+  --purple:   #b39ddb;
+  --text:     #e0e6f0;
+  --muted:    #5a6880;
+  --mono:     'IBM Plex Mono', monospace;
+  --sans:     'IBM Plex Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-TARGET = r'C:\naive-mean-reversion\index.html'
-src = open(TARGET, encoding='utf-8').read()
-changes = 0
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
 
-# ── Fix 1: Add Capital Deployed KPI card after Unrealized P&L card ────────
-old_kpi = '''  <div class="kpi green-kpi">
-    <div class="kpi-label">Unrealized P&L (MR)</div>
-    <div class="kpi-value" id="kpi-unrealized" style="font-size:28px;">—</div>
-    <div class="kpi-sub" id="kpi-unrealized-sub">open positions</div>
-  </div>'''
+/* Grid noise texture overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
 
-new_kpi = '''  <div class="kpi green-kpi">
-    <div class="kpi-label">Unrealized P&L (MR)</div>
-    <div class="kpi-value" id="kpi-unrealized" style="font-size:28px;">—</div>
-    <div class="kpi-sub" id="kpi-unrealized-sub">open positions</div>
+#app { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 20px 60px; }
+
+/* ── Header ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.logo {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.logo span { color: var(--muted); }
+.version-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  padding: 3px 8px;
+  border-radius: 2px;
+  opacity: 0.8;
+}
+.header-meta {
+  display: flex; align-items: center; gap: 16px;
+}
+#refresh-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+#refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+#last-updated { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+#regime-badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  padding: 4px 10px; border-radius: 2px; letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.regime-bull { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+.regime-bear { background: rgba(255,61,90,0.12); color: var(--red); border: 1px solid rgba(255,61,90,0.3); }
+.regime-paused { background: rgba(255,213,79,0.12); color: var(--gold); border: 1px solid rgba(255,213,79,0.3); }
+
+/* ── KPI Grid ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent);
+  opacity: 0.4;
+}
+.kpi.gold-kpi::before { background: var(--gold); }
+.kpi.green-kpi::before { background: var(--green); }
+.kpi.purple-kpi::before { background: var(--purple); }
+.kpi-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.kpi-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+.acc { color: var(--accent); }
+.gld { color: var(--gold); }
+
+/* ── Section ── */
+.section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.section-header:hover { background: rgba(255,255,255,0.02); }
+.section-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.section-title.gold { color: var(--gold); }
+.section-title.green { color: var(--green); }
+.section-title.purple { color: var(--purple); }
+.section-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.section-body { padding: 16px 18px; }
+.collapse-icon { color: var(--muted); font-size: 10px; transition: transform 0.2s; }
+.collapsed .collapse-icon { transform: rotate(-90deg); }
+.collapsed .section-body { display: none; }
+
+/* ── Overlay Row (GOLD + SECROT side by side) ── */
+.overlay-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.overlay-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 800px) { .overlay-grid-4 { grid-template-columns: 1fr; } }
+@media (max-width: 800px) { .overlay-grid { grid-template-columns: 1fr; } }
+
+.overlay-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.overlay-panel.gold-panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+.overlay-panel.secrot-panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--purple), transparent);
+}
+.overlay-title {
+  font-family: var(--mono);
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.overlay-title.gold { color: var(--gold); }
+.overlay-title.purple { color: var(--purple); }
+
+.status-pill {
+  display: inline-block;
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 2px;
+  margin-bottom: 10px;
+}
+.pill-in  { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+.pill-out { background: rgba(90,104,128,0.2); color: var(--muted); border: 1px solid var(--border); }
+
+.overlay-stat { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.overlay-stat-label { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.overlay-stat-value { font-family: var(--mono); font-size: 10px; }
+
+.sector-tag {
+  display: inline-block;
+  font-family: var(--mono); font-size: 10px;
+  background: rgba(179,157,219,0.12);
+  border: 1px solid rgba(179,157,219,0.3);
+  color: var(--purple);
+  padding: 2px 7px; border-radius: 2px;
+  margin: 2px 2px 2px 0;
+}
+
+/* ── Hedge row ── */
+.hedge-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 800px) { .hedge-grid { grid-template-columns: 1fr; } }
+
+.hedge-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+}
+.hedge-panel-title {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 10px;
+}
+.hedge-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.hedge-label { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.hedge-val   { font-family: var(--mono); font-size: 10px; color: var(--text); }
+
+/* ── Tables ── */
+table { width: 100%; border-collapse: collapse; }
+th {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); text-align: left;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  font-family: var(--mono); font-size: 11px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(30,37,48,0.6);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.tier-badge {
+  display: inline-block; font-size: 9px; font-weight: 600;
+  padding: 1px 6px; border-radius: 1px;
+}
+.tier-1 { background: rgba(0,212,255,0.15); color: var(--accent); }
+.tier-2 { background: rgba(179,157,219,0.15); color: var(--purple); }
+.tier-3 { background: rgba(90,104,128,0.15); color: var(--muted); }
+
+/* ── Equity chart ── */
+#chart-container { height: 240px; position: relative; margin-top: 4px; }
+canvas { display: block; }
+
+/* ── P&L breakdown ── */
+.pnl-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.pnl-item {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+}
+.pnl-item-label { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+.pnl-item-value { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+
+/* ── Log ── */
+#log-container {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  background: #060810; border: 1px solid var(--border);
+  padding: 12px 14px; max-height: 200px; overflow-y: auto;
+  line-height: 1.7;
+}
+#log-container .log-error { color: var(--red); }
+#log-container .log-warn  { color: var(--gold); }
+#log-container .log-info  { color: var(--muted); }
+
+/* ── Filter tabs ── */
+.filter-tabs { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+.filter-tab {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 4px 10px; border: 1px solid var(--border);
+  background: none; color: var(--muted); cursor: pointer;
+  border-radius: 2px; transition: all 0.15s;
+}
+.filter-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.07); }
+
+/* ── Backtest ref bar ── */
+.bt-ref-bar {
+  background: rgba(255,213,79,0.04);
+  border: 1px solid rgba(255,213,79,0.15);
+  padding: 10px 18px;
+  margin-bottom: 20px;
+  display: flex; flex-wrap: wrap; gap: 24px; align-items: center;
+}
+.bt-ref-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gold); opacity: 0.7;
+  margin-right: 4px;
+}
+.bt-ref-val { font-family: var(--mono); font-size: 11px; color: var(--gold); }
+.bt-ref-sep { color: var(--border); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Animations ── */
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.live-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<header>
+  <div>
+    <div class="logo">NMR <span>/</span> Naive Mean Reversion</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:0.08em;">
+      V47 · IDEA G · GOLD · SECROT · TLT · FACTOR · VIX SCALE · PDBC · HYG · ZROZ
+    </div>
+  </div>
+  <div class="header-meta">
+    <span id="regime-badge" class="regime-bull">⬤ Checking...</span>
+    <span class="version-badge">V7.5</span>
+    <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
+    <span id="last-updated">—</span>
+  </div>
+</header>
+
+<!-- Backtest reference bar -->
+<div class="bt-ref-bar">
+  <span>
+    <span class="bt-ref-label">Backtest (2004–2026)</span>
+  </span>
+  <span><span class="bt-ref-label">CAGR (combined)</span><span class="bt-ref-val">34.80%</span></span>
+  <span class="bt-ref-sep">|</span>
+  <span><span class="bt-ref-label">Final equity</span><span class="bt-ref-val">$78,194,461</span></span>
+  <span class="bt-ref-sep">|</span>
+  <span><span class="bt-ref-label">Max DD</span><span class="bt-ref-val">−57.21%</span></span>
+  <span class="bt-ref-sep">|</span>
+  <span><span class="bt-ref-label">Sharpe</span><span class="bt-ref-val">1.08</span></span>
+  <span class="bt-ref-sep">|</span>
+  <span><span class="bt-ref-label">MR CAGR</span><span class="bt-ref-val">28.93%</span></span>
+  <span class="bt-ref-sep">|</span>
+  <span><span class="bt-ref-label">Overlays net</span><span class="bt-ref-val">+$57.6M (7 overlays)</span></span>
+  <span class="bt-ref-sep">|</span>
+  <span><span class="bt-ref-label">VIX calls net</span><span class="bt-ref-val">+$14,524,734</span></span>
+</div>
+
+<!-- KPI grid -->
+<div class="kpi-grid">
+  <div class="kpi green-kpi">
+    <div class="kpi-label">Portfolio Value</div>
+    <div class="kpi-value" id="kpi-portfolio">—</div>
+    <div class="kpi-sub" id="kpi-return">—</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Capital Deployed</div>
-    <div class="kpi-value acc" id="kpi-deployed" style="font-size:22px;">—</div>
-    <div class="kpi-sub" id="kpi-deployed-sub">— in cash</div>
-  </div>'''
+    <div class="kpi-label">Positions</div>
+    <div class="kpi-value" id="kpi-positions">—</div>
+    <div class="kpi-sub" id="kpi-slots">—</div>
+  </div>
+  <div class="kpi green-kpi">
+    <div class="kpi-label">Win Rate (MR)</div>
+    <div class="kpi-value" id="kpi-winrate">—</div>
+    <div class="kpi-sub" id="kpi-trades">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">VIX</div>
+    <div class="kpi-value" id="kpi-vix">—</div>
+    <div class="kpi-sub" id="kpi-possize">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Today</div>
+    <div class="kpi-value" id="kpi-exits">—</div>
+    <div class="kpi-sub" id="kpi-entries">—</div>
+  </div>
+  <div class="kpi gold-kpi">
+    <div class="kpi-label">All Overlays 30d</div>
+    <div class="kpi-value gld" id="kpi-overlay-pnl">—</div>
+    <div class="kpi-sub">SPY puts · VIX calls · GOLD · TLT · SECROT · Factor · PDBC · HYG · ZROZ</div>
+    <div class="kpi-sub" id="last-update-bar" style="font-size:10px;margin-top:4px;color:var(--muted);">Dashboard as of last push</div>
+  </div>
+</div>
 
-if 'kpi-deployed' not in src:
-    if old_kpi in src:
-        src = src.replace(old_kpi, new_kpi)
-        changes += 1
-        print("Fix 1 OK: added Capital Deployed KPI card")
-    else:
-        # Try finding just the unrealized card differently
-        import re
-        m = re.search(r'id="kpi-unrealized-sub"[^<]*</div>\s*</div>', src)
-        if m:
-            insert_at = m.end()
-            card = '''\n  <div class="kpi">\n    <div class="kpi-label">Capital Deployed</div>\n    <div class="kpi-value acc" id="kpi-deployed" style="font-size:22px;">—</div>\n    <div class="kpi-sub" id="kpi-deployed-sub">— in cash</div>\n  </div>'''
-            src = src[:insert_at] + card + src[insert_at:]
-            changes += 1
-            print("Fix 1 OK: added Capital Deployed KPI card (alt method)")
-        else:
-            print("Fix 1 SKIP: could not find insertion point")
-else:
-    print("Fix 1 SKIP: kpi-deployed already present")
+<!-- GOLD + SECROT Overlay status -->
+<div class="overlay-grid">
+  <!-- GOLD -->
+  <div class="overlay-panel gold-panel">
+    <div class="overlay-title gold">⬡ GOLD Overlay (GLD, 7% alloc)</div>
+    <div id="gold-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">GLD Price</span>
+      <span class="overlay-stat-value" id="gold-price">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">GLD 200d MA</span>
+      <span class="overlay-stat-value" id="gold-ma200">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">TLT Slope</span>
+      <span class="overlay-stat-value" id="gold-slope">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="gold-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="gold-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Entry: GLD &gt; 200d MA + TLT slope ≥ 0<br>
+      Exit: GLD breaks below 200d MA<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
 
-# ── Fix 2: Add JS to render Capital Deployed ──────────────────────────────
-old_js = "  // ── VIX3M / Idea K ──"
-new_js = """  // ── Capital Deployed ──
+  <!-- SECROT -->
+  <div class="overlay-panel secrot-panel">
+    <div class="overlay-title purple">◈ SECROT Overlay (Top-3 sectors, 3% each)</div>
+    <div id="secrot-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat" style="margin-bottom:8px;">
+      <span class="overlay-stat-label">Active Sectors</span>
+    </div>
+    <div id="secrot-sectors" style="margin-bottom:10px;">—</div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="secrot-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="secrot-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Monthly rebalance — top-3 SPDR by 63d momentum<br>
+      Bull regime only (SPY &gt; 200d MA)<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+</div>
+
+
+<!-- TLT Bear + Factor Rotation Overlays -->
+<div class="overlay-grid">
+  <!-- TLT BEAR -->
+  <div class="overlay-panel tlt-panel">
+    <div class="overlay-title teal">⬡ TLT Bear Overlay (Idea I, 8% alloc)</div>
+    <div id="tlt-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">TLT Price</span>
+      <span class="overlay-stat-value" id="tlt-price">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">TLT 50d MA</span>
+      <span class="overlay-stat-value" id="tlt-ma50">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">SPY Regime</span>
+      <span class="overlay-stat-value" id="tlt-spy-regime">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="tlt-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="tlt-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Entry: SPY &lt; 200d MA + TLT &gt; 50d MA<br>
+      Exit: SPY bull or TLT breaks 50d MA<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+
+  <!-- FACTOR ROTATION -->
+  <div class="overlay-panel factor-panel">
+    <div class="overlay-title lime">◈ Factor Rotation (Idea J, 6% alloc)</div>
+    <div id="factor-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat" style="margin-bottom:8px;">
+      <span class="overlay-stat-label">Current Winner</span>
+      <span class="overlay-stat-value" id="factor-etf">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">QQQ 63d Mom</span>
+      <span class="overlay-stat-value" id="factor-qqq-mom">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">IWM 63d Mom</span>
+      <span class="overlay-stat-value" id="factor-iwm-mom">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="factor-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="factor-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Monthly: long QQQ or IWM (stronger 3m mom)<br>
+      Bull regime only (SPY &gt; 200d MA)<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+</div>
+
+
+<!-- PDBC + HYG + ZROZ Overlays (V7.5) -->
+<div class="overlay-grid">
+  <!-- PDBC COMMODITY -->
+  <div class="overlay-panel pdbc-panel">
+    <div class="overlay-title orange">⬡ PDBC Commodity (Idea N, 5% alloc)</div>
+    <div id="pdbc-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">PDBC/DBC Price</span>
+      <span class="overlay-stat-value" id="pdbc-price">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">100d MA</span>
+      <span class="overlay-stat-value" id="pdbc-ma100">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">DBC 63d Momentum</span>
+      <span class="overlay-stat-value" id="pdbc-mom">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="pdbc-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="pdbc-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Entry: PDBC &gt; 100d MA + DBC 63d mom &gt; 0<br>
+      No regime filter — always active when signal fires<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+
+  <!-- HYG CREDIT -->
+  <div class="overlay-panel hyg-panel">
+    <div class="overlay-title pink">◈ HYG Credit Carry (Idea O, 5% alloc)</div>
+    <div id="hyg-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">HYG/LQD Ratio</span>
+      <span class="overlay-stat-value" id="hyg-ratio">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">Ratio vs 20d MA</span>
+      <span class="overlay-stat-value" id="hyg-ratio-ma">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (30d)</span>
+      <span class="overlay-stat-value" id="hyg-pnl-30d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="hyg-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Entry: HYG/LQD ratio &gt; 20d MA + SPY bull<br>
+      Exit: ratio turns down or SPY bear<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+</div>
+
+<div class="overlay-grid" style="margin-bottom:12px;">
+  <!-- ZROZ PANIC -->
+  <div class="overlay-panel" style="border:1px solid var(--border);padding:16px 18px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#80deea,transparent);"></div>
+    <div class="overlay-title cyan">⚡ ZROZ Panic Overlay (Idea Q, 6% alloc)</div>
+    <div id="zroz-status-pill" class="status-pill pill-out">checking...</div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">VIX Level</span>
+      <span class="overlay-stat-value" id="zroz-vix">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">TLT 5d Return</span>
+      <span class="overlay-stat-value" id="zroz-tlt5d">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">Signal Active</span>
+      <span class="overlay-stat-value" id="zroz-signal">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">P&L (all-time)</span>
+      <span class="overlay-stat-value" id="zroz-pnl-all">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Entry: VIX &gt; 20 AND TLT 5d return &gt; 0.5%<br>
+      Exit: VIX normalizes below 20<br>
+      Orders: MOC via overlay_etf.py (6:10 PM)
+    </div>
+  </div>
+  <!-- Put Spread Idea P note -->
+  <div class="overlay-panel" style="border:1px solid var(--border);padding:16px 18px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);"></div>
+    <div class="overlay-title" style="color:var(--accent);">⊕ SPY Put Spread — Idea P (4th VIX Bucket)</div>
+    <div class="overlay-stat" style="margin-top:8px;">
+      <span class="overlay-stat-label">VIX Regime</span>
+      <span class="overlay-stat-value" id="put-vix-regime">—</span>
+    </div>
+    <div class="overlay-stat">
+      <span class="overlay-stat-label">Short Strike OTM</span>
+      <span class="overlay-stat-value" id="put-short-otm">—</span>
+    </div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
+      Idea P: VIX &gt; 35 → short strike widens 20% → 25% OTM<br>
+      Same premium, deeper crash protection<br>
+      Managed by hedge_quarterly.py (6:05 PM)
+    </div>
+  </div>
+</div>
+
+<!-- Idea G Hedge -->
+<div class="section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title">Idea G Hedge + Idea K VIX Scaling</span>
+    <div style="display:flex;gap:16px;align-items:center;">
+      <span class="section-meta" id="hedge-30d-meta">30d: —</span>
+      <span class="collapse-icon">▾</span>
+    </div>
+  </div>
+  <div class="section-body">
+    <div class="hedge-grid">
+      <div class="hedge-panel">
+        <div class="hedge-panel-title">SPY Put Spread (Dynamic Strikes)</div>
+        <div id="put-spread-content">
+          <div class="hedge-row"><span class="hedge-label">Long Strike</span><span class="hedge-val" id="put-long">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Short Strike</span><span class="hedge-val" id="put-short">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Expiry</span><span class="hedge-val" id="put-expiry">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Net Debit</span><span class="hedge-val" id="put-cost">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">30d Net P&L</span><span class="hedge-val" id="put-pnl-30d">—</span></div>
+        </div>
+      </div>
+      <div class="hedge-panel">
+        <div class="hedge-panel-title">VIX Call Spread + Idea K Scaling</div>
+        <div id="vix-call-content">
+          <div class="hedge-row"><span class="hedge-label">Long Strike</span><span class="hedge-val" id="vxc-long">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Short Strike</span><span class="hedge-val" id="vxc-short">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Expiry</span><span class="hedge-val" id="vxc-expiry">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">VIX3M</span><span class="hedge-val" id="vix3m-val">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Term Structure</span><span class="hedge-val" id="vix-term">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">Idea K Alloc</span><span class="hedge-val" id="vix-call-alloc">—</span></div>
+          <div class="hedge-row"><span class="hedge-label">30d Net P&L</span><span class="hedge-val" id="vxc-pnl-30d">—</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Full overlay P&L breakdown -->
+    <div style="margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">
+      All-time overlay P&L breakdown
+    </div>
+    <div class="pnl-breakdown" id="pnl-breakdown">
+      <div class="pnl-item">
+        <div class="pnl-item-label">SPY Puts Net</div>
+        <div class="pnl-item-value acc" id="pb-put">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">VIX Calls Net</div>
+        <div class="pnl-item-value acc" id="pb-vxc">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">GOLD Net</div>
+        <div class="pnl-item-value gld" id="pb-gold">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">SECROT Net</div>
+        <div class="pnl-item-value" style="color:var(--purple)" id="pb-secrot">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">TLT Bear Net</div>
+        <div class="pnl-item-value teal" id="pb-tlt">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">Factor Net</div>
+        <div class="pnl-item-value lime" id="pb-factor">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">PDBC Net</div>
+        <div class="pnl-item-value orange" id="pb-pdbc">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">HYG Net</div>
+        <div class="pnl-item-value pink" id="pb-hyg">—</div>
+      </div>
+      <div class="pnl-item">
+        <div class="pnl-item-label">ZROZ Net</div>
+        <div class="pnl-item-value cyan" id="pb-zroz">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Open MR Positions -->
+<div class="section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title green">Open MR Positions</span>
+    <div style="display:flex;gap:16px;align-items:center;">
+      <span class="section-meta" id="positions-meta">—</span>
+      <span class="collapse-icon">▾</span>
+    </div>
+  </div>
+  <div class="section-body" style="padding:0;">
+    <div id="positions-table-wrap" style="overflow-x:auto;">
+      <table id="positions-table">
+        <thead><tr>
+          <th>Ticker</th><th>Tier</th><th>Entry $</th><th>Target $</th>
+          <th>Days left</th><th>P&L%</th>
+        </tr></thead>
+        <tbody id="positions-body"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">—</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- Open Positions Live Table -->
+<div class="section" id="positions-section" style="display:none;margin-bottom:16px;">
+  <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <span class="section-title">⬡ Open Positions — Live Mark-to-Market</span>
+    <span id="positions-last-update" style="font-size:10px;color:var(--muted);font-family:var(--mono);"></span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table id="live-positions-table" style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
+      <thead>
+        <tr style="color:var(--muted);border-bottom:1px solid var(--border);">
+          <th style="text-align:left;padding:6px 8px;">Ticker</th>
+          <th style="text-align:right;padding:6px 8px;">Entry</th>
+          <th style="text-align:right;padding:6px 8px;">Current</th>
+          <th style="text-align:right;padding:6px 8px;">Shares</th>
+          <th style="text-align:right;padding:6px 8px;">P&amp;L $</th>
+          <th style="text-align:right;padding:6px 8px;">P&amp;L %</th>
+          <th style="text-align:center;padding:6px 8px;">Tier</th>
+        </tr>
+      </thead>
+      <tbody id="live-positions-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Last Scan -->
+<div class="section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title">Last Scan — LOO Orders</span>
+    <div style="display:flex;gap:16px;align-items:center;">
+      <span class="section-meta" id="scan-meta">—</span>
+      <span class="collapse-icon">▾</span>
+    </div>
+  </div>
+  <div class="section-body" style="padding:0;">
+    <div style="overflow-x:auto;">
+      <table id="scan-table">
+        <thead><tr>
+          <th>Ticker</th><th>Tier</th><th>RSI(2)</th><th>Limit $</th>
+          <th>Size%</th><th>Consec ↓</th><th>Status</th>
+        </tr></thead>
+        <tbody id="scan-body"><tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;">—</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Trade Log -->
+<div class="section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title">Trade Log (MR)</span>
+    <div style="display:flex;gap:16px;align-items:center;">
+      <span class="section-meta" id="tradelog-meta">—</span>
+      <span class="collapse-icon">▾</span>
+    </div>
+  </div>
+  <div class="section-body">
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="filterLog('all', this)">All</button>
+      <button class="filter-tab" onclick="filterLog('profit_target', this)">Profit target</button>
+      <button class="filter-tab" onclick="filterLog('time_stop', this)">Time stop</button>
+      <button class="filter-tab" onclick="filterLog('partial_exit', this)">Partial exit</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="log-table">
+        <thead><tr>
+          <th>Ticker</th><th>Entry</th><th>Exit</th><th>Entry$</th>
+          <th>Exit$</th><th>P&L$</th><th>P&L%</th><th>Reason</th>
+        </tr></thead>
+        <tbody id="log-body"><tr><td colspan="8" style="color:var(--muted);text-align:center;padding:20px;">—</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Rejections -->
+<div class="section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title">Entry Rejections (30d)</span>
+    <div style="display:flex;gap:16px;align-items:center;">
+      <span class="section-meta" id="reject-meta">—</span>
+      <span class="collapse-icon">▾</span>
+    </div>
+  </div>
+  <div class="section-body" style="padding:0;">
+    <div style="overflow-x:auto;">
+      <table id="reject-table">
+        <thead><tr>
+          <th>Ticker</th><th>Date</th><th>Limit$</th><th>Open$</th><th>Gap%</th><th>Reason</th>
+        </tr></thead>
+        <tbody id="reject-body"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">No rejections yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Equity Curve -->
+<div class="section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title gold">Equity Curve (Paper Trading)</span>
+    <span class="collapse-icon">▾</span>
+  </div>
+  <div class="section-body">
+    <div id="chart-container">
+      <canvas id="equity-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Execution Log -->
+<div class="section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title">Execution Log</span>
+    <span class="collapse-icon">▾</span>
+  </div>
+  <div class="section-body" style="padding:0;">
+    <div id="log-container">Loading...</div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+const DATA_URL = 'https://raw.githubusercontent.com/ckurau/naive-mean-reversion/main/paper_trading/summary.json';
+const TRADES_URL = 'https://raw.githubusercontent.com/ckurau/naive-mean-reversion/main/paper_trading/trades.csv';
+const POS_URL = 'https://raw.githubusercontent.com/ckurau/naive-mean-reversion/main/paper_trading/open_positions.csv';
+const REJ_URL = 'https://raw.githubusercontent.com/ckurau/naive-mean-reversion/main/paper_trading/rejections.csv';
+
+let allTrades = [];
+let currentFilter = 'all';
+
+function toggleSection(header) {
+  header.parentElement.classList.toggle('collapsed');
+}
+
+function fmt$(v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  const n = Number(v);
+  const s = Math.abs(n) >= 1e6
+    ? (n < 0 ? '-' : '+') + '$' + (Math.abs(n)/1e6).toFixed(2) + 'M'
+    : (n < 0 ? '-$' : '+$') + Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+  return s;
+}
+function fmtPnl(v) {
+  if (v === null || v === undefined) return '<span>—</span>';
+  const n = Number(v);
+  const cls = n >= 0 ? 'pos' : 'neg';
+  return `<span class="${cls}">${fmt$(n)}</span>`;
+}
+function fmtPct(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  const cls = n >= 0 ? 'pos' : 'neg';
+  return `<span class="${cls}">${n >= 0 ? '+' : ''}${n.toFixed(2)}%</span>`;
+}
+function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  return lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim().replace(/"/g, ''); });
+    return obj;
+  });
+}
+
+async function loadData() {
+  document.getElementById('last-updated').textContent = 'Loading...';
+  try {
+    const [sumResp, tradeResp, posResp, rejResp] = await Promise.all([
+      fetch(DATA_URL + '?t=' + Date.now()),
+      fetch(TRADES_URL + '?t=' + Date.now()),
+      fetch(POS_URL + '?t=' + Date.now()),
+      fetch(REJ_URL + '?t=' + Date.now()),
+    ]);
+
+    const summary = sumResp.ok ? await sumResp.json() : {};
+    const tradesCsv = tradeResp.ok ? await tradeResp.text() : '';
+    const posCsv    = posResp.ok  ? await posResp.text()   : '';
+    const rejCsv    = rejResp.ok  ? await rejResp.text()   : '';
+
+    renderSummary(summary);
+    allTrades = parseCSV(tradesCsv);
+    renderTradeLog(allTrades, currentFilter);
+    renderPositions(parseCSV(posCsv), summary);
+    renderRejections(parseCSV(rejCsv));
+    renderEquityChart(allTrades, summary);
+    renderLog(summary.log_entries);
+
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('last-updated').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+function renderSummary(s) {
+  // Regime badge
+  const badge = document.getElementById('regime-badge');
+  if (s.velocity_paused) {
+    badge.textContent = '⬤ Velocity Paused';
+    badge.className = 'regime-badge regime-paused';
+  } else if (!s.spy_above_200d) {
+    badge.textContent = '⬤ Bear Regime';
+    badge.className = 'regime-badge regime-bear';
+  } else {
+    badge.textContent = '⬤ Bull Regime';
+    badge.className = 'regime-badge regime-bull';
+  }
+
+  // Portfolio KPIs
+  const pv = safeNum(s.portfolio_value);
+  const start = safeNum(s.starting_equity) || 100000;
+  document.getElementById('kpi-portfolio').textContent =
+    pv ? '$' + Math.round(pv).toLocaleString() : '—';
+  if (pv) {
+    const ret = ((pv - start) / start * 100).toFixed(1);
+    const cls = pv >= start ? 'pos' : 'neg';
+    document.getElementById('kpi-return').innerHTML =
+      `<span class="${cls}">${ret >= 0 ? '+' : ''}${ret}% vs $${start.toLocaleString()} start</span>`;
+  }
+
+  // Positions
+  const op = safeNum(s.open_positions);
+  const mx = safeNum(s.max_positions) || 60;
+  document.getElementById('kpi-positions').textContent = op !== null ? `${op} / ${mx}` : '—';
+  document.getElementById('kpi-slots').textContent = op !== null ? `${mx - op} slots available` : '—';
+
+  // Win rate
+  const wr = safeNum(s.win_rate);
+  const tc = safeNum(s.total_closed_trades);
+  document.getElementById('kpi-winrate').innerHTML = wr !== null ? `<span class="pos">${wr.toFixed(1)}%</span>` : '—';
+  document.getElementById('kpi-trades').textContent = tc !== null ? `${tc} closed trades` : '—';
+
+  // VIX
+  const vix = safeNum(s.vix);
+  document.getElementById('kpi-vix').textContent = vix !== null ? vix.toFixed(1) : '—';
+  document.getElementById('kpi-possize').textContent = s.position_size_pct ? `${s.position_size_pct}% position size` : '—';
+
+  // Today
+  document.getElementById('kpi-exits').textContent = s.exits_today !== undefined ? `${s.exits_today} exits` : '—';
+  document.getElementById('kpi-entries').textContent =
+    s.entries_filled_today !== undefined
+      ? `${s.entries_filled_today} filled · ${s.entries_missed_today || 0} missed`
+      : '—';
+
+  // All overlays 30d
+  const allOvl = safeNum(s.hedge_pnl_30d);
+  document.getElementById('kpi-overlay-pnl').innerHTML = allOvl !== null ? fmtPnl(allOvl) : '—';
+
+  // ── GOLD overlay status ──
+  const goldIn = s.gold_in_position;
+  const pill = document.getElementById('gold-status-pill');
+  if (goldIn === true) {
+    pill.textContent = '● IN POSITION';
+    pill.className = 'status-pill pill-in';
+  } else if (goldIn === false) {
+    pill.textContent = '○ OUT / FLAT';
+    pill.className = 'status-pill pill-out';
+  } else {
+    pill.textContent = '— checking';
+    pill.className = 'status-pill pill-out';
+  }
+  document.getElementById('gold-price').textContent =
+    s.gold_price ? `$${Number(s.gold_price).toFixed(2)}` : '—';
+  document.getElementById('gold-ma200').textContent =
+    s.gold_ma200 ? `$${Number(s.gold_ma200).toFixed(2)}` : '—';
+  const slope = safeNum(s.gold_tlt_slope);
+  if (slope !== null) {
+    const sc = slope >= 0 ? 'pos' : 'neg';
+    document.getElementById('gold-slope').innerHTML = `<span class="${sc}">${slope >= 0 ? '+' : ''}${slope.toFixed(4)}</span>`;
+  }
+  document.getElementById('gold-pnl-30d').innerHTML = s.gold_pnl_30d !== undefined ? fmtPnl(s.gold_pnl_30d) : '—';
+  document.getElementById('gold-pnl-all').innerHTML = s.gold_pnl_all !== undefined ? fmtPnl(s.gold_pnl_all) : '—';
+
+  // ── SECROT overlay status ──
+  const secPill = document.getElementById('secrot-status-pill');
+  const secActive = s.secrot_active;
+  if (secActive === true) {
+    secPill.textContent = '● ACTIVE';
+    secPill.className = 'status-pill pill-in';
+  } else if (secActive === false) {
+    secPill.textContent = '○ CASH (BEAR)';
+    secPill.className = 'status-pill pill-out';
+  } else {
+    secPill.textContent = '— checking';
+    secPill.className = 'status-pill pill-out';
+  }
+  const sectors = s.secrot_sectors || [];
+  const moms = s.secrot_momentum || {};
+  const secEl = document.getElementById('secrot-sectors');
+  if (sectors.length > 0) {
+    secEl.innerHTML = sectors.map(sec => {
+      const m = moms[sec] !== undefined ? ` ${moms[sec] > 0 ? '+' : ''}${Number(moms[sec]).toFixed(1)}%` : '';
+      return `<span class="sector-tag">${sec}${m}</span>`;
+    }).join('');
+  } else {
+    secEl.textContent = s.secrot_reason || (secActive === false ? 'Cash — bear regime' : '—');
+  }
+  document.getElementById('secrot-pnl-30d').innerHTML = s.secrot_pnl_30d !== undefined ? fmtPnl(s.secrot_pnl_30d) : '—';
+  document.getElementById('secrot-pnl-all').innerHTML = s.secrot_pnl_all !== undefined ? fmtPnl(s.secrot_pnl_all) : '—';
+
+  // ── TLT Bear overlay (Idea I) ──
+  const tltIn = s.tlt_in_position;
+  const tltPill = document.getElementById('tlt-status-pill');
+  if (tltIn === true) {
+    tltPill.textContent = '● IN POSITION (BEAR REGIME)';
+    tltPill.className = 'status-pill pill-in';
+  } else if (tltIn === false) {
+    tltPill.textContent = '○ OUT (BULL REGIME)';
+    tltPill.className = 'status-pill pill-out';
+  } else {
+    tltPill.textContent = '— checking';
+    tltPill.className = 'status-pill pill-out';
+  }
+  document.getElementById('tlt-price').textContent = s.tlt_price ? `$${Number(s.tlt_price).toFixed(2)}` : '—';
+  document.getElementById('tlt-ma50').textContent  = s.tlt_ma50  ? `$${Number(s.tlt_ma50).toFixed(2)}`  : '—';
+  if (s.spy_bear_regime !== undefined) {
+    const regEl = document.getElementById('tlt-spy-regime');
+    regEl.innerHTML = s.spy_bear_regime
+      ? '<span class="neg">Bear — TLT eligible</span>'
+      : '<span class="pos">Bull — TLT inactive</span>';
+  }
+  document.getElementById('tlt-pnl-30d').innerHTML = s.tlt_pnl_30d !== undefined ? fmtPnl(s.tlt_pnl_30d) : '—';
+  document.getElementById('tlt-pnl-all').innerHTML = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
+  document.getElementById('pb-tlt').innerHTML      = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
+
+  // ── Factor Rotation (Idea J) ──
+  const facActive = s.factor_active;
+  const facPill   = document.getElementById('factor-status-pill');
+  if (facActive === true) {
+    facPill.textContent = '● ACTIVE';
+    facPill.className = 'status-pill pill-in';
+  } else if (facActive === false) {
+    facPill.textContent = '○ CASH (BEAR)';
+    facPill.className = 'status-pill pill-out';
+  } else {
+    facPill.textContent = '— checking';
+    facPill.className = 'status-pill pill-out';
+  }
+  const facEtf = s.factor_etf;
+  document.getElementById('factor-etf').innerHTML = facEtf
+    ? `<span class="lime"><b>${facEtf}</b></span>`
+    : (facActive === false ? '<span class="neg">Cash</span>' : '—');
+  if (s.factor_qqq_mom !== undefined) {
+    const qc = s.factor_qqq_mom >= 0 ? 'pos' : 'neg';
+    document.getElementById('factor-qqq-mom').innerHTML =
+      `<span class="${qc}">${s.factor_qqq_mom >= 0 ? '+' : ''}${Number(s.factor_qqq_mom).toFixed(1)}%</span>`;
+  }
+  if (s.factor_iwm_mom !== undefined) {
+    const ic = s.factor_iwm_mom >= 0 ? 'pos' : 'neg';
+    document.getElementById('factor-iwm-mom').innerHTML =
+      `<span class="${ic}">${s.factor_iwm_mom >= 0 ? '+' : ''}${Number(s.factor_iwm_mom).toFixed(1)}%</span>`;
+  }
+  document.getElementById('factor-pnl-30d').innerHTML = s.factor_pnl_30d !== undefined ? fmtPnl(s.factor_pnl_30d) : '—';
+  document.getElementById('factor-pnl-all').innerHTML = s.factor_pnl_all !== undefined ? fmtPnl(s.factor_pnl_all) : '—';
+  document.getElementById('pb-factor').innerHTML      = s.factor_pnl_all !== undefined ? fmtPnl(s.factor_pnl_all) : '—';
+
+  // ── PDBC Commodity (Idea N) ──
+  const pdbcIn = s.pdbc_in_position;
+  const pdbcPill = document.getElementById('pdbc-status-pill');
+  if (pdbcIn === true)  { pdbcPill.textContent='● IN POSITION'; pdbcPill.className='status-pill pill-in'; }
+  else if (pdbcIn === false) { pdbcPill.textContent='○ OUT / FLAT'; pdbcPill.className='status-pill pill-out'; }
+  else { pdbcPill.textContent='— checking'; pdbcPill.className='status-pill pill-out'; }
+  if (s.pdbc_price) document.getElementById('pdbc-price').textContent = '$'+Number(s.pdbc_price).toFixed(2);
+  if (s.pdbc_ma100) document.getElementById('pdbc-ma100').textContent = '$'+Number(s.pdbc_ma100).toFixed(2);
+  if (s.pdbc_mom !== undefined) {
+    const mc = s.pdbc_mom >= 0 ? 'pos' : 'neg';
+    document.getElementById('pdbc-mom').innerHTML = `<span class="${mc}">${s.pdbc_mom>=0?'+':''}${Number(s.pdbc_mom).toFixed(1)}%</span>`;
+  }
+  document.getElementById('pdbc-pnl-30d').innerHTML = s.pdbc_pnl_30d !== undefined ? fmtPnl(s.pdbc_pnl_30d) : '—';
+  document.getElementById('pdbc-pnl-all').innerHTML = s.pdbc_pnl_all !== undefined ? fmtPnl(s.pdbc_pnl_all) : '—';
+  document.getElementById('pb-pdbc').innerHTML = s.pdbc_pnl_all !== undefined ? fmtPnl(s.pdbc_pnl_all) : '—';
+
+  // ── HYG Credit Carry (Idea O) ──
+  const hygIn = s.hyg_in_position;
+  const hygPill = document.getElementById('hyg-status-pill');
+  if (hygIn === true)  { hygPill.textContent='● IN POSITION'; hygPill.className='status-pill pill-in'; }
+  else if (hygIn === false) { hygPill.textContent='○ OUT / FLAT'; hygPill.className='status-pill pill-out'; }
+  else { hygPill.textContent='— checking'; hygPill.className='status-pill pill-out'; }
+  if (s.hyg_ratio)    document.getElementById('hyg-ratio').textContent = Number(s.hyg_ratio).toFixed(4);
+  if (s.hyg_ratio_ma) {
+    const rising = s.hyg_ratio > s.hyg_ratio_ma;
+    document.getElementById('hyg-ratio-ma').innerHTML =
+      `${Number(s.hyg_ratio_ma).toFixed(4)} <span class="${rising?'pos':'neg'}">(${rising?'↑ rising':'↓ falling'})</span>`;
+  }
+  document.getElementById('hyg-pnl-30d').innerHTML = s.hyg_pnl_30d !== undefined ? fmtPnl(s.hyg_pnl_30d) : '—';
+  document.getElementById('hyg-pnl-all').innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
+  document.getElementById('pb-hyg').innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
+
+  // ── ZROZ Panic (Idea Q) ──
+  const zrozIn = s.zroz_in_position;
+  const zrozPill = document.getElementById('zroz-status-pill');
+  if (zrozIn === true)  { zrozPill.textContent='⚡ IN POSITION (PANIC ACTIVE)'; zrozPill.className='status-pill pill-in'; }
+  else if (zrozIn === false) { zrozPill.textContent='○ OUT (calm)'; zrozPill.className='status-pill pill-out'; }
+  else { zrozPill.textContent='— checking'; zrozPill.className='status-pill pill-out'; }
+  if (s.vix !== undefined) {
+    const vl = Number(s.vix);
+    document.getElementById('zroz-vix').innerHTML =
+      `<span class="${vl>20?'neg':''}">${vl.toFixed(1)} ${vl>20?'(>20 ✓)':'(<20)'}`;
+  }
+  if (s.tlt_5d_ret !== undefined) {
+    const tc = s.tlt_5d_ret > 0.005 ? 'pos' : 'muted';
+    document.getElementById('zroz-tlt5d').innerHTML =
+      `<span class="${tc}">${(s.tlt_5d_ret*100).toFixed(2)}% ${s.tlt_5d_ret>0.005?'(>0.5% ✓)':'(<0.5%)'}`;
+  }
+  const zrozSig = s.zroz_signal_active;
+  if (zrozSig !== undefined) {
+    document.getElementById('zroz-signal').innerHTML =
+      zrozSig ? '<span class="neg">⚡ ACTIVE — VIX + TLT rally</span>' : '<span class="pos">No panic signal</span>';
+  }
+  document.getElementById('zroz-pnl-all').innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
+  document.getElementById('pb-zroz').innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
+
+  // ── Idea P put strike regime ──
+  if (s.vix !== undefined) {
+    const vl = Number(s.vix);
+    let regime = vl < 15 ? 'Low (<15) — 3%/13% OTM' :
+                 vl <= 25 ? 'Baseline (15-25) — 5%/15% OTM' :
+                 vl <= 35 ? 'High (25-35) — 8%/20% OTM' :
+                            '⚡ EXTREME (>35) — 8%/25% OTM (Idea P)';
+    const shortOtm = vl < 15 ? '13%' : vl <= 25 ? '15%' : vl <= 35 ? '20%' : '25% ← Idea P';
+    document.getElementById('put-vix-regime').innerHTML =
+      `VIX ${vl.toFixed(1)} → <span class="${vl>35?'neg':''}">${regime}</span>`;
+    document.getElementById('put-short-otm').innerHTML =
+      `<span class="${vl>35?'neg':''}">${shortOtm}</span>`;
+  }
+
+
+  // ── Unrealized P&L ──
+  if (s.unrealized_pnl_usd !== undefined) {
+    const upnl = Number(s.unrealized_pnl_usd);
+    const upnlEl = document.getElementById('kpi-unrealized');
+    if (upnlEl) {
+      upnlEl.innerHTML = fmtPnl(upnl);
+      upnlEl.style.fontSize = Math.abs(upnl) >= 10000 ? '22px' : '28px';
+    }
+    const subEl = document.getElementById('kpi-unrealized-sub');
+    if (subEl) subEl.textContent = (s.open_positions || 0) + ' open positions';
+  }
+
+  // ── Last intraday update time ──
+  if (s.last_intraday_update) {
+    const ubEl = document.getElementById('last-update-bar');
+    if (ubEl) ubEl.textContent = 'Last updated: ' + s.last_intraday_update;
+    const plEl = document.getElementById('positions-last-update');
+    if (plEl) plEl.textContent = s.last_intraday_update;
+  }
+
+  // ── Live positions table ──
+  if (s.positions_detail) {
+    try {
+      const positions = typeof s.positions_detail === 'string'
+        ? JSON.parse(s.positions_detail) : s.positions_detail;
+      const section = document.getElementById('positions-section');
+      const tbody   = document.getElementById('live-positions-tbody');
+      if (section && tbody && positions.length > 0) {
+        section.style.display = 'block';
+        tbody.innerHTML = '';
+        // Sort by P&L descending
+        positions.sort((a, b) => b.pnl_usd - a.pnl_usd);
+        let totalPnl = 0;
+        for (const p of positions) {
+          totalPnl += p.pnl_usd;
+          const pnlColor = p.pnl_usd >= 0 ? 'var(--green)' : 'var(--red)';
+          const row = document.createElement('tr');
+          row.style.borderBottom = '1px solid var(--border)';
+          row.innerHTML = `
+            <td style="padding:5px 8px;font-weight:600;">${p.ticker}</td>
+            <td style="text-align:right;padding:5px 8px;">$${Number(p.entry_price).toFixed(2)}</td>
+            <td style="text-align:right;padding:5px 8px;">$${Number(p.current_price || p.entry_price).toFixed(2)}</td>
+            <td style="text-align:right;padding:5px 8px;">${Number(p.shares).toFixed(0)}</td>
+            <td style="text-align:right;padding:5px 8px;color:${pnlColor};">${p.pnl_usd >= 0 ? '+' : ''}$${Number(p.pnl_usd).toFixed(0)}</td>
+            <td style="text-align:right;padding:5px 8px;color:${pnlColor};">${p.pnl_pct >= 0 ? '+' : ''}${Number(p.pnl_pct || 0).toFixed(2)}%</td>
+            <td style="text-align:center;padding:5px 8px;color:var(--muted);">T${p.tier}</td>
+          `;
+          tbody.appendChild(row);
+        }
+        // Total row
+        const totalRow = document.createElement('tr');
+        totalRow.style.borderTop = '2px solid var(--border)';
+        totalRow.style.fontWeight = '600';
+        const tc = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+        totalRow.innerHTML = `
+          <td colspan="4" style="padding:6px 8px;color:var(--muted);">TOTAL UNREALIZED</td>
+          <td style="text-align:right;padding:6px 8px;color:${tc};">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(0)}</td>
+          <td colspan="2"></td>
+        `;
+        tbody.appendChild(totalRow);
+      }
+    } catch(e) { console.warn('positions_detail parse error:', e); }
+  }
+
+  // ── Capital Deployed ──
   if (s.capital_deployed_usd !== undefined) {
     const dep = Number(s.capital_deployed_usd);
     const pct = Number(s.capital_deployed_pct);
@@ -57,34 +1274,255 @@ new_js = """  // ── Capital Deployed ──
     if (subEl) subEl.textContent = '$' + Math.round(cash).toLocaleString() + ' in cash';
   }
 
-  // ── VIX3M / Idea K ──"""
+  // ── VIX3M / Idea K ──
+  if (s.vix3m !== undefined && s.vix3m !== null) {
+    document.getElementById('vix3m-val').textContent = Number(s.vix3m).toFixed(2);
+  }
+  if (s.vix_backwardation !== undefined) {
+    const termEl = document.getElementById('vix-term');
+    termEl.innerHTML = s.vix_backwardation
+      ? '<span class="neg">BACKWARDATION ⚡</span>'
+      : '<span class="pos">Contango</span>';
+  }
+  if (s.vix_call_alloc_pct !== undefined) {
+    const allocEl = document.getElementById('vix-call-alloc');
+    const pct = Number(s.vix_call_alloc_pct);
+    allocEl.innerHTML = pct > 0.3
+      ? `<span class="neg">${pct.toFixed(1)}% (2x — backwardation)</span>`
+      : `<span class="pos">${pct.toFixed(1)}% (standard)</span>`;
+  }
 
-if 'capital_deployed_usd' not in src:
-    if old_js in src:
-        src = src.replace(old_js, new_js)
-        changes += 1
-        print("Fix 2 OK: added Capital Deployed JS")
-    else:
-        print("Fix 2 SKIP: could not find JS insertion point")
-else:
-    print("Fix 2 SKIP: JS already present")
+  // ── Hedge positions ──
+  const h30 = safeNum(s.hedge_pnl_30d);
+  document.getElementById('hedge-30d-meta').textContent = h30 !== null ? `All overlays 30d: ${fmt$(h30)}` : '30d: —';
+  if (s.put_spread_long) {
+    document.getElementById('put-long').textContent = '$' + s.put_spread_long;
+    document.getElementById('put-short').textContent = '$' + s.put_spread_short;
+    document.getElementById('put-expiry').textContent = s.put_spread_expiry || '—';
+    document.getElementById('put-cost').textContent = s.put_spread_cost ? '$' + s.put_spread_cost : '—';
+  }
+  if (s.vix_call_long) {
+    document.getElementById('vxc-long').textContent = s.vix_call_long;
+    document.getElementById('vxc-short').textContent = s.vix_call_short;
+    document.getElementById('vxc-expiry').textContent = s.vix_call_expiry || '—';
+  }
+  document.getElementById('put-pnl-30d').innerHTML = s.put_pnl_30d !== undefined ? fmtPnl(s.put_pnl_30d) : '—';
+  document.getElementById('vxc-pnl-30d').innerHTML = s.vxc_pnl_30d !== undefined ? fmtPnl(s.vxc_pnl_30d) : '—';
 
-# ── Save ──────────────────────────────────────────────────────────────────
-open(TARGET, 'w', encoding='utf-8').write(src)
-print(f"\nSaved {TARGET} ({len(src.splitlines())} lines, {changes} changes)")
+  // P&L breakdown (all-time from trades.csv — computed in renderTradeLog)
+  // Placeholder — will be updated by renderTradeLog
+  document.getElementById('pb-gold').innerHTML = s.gold_pnl_all !== undefined ? fmtPnl(s.gold_pnl_all) : '—';
+  document.getElementById('pb-secrot').innerHTML = s.secrot_pnl_all !== undefined ? fmtPnl(s.secrot_pnl_all) : '—';
 
-# ── Verify ────────────────────────────────────────────────────────────────
-import re
-from collections import Counter
-dupes = {k:v for k,v in Counter(re.findall(r'id="([^"]+)"', src)).items() if v>1}
-checks = [('kpi-deployed', 'KPI card'), ('capital_deployed_usd', 'JS renderer'), ('kpi-unrealized', 'Unrealized card still present')]
-for token, desc in checks:
-    print(f"  {'OK' if token in src else 'MISSING'}: {desc}")
-print(f"  Duplicate IDs: {dupes if dupes else 'None — clean'}")
+  // Last scan
+  const scanCands = s.scan_candidates ? JSON.parse(s.scan_candidates) : [];
+  document.getElementById('scan-meta').textContent =
+    `${s.scan_date || '—'} · ${s.scan_signals || 0} signals · ${s.scan_orders_sent || 0} orders`;
+  const scanBody = document.getElementById('scan-body');
+  if (scanCands.length === 0) {
+    scanBody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;">No signals</td></tr>';
+  } else {
+    scanBody.innerHTML = scanCands.map(c => `
+      <tr>
+        <td><b>${c.ticker}</b></td>
+        <td><span class="tier-badge tier-${c.tier}">T${c.tier}</span></td>
+        <td>${c.rsi2}</td>
+        <td>$${c.limit_price}</td>
+        <td>${c.size_pct}%</td>
+        <td>${c.consec_down}</td>
+        <td style="color:var(--muted)">${c.status}</td>
+      </tr>`).join('');
+  }
+}
 
-if changes > 0:
-    print("\nNow run:")
-    print("  cd C:\\naive-mean-reversion")
-    print("  git add index.html")
-    print('  git commit -m "Add Capital Deployed KPI"')
-    print("  git push origin main")
+function renderPositions(rows, summary) {
+  const tbody = document.getElementById('positions-body');
+  document.getElementById('positions-meta').textContent = `${rows.length} open`;
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">No open positions</td></tr>';
+    return;
+  }
+  const today = new Date();
+  tbody.innerHTML = rows.map(r => {
+    const held  = r.entry_date ? Math.round((today - new Date(r.entry_date)) / 86400000) : 0;
+    const left  = Math.max(0, (parseInt(r.hold_days) || 8) - held);
+    const tgt   = r.entry_price ? (parseFloat(r.entry_price) * (1 + parseFloat(r.profit_target || 0.02))).toFixed(2) : '—';
+    const pnlPct = r.entry_price && r.exit_price
+      ? ((parseFloat(r.exit_price) - parseFloat(r.entry_price)) / parseFloat(r.entry_price) * 100).toFixed(2)
+      : null;
+    return `<tr>
+      <td><b>${r.ticker}</b></td>
+      <td><span class="tier-badge tier-${r.tier}">T${r.tier}</span></td>
+      <td>$${parseFloat(r.entry_price || 0).toFixed(2)}</td>
+      <td>$${tgt}</td>
+      <td>${left}d</td>
+      <td>${pnlPct !== null ? fmtPct(pnlPct) : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTradeLog(trades, filter) {
+  const MR_ONLY = trades.filter(t =>
+    t.ticker !== 'SPY_PUT_SPREAD' && t.ticker !== 'VIX_CALL_SPREAD' &&
+    !t.ticker.startsWith('OVL_')
+  );
+  const filtered = filter === 'all' ? MR_ONLY : MR_ONLY.filter(t => t.exit_reason === filter);
+  const tbody = document.getElementById('log-body');
+  document.getElementById('tradelog-meta').textContent = `${MR_ONLY.length} MR trades`;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:20px;">No trades</td></tr>';
+    return;
+  }
+
+  // Compute overlay P&L for breakdown panel
+  const puts   = trades.filter(t => t.ticker === 'SPY_PUT_SPREAD');
+  const vxcs   = trades.filter(t => t.ticker === 'VIX_CALL_SPREAD');
+  const putNet  = puts.reduce((s, t) => s + (parseFloat(t.pnl_usd) || 0), 0);
+  const vxcNet  = vxcs.reduce((s, t) => s + (parseFloat(t.pnl_usd) || 0), 0);
+  document.getElementById('pb-put').innerHTML = fmtPnl(putNet);
+  document.getElementById('pb-vxc').innerHTML = fmtPnl(vxcNet);
+
+  tbody.innerHTML = [...filtered].reverse().slice(0, 200).map(t => {
+    const pnl = parseFloat(t.pnl_usd);
+    const pct = parseFloat(t.pnl_pct);
+    return `<tr>
+      <td><b>${t.ticker}</b></td>
+      <td style="color:var(--muted);font-size:10px">${t.entry_date}</td>
+      <td style="color:var(--muted);font-size:10px">${t.exit_date}</td>
+      <td>$${parseFloat(t.entry_price || 0).toFixed(2)}</td>
+      <td>$${parseFloat(t.exit_price || 0).toFixed(2)}</td>
+      <td>${fmtPnl(pnl)}</td>
+      <td>${fmtPct(pct)}</td>
+      <td style="color:var(--muted);font-size:10px">${t.exit_reason}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLog(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTradeLog(allTrades, filter);
+}
+
+function renderRejections(rows) {
+  const tbody = document.getElementById('reject-body');
+  document.getElementById('reject-meta').textContent = `${rows.length} in 30d`;
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">No rejections yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = [...rows].reverse().slice(0, 50).map(r => `
+    <tr>
+      <td><b>${r.ticker}</b></td>
+      <td style="color:var(--muted);font-size:10px">${r.date}</td>
+      <td>$${parseFloat(r.limit_price || 0).toFixed(2)}</td>
+      <td>$${parseFloat(r.open_price || 0).toFixed(2)}</td>
+      <td>${r.gap_pct ? (parseFloat(r.gap_pct) > 0 ? '+' : '') + parseFloat(r.gap_pct).toFixed(2) + '%' : '—'}</td>
+      <td style="color:var(--muted);font-size:10px;max-width:300px;word-break:break-word">${r.reason}</td>
+    </tr>`).join('');
+}
+
+function renderEquityChart(trades, summary) {
+  const canvas = document.getElementById('equity-chart');
+  const container = document.getElementById('chart-container');
+  canvas.width  = container.offsetWidth;
+  canvas.height = container.offsetHeight;
+  const ctx = canvas.getContext('2d');
+
+  // Build equity curve from MR trades only
+  const mrTrades = trades.filter(t =>
+    t.ticker !== 'SPY_PUT_SPREAD' && t.ticker !== 'VIX_CALL_SPREAD' &&
+    !t.ticker.startsWith('OVL_') && t.exit_date && t.pnl_usd
+  ).sort((a, b) => a.exit_date > b.exit_date ? 1 : -1);
+
+  if (mrTrades.length === 0) {
+    ctx.fillStyle = '#5a6880';
+    ctx.font = '12px IBM Plex Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('No trade data yet', canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  let eq = 100000;
+  const points = [{ date: mrTrades[0].entry_date, eq }];
+  mrTrades.forEach(t => {
+    eq += parseFloat(t.pnl_usd) || 0;
+    points.push({ date: t.exit_date, eq });
+  });
+
+  const minEq = Math.min(...points.map(p => p.eq));
+  const maxEq = Math.max(...points.map(p => p.eq));
+  const pad   = { t: 20, r: 20, b: 30, l: 70 };
+  const W = canvas.width - pad.l - pad.r;
+  const H = canvas.height - pad.t - pad.b;
+
+  const xOf = i => pad.l + (i / (points.length - 1)) * W;
+  const yOf = v => pad.t + H - ((v - minEq) / (maxEq - minEq || 1)) * H;
+
+  // Grid
+  ctx.strokeStyle = '#1e2530';
+  ctx.lineWidth = 1;
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    const y = pad.t + H * (1 - f);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + W, y); ctx.stroke();
+    const v = minEq + f * (maxEq - minEq);
+    ctx.fillStyle = '#5a6880';
+    ctx.font = '9px IBM Plex Mono';
+    ctx.textAlign = 'right';
+    const label = v >= 1e6 ? '$' + (v/1e6).toFixed(2) + 'M' : '$' + Math.round(v).toLocaleString();
+    ctx.fillText(label, pad.l - 6, y + 3);
+  });
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + H);
+  grad.addColorStop(0, 'rgba(0,212,255,0.18)');
+  grad.addColorStop(1, 'rgba(0,212,255,0)');
+  ctx.beginPath();
+  ctx.moveTo(xOf(0), yOf(points[0].eq));
+  points.forEach((p, i) => ctx.lineTo(xOf(i), yOf(p.eq)));
+  ctx.lineTo(xOf(points.length - 1), pad.t + H);
+  ctx.lineTo(xOf(0), pad.t + H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#00d4ff';
+  ctx.lineWidth = 1.5;
+  points.forEach((p, i) => {
+    if (i === 0) ctx.moveTo(xOf(i), yOf(p.eq));
+    else ctx.lineTo(xOf(i), yOf(p.eq));
+  });
+  ctx.stroke();
+
+  // Final dot
+  const lx = xOf(points.length - 1);
+  const ly = yOf(points[points.length - 1].eq);
+  ctx.beginPath();
+  ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#00d4ff';
+  ctx.fill();
+}
+
+function renderLog(logEntries) {
+  const container = document.getElementById('log-container');
+  let entries = [];
+  try { entries = JSON.parse(logEntries); } catch(e) { entries = []; }
+  if (!entries.length) { container.textContent = 'No log data'; return; }
+  container.innerHTML = entries.map(line => {
+    const cls = line.includes('ERROR') ? 'log-error' : line.includes('WARNING') ? 'log-warn' : 'log-info';
+    return `<div class="${cls}">${line}</div>`;
+  }).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+// Init
+loadData();
+// Auto-refresh every 5 minutes
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
