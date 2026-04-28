@@ -424,11 +424,6 @@ canvas { display: block; }
     <div class="kpi-value" id="kpi-exits">—</div>
     <div class="kpi-sub" id="kpi-entries">—</div>
   </div>
-  <div class="kpi green-kpi">
-    <div class="kpi-label">Unrealized P&L (MR)</div>
-    <div class="kpi-value" id="kpi-unrealized" style="font-size:28px;">—</div>
-    <div class="kpi-sub" id="kpi-unrealized-sub">open positions</div>
-  </div>
   <div class="kpi gold-kpi">
     <div class="kpi-label">All Overlays 30d</div>
     <div class="kpi-value gld" id="kpi-overlay-pnl">—</div>
@@ -1266,6 +1261,17 @@ function renderSummary(s) {
         tbody.appendChild(totalRow);
       }
     } catch(e) { console.warn('positions_detail parse error:', e); }
+  }
+
+  // ── Capital Deployed ──
+  if (s.capital_deployed_usd !== undefined) {
+    const dep = Number(s.capital_deployed_usd);
+    const pct = Number(s.capital_deployed_pct);
+    const cash = Number(s.capital_cash_usd);
+    const depEl = document.getElementById('kpi-deployed');
+    const subEl = document.getElementById('kpi-deployed-sub');
+    if (depEl) depEl.textContent = '$' + Math.round(dep).toLocaleString() + ' (' + pct.toFixed(1) + '%)';
+    if (subEl) subEl.textContent = '$' + Math.round(cash).toLocaleString() + ' in cash';
   }
 
   // ── VIX3M / Idea K ──
