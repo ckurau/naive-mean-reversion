@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-28",
+  "date": "2026-04-29",
   "strategy_version": "V7.3",
   "portfolio_value": 99527.68,
   "starting_equity": 100000,
@@ -18,13 +18,140 @@
   "gold_pnl_all": 0.0,
   "secrot_pnl_all": 0.0,
   "exits_today": 0,
-  "entries_filled_today": 1,
+  "entries_filled_today": 21,
   "entries_missed_today": 0,
   "entries_missed": "[]",
   "exit_fill_issues": "[]",
   "log_entries": "[\"2026-04-28 06:35:02,791 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=640318253, symbol='BGC', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='BGC', tradingClass='NMS'), position=347.0, marketPrice=11.4200001, marketValue=3962.74, averageCost=11.3834726, unrealizedPNL=12.68, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,791 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864003648, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=600.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00600000', tradingClass='SPY'), position=-1.0, marketPrice=3.35564495, marketValue=-335.56, averageCost=384.9408, unrealizedPNL=49.38, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,792 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864004198, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=675.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00675000', tradingClass='SPY'), position=1.0, marketPrice=10.4612818, marketValue=1046.13, averageCost=1134.048, unrealizedPNL=-87.92, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,792 INFO orderStatus: Trade(contract=Stock(symbol='PTGX', exchange='SMART', currency='USD'), order=Order(orderId=3, clientId=10, permId=1140805806, action='BUY', totalQuantity=35.0, orderType='MKT', lmtPrice=0.0, auxPrice=0.0, tif='DAY'), orderStatus=OrderStatus(orderId=3, status='Submitted', filled=0.0, remaining=35.0, avgFillPrice=0.0, permId=1140805806, parentId=0, lastFillPrice=0.0, clientId=10, whyHeld='', mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 0, 2, 570937, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 35, 2, 728983, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 35, 2, 769253, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0)], advancedError='')\", \"2026-04-28 06:35:02,792 INFO position: Position(account='DUP671219', contract=Stock(conId=243505376, symbol='PTGX', exchange='NASDAQ', currency='USD', localSymbol='PTGX', tradingClass='NMS'), position=35.0, avgCost=100.78)\", \"2026-04-28 06:35:02,802 INFO execDetails Execution(execId='00025b49.69f10d52.01.01', time=datetime.datetime(2026, 4, 28, 13, 30, 27, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='PEARL', side='BOT', shares=35.0, price=100.78, permId=1140805806, clientId=10, orderId=3, liquidation=0, cumQty=35.0, avgPrice=100.78, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-04-28 06:35:02,802 INFO execDetails: Fill(contract=Stock(conId=243505376, symbol='PTGX', exchange='PEARL', currency='USD', localSymbol='PTGX', tradingClass='NMS'), execution=Execution(execId='00025b49.69f10d52.01.01', time=datetime.datetime(2026, 4, 28, 13, 30, 27, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='PEARL', side='BOT', shares=35.0, price=100.78, permId=1140805806, clientId=10, orderId=3, liquidation=0, cumQty=35.0, avgPrice=100.78, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2026, 4, 28, 13, 35, 2, 769253, tzinfo=datetime.timezone.utc))\", \"2026-04-28 06:35:02,803 INFO orderStatus: Trade(contract=Stock(symbol='PTGX', exchange='SMART', currency='USD'), order=Order(orderId=3, clientId=10, permId=1140805806, action='BUY', totalQuantity=35.0, orderType='MKT', lmtPrice=0.0, auxPrice=0.0, tif='DAY'), orderStatus=OrderStatus(orderId=3, status='Filled', filled=35.0, remaining=0.0, avgFillPrice=100.78, permId=1140805806, parentId=0, lastFillPrice=100.78, clientId=10, whyHeld='', mktCapPrice=0.0), fills=[Fill(contract=Stock(conId=243505376, symbol='PTGX', exchange='PEARL', currency='USD', localSymbol='PTGX', tradingClass='NMS'), execution=Execution(execId='00025b49.69f10d52.01.01', time=datetime.datetime(2026, 4, 28, 13, 30, 27, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='PEARL', side='BOT', shares=35.0, price=100.78, permId=1140805806, clientId=10, orderId=3, liquidation=0, cumQty=35.0, avgPrice=100.78, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2026, 4, 28, 13, 35, 2, 769253, tzinfo=datetime.timezone.utc))], log=[TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 0, 2, 570937, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 35, 2, 728983, tzinfo=datetime.timezone.utc), status='PreSubmitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 35, 2, 769253, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 35, 2, 769253, tzinfo=datetime.timezone.utc), status='Submitted', message='Fill 35.0@100.78', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 4, 28, 13, 35, 2, 769253, tzinfo=datetime.timezone.utc), status='Filled', message='', errorCode=0)], advancedError='')\", \"2026-04-28 06:35:02,803 INFO commissionReport: CommissionReport(execId='00025b49.69f10d52.01.01', commission=1.0, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)\", \"2026-04-28 06:35:02,803 INFO position: Position(account='DUP671219', contract=Stock(conId=243505376, symbol='PTGX', exchange='NASDAQ', currency='USD', localSymbol='PTGX', tradingClass='NMS'), position=35.0, avgCost=100.80857142857143)\", \"2026-04-28 06:35:02,804 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4350, symbol='HON', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='HON', tradingClass='NMS'), position=14.0, marketPrice=213.6189728, marketValue=2990.67, averageCost=213.19142855, unrealizedPNL=5.99, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,806 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=6747, symbol='EGP', right='0', primaryExchange='NYSE', currency='USD', localSymbol='EGP', tradingClass='EGP'), position=15.0, marketPrice=200.7599945, marketValue=3011.4, averageCost=200.25666665, unrealizedPNL=7.55, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,806 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4215217, symbol='XLE', right='0', primaryExchange='ARCA', currency='USD', localSymbol='XLE', tradingClass='XLE'), position=53.0, marketPrice=57.77000045, marketValue=3061.81, averageCost=56.8088679, unrealizedPNL=50.94, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,806 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4215230, symbol='XLK', right='0', primaryExchange='ARCA', currency='USD', localSymbol='XLK', tradingClass='XLK'), position=19.0, marketPrice=156.8200073, marketValue=2979.58, averageCost=160.5826316, unrealizedPNL=-71.49, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,806 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4215235, symbol='XLU', right='0', primaryExchange='ARCA', currency='USD', localSymbol='XLU', tradingClass='XLU'), position=65.0, marketPrice=46.41999815, marketValue=3017.3, averageCost=46.2053846, unrealizedPNL=13.95, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,807 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=40358992, symbol='EVR', right='0', primaryExchange='NYSE', currency='USD', localSymbol='EVR', tradingClass='EVR'), position=9.0, marketPrice=348.770874, marketValue=3138.94, averageCost=345.4311111, unrealizedPNL=30.06, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,807 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=43652089, symbol='HYG', right='0', primaryExchange='ARCA', currency='USD', localSymbol='HYG', tradingClass='HYG'), position=62.0, marketPrice=80.33999635, marketValue=4981.08, averageCost=80.53612905, unrealizedPNL=-12.16, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,807 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=47965865, symbol='SATS', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='SATS', tradingClass='NMS'), position=26.0, marketPrice=119.8360367, marketValue=3115.74, averageCost=117.91846155, unrealizedPNL=49.86, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,807 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=80986742, symbol='GM', right='0', primaryExchange='NYSE', currency='USD', localSymbol='GM', tradingClass='GM'), position=38.0, marketPrice=77.4282303, marketValue=2942.27, averageCost=78.1463158, unrealizedPNL=-27.29, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,807 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=140006230, symbol='SBCF', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='SBCF', tradingClass='NMS'), position=96.0, marketPrice=31.8523445, marketValue=3057.83, averageCost=31.58041665, unrealizedPNL=26.11, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,808 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=180350774, symbol='IRM', right='0', primaryExchange='NYSE', currency='USD', localSymbol='IRM', tradingClass='IRM'), position=26.0, marketPrice=112.60076905, marketValue=2927.62, averageCost=115.87846155, unrealizedPNL=-85.22, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,808 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=243505376, symbol='PTGX', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='PTGX', tradingClass='NMS'), position=35.0, marketPrice=99.4024353, marketValue=3479.09, averageCost=100.80857145, unrealizedPNL=-49.21, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,808 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=316490716, symbol='AMRX', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='AMRX', tradingClass='NMS'), position=312.0, marketPrice=12.6899996, marketValue=3959.28, averageCost=12.875, unrealizedPNL=-57.72, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,808 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=320227565, symbol='PDBC', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='PDBC', tradingClass='NMS'), position=281.0, marketPrice=18.01000025, marketValue=5060.81, averageCost=17.935, unrealizedPNL=21.08, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,808 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=320227571, symbol='QQQ', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='QQQ', tradingClass='NMS'), position=9.0, marketPrice=655.8499756, marketValue=5902.65, averageCost=664.2311111, unrealizedPNL=-75.43, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,809 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=322317091, symbol='EPRT', right='0', primaryExchange='NYSE', currency='USD', localSymbol='EPRT', tradingClass='EPRT'), position=96.0, marketPrice=31.4042015, marketValue=3014.8, averageCost=31.79041665, unrealizedPNL=-37.08, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,809 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=361098080, symbol='PLMR', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='PLMR', tradingClass='NMS'), position=24.0, marketPrice=125.55060575, marketValue=3013.21, averageCost=126.03166665, unrealizedPNL=-11.55, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,809 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=371886040, symbol='LHX', right='0', primaryExchange='NYSE', currency='USD', localSymbol='LHX', tradingClass='LHX'), position=9.0, marketPrice=323.03323365, marketValue=2907.3, averageCost=321.1111111, unrealizedPNL=17.3, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,809 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=383308243, symbol='NVST', right='0', primaryExchange='NYSE', currency='USD', localSymbol='NVST', tradingClass='NVST'), position=112.0, marketPrice=26.56547355, marketValue=2975.33, averageCost=27.21892855, unrealizedPNL=-73.19, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,809 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=640318253, symbol='BGC', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='BGC', tradingClass='NMS'), position=347.0, marketPrice=11.44942665, marketValue=3972.95, averageCost=11.3834726, unrealizedPNL=22.89, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,810 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864003648, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=600.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00600000', tradingClass='SPY'), position=-1.0, marketPrice=3.47000005, marketValue=-347.0, averageCost=384.9408, unrealizedPNL=37.94, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,810 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864004198, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=675.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00675000', tradingClass='SPY'), position=1.0, marketPrice=10.8100004, marketValue=1081.0, averageCost=1134.048, unrealizedPNL=-53.05, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,811 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4350, symbol='HON', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='HON', tradingClass='NMS'), position=14.0, marketPrice=213.12156675, marketValue=2983.7, averageCost=213.19142855, unrealizedPNL=-0.98, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,811 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=6747, symbol='EGP', right='0', primaryExchange='NYSE', currency='USD', localSymbol='EGP', tradingClass='EGP'), position=15.0, marketPrice=201.09257505, marketValue=3016.39, averageCost=200.25666665, unrealizedPNL=12.54, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,811 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4215217, symbol='XLE', right='0', primaryExchange='ARCA', currency='USD', localSymbol='XLE', tradingClass='XLE'), position=53.0, marketPrice=57.6100006, marketValue=3053.33, averageCost=56.8088679, unrealizedPNL=42.46, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,811 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4215230, symbol='XLK', right='0', primaryExchange='ARCA', currency='USD', localSymbol='XLK', tradingClass='XLK'), position=19.0, marketPrice=157.1927185, marketValue=2986.66, averageCost=160.5826316, unrealizedPNL=-64.41, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,812 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4215235, symbol='XLU', right='0', primaryExchange='ARCA', currency='USD', localSymbol='XLU', tradingClass='XLU'), position=65.0, marketPrice=46.30000305, marketValue=3009.5, averageCost=46.2053846, unrealizedPNL=6.15, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,812 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=40358992, symbol='EVR', right='0', primaryExchange='NYSE', currency='USD', localSymbol='EVR', tradingClass='EVR'), position=9.0, marketPrice=350.058136, marketValue=3150.52, averageCost=345.4311111, unrealizedPNL=41.64, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,812 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=43652089, symbol='HYG', right='0', primaryExchange='ARCA', currency='USD', localSymbol='HYG', tradingClass='HYG'), position=62.0, marketPrice=80.3942871, marketValue=4984.45, averageCost=80.53612905, unrealizedPNL=-8.79, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,812 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=47965865, symbol='SATS', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='SATS', tradingClass='NMS'), position=26.0, marketPrice=119.73015595, marketValue=3112.98, averageCost=117.91846155, unrealizedPNL=47.1, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,812 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=80986742, symbol='GM', right='0', primaryExchange='NYSE', currency='USD', localSymbol='GM', tradingClass='GM'), position=38.0, marketPrice=77.54501345, marketValue=2946.71, averageCost=78.1463158, unrealizedPNL=-22.85, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,813 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=140006230, symbol='SBCF', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='SBCF', tradingClass='NMS'), position=96.0, marketPrice=32.0164795, marketValue=3073.58, averageCost=31.58041665, unrealizedPNL=41.86, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,813 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=180350774, symbol='IRM', right='0', primaryExchange='NYSE', currency='USD', localSymbol='IRM', tradingClass='IRM'), position=26.0, marketPrice=112.19999695, marketValue=2917.2, averageCost=115.87846155, unrealizedPNL=-95.64, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,813 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=243505376, symbol='PTGX', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='PTGX', tradingClass='NMS'), position=35.0, marketPrice=99.6070328, marketValue=3486.25, averageCost=100.80857145, unrealizedPNL=-42.05, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,813 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=316490716, symbol='AMRX', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='AMRX', tradingClass='NMS'), position=312.0, marketPrice=12.8299999, marketValue=4002.96, averageCost=12.875, unrealizedPNL=-14.04, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,813 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=320227571, symbol='QQQ', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='QQQ', tradingClass='NMS'), position=9.0, marketPrice=656.72998045, marketValue=5910.57, averageCost=664.2311111, unrealizedPNL=-67.51, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,814 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=322317091, symbol='EPRT', right='0', primaryExchange='NYSE', currency='USD', localSymbol='EPRT', tradingClass='EPRT'), position=96.0, marketPrice=31.42422865, marketValue=3016.73, averageCost=31.79041665, unrealizedPNL=-35.15, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,814 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=361098080, symbol='PLMR', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='PLMR', tradingClass='NMS'), position=24.0, marketPrice=125.66809845, marketValue=3016.03, averageCost=126.03166665, unrealizedPNL=-8.73, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,814 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=371886040, symbol='LHX', right='0', primaryExchange='NYSE', currency='USD', localSymbol='LHX', tradingClass='LHX'), position=9.0, marketPrice=324.3634033, marketValue=2919.27, averageCost=321.1111111, unrealizedPNL=29.27, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,814 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=383308243, symbol='NVST', right='0', primaryExchange='NYSE', currency='USD', localSymbol='NVST', tradingClass='NVST'), position=112.0, marketPrice=26.69763945, marketValue=2990.14, averageCost=27.21892855, unrealizedPNL=-58.38, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,815 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=640318253, symbol='BGC', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='BGC', tradingClass='NMS'), position=347.0, marketPrice=11.47516345, marketValue=3981.88, averageCost=11.3834726, unrealizedPNL=31.82, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,815 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864003648, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=600.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00600000', tradingClass='SPY'), position=-1.0, marketPrice=3.4200001, marketValue=-342.0, averageCost=384.9408, unrealizedPNL=42.94, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:02,815 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864004198, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=675.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00675000', tradingClass='SPY'), position=1.0, marketPrice=10.6800003, marketValue=1068.0, averageCost=1134.048, unrealizedPNL=-66.05, realizedPNL=0.0, account='DUP671219')\", \"2026-04-28 06:35:04,744 INFO execDetails Execution(execId='00025b49.69f10d52.01.01', time=datetime.datetime(2026, 4, 28, 13, 30, 27, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='PEARL', side='BOT', shares=35.0, price=100.78, permId=1140805806, clientId=10, orderId=3, liquidation=0, cumQty=35.0, avgPrice=100.78, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-04-28 06:35:04,745 INFO commissionReport: CommissionReport(execId='00025b49.69f10d52.01.01', commission=1.0, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)\", \"2026-04-28 06:35:07,756 INFO Fills received: ['PTGX']\", \"2026-04-28 06:35:07,950 INFO MOO fill confirmed: PTGX @ $100.78 (prior close was $98.51)\", \"2026-04-28 06:35:07,957 INFO Disconnecting from 127.0.0.1:4002, 323 B sent in 10 messages, 150 kB received in 2986 messages, session time 2.11 ks.\", \"2026-04-28 06:35:07,957 INFO Disconnecting\", \"2026-04-28 06:35:07,958 INFO Disconnected from IBKR\"]",
   "exits_summary": "[]",
-  "entries_summary": "[\"FILLED: PTGX 35sh @ $100.78 (limit $98.51)\"]",
+  "entries_summary": [
+    {
+      "ticker": "AMRX",
+      "entry_price": 12.87,
+      "shares": 312.0,
+      "tier": 2
+    },
+    {
+      "ticker": "BGC",
+      "entry_price": 11.378473,
+      "shares": 347.0,
+      "tier": 2
+    },
+    {
+      "ticker": "EGP",
+      "entry_price": 200.19,
+      "shares": 15.0,
+      "tier": 3
+    },
+    {
+      "ticker": "EPRT",
+      "entry_price": 31.78,
+      "shares": 96.0,
+      "tier": 2
+    },
+    {
+      "ticker": "EVR",
+      "entry_price": 345.32,
+      "shares": 9.0,
+      "tier": 2
+    },
+    {
+      "ticker": "GM",
+      "entry_price": 78.12,
+      "shares": 38.0,
+      "tier": 2
+    },
+    {
+      "ticker": "HON",
+      "entry_price": 213.12,
+      "shares": 14.0,
+      "tier": 2
+    },
+    {
+      "ticker": "IRM",
+      "entry_price": 115.84,
+      "shares": 26.0,
+      "tier": 3
+    },
+    {
+      "ticker": "LHX",
+      "entry_price": 321.0,
+      "shares": 9.0,
+      "tier": 1
+    },
+    {
+      "ticker": "NVST",
+      "entry_price": 27.21,
+      "shares": 112.0,
+      "tier": 3
+    },
+    {
+      "ticker": "PLMR",
+      "entry_price": 125.99,
+      "shares": 24.0,
+      "tier": 2
+    },
+    {
+      "ticker": "SBCF",
+      "entry_price": 31.57,
+      "shares": 96.0,
+      "tier": 2
+    },
+    {
+      "ticker": "PTGX",
+      "entry_price": 100.78,
+      "shares": 35.0,
+      "tier": 3
+    },
+    {
+      "ticker": "ALGN",
+      "entry_price": 177.27999877929688,
+      "shares": 28.0,
+      "tier": 3
+    },
+    {
+      "ticker": "COHR",
+      "entry_price": 303.9700012207031,
+      "shares": 12.0,
+      "tier": 3
+    },
+    {
+      "ticker": "CYTK",
+      "entry_price": 60.689998626708984,
+      "shares": 63.0,
+      "tier": 3
+    },
+    {
+      "ticker": "GRMN",
+      "entry_price": 247.80999755859375,
+      "shares": 15.0,
+      "tier": 3
+    },
+    {
+      "ticker": "PCG",
+      "entry_price": 16.260000228881836,
+      "shares": 234.0,
+      "tier": 1
+    },
+    {
+      "ticker": "PLUS",
+      "entry_price": 83.66999816894531,
+      "shares": 45.0,
+      "tier": 2
+    },
+    {
+      "ticker": "TGTX",
+      "entry_price": 34.58000183105469,
+      "shares": 110.0,
+      "tier": 3
+    },
+    {
+      "ticker": "VFC",
+      "entry_price": 18.709999084472656,
+      "shares": 203.0,
+      "tier": 3
+    }
+  ],
   "put_spread_long": 675.0,
   "put_spread_short": 600.0,
   "put_spread_expiry": "2026-07-17",
@@ -39,7 +166,7 @@
   "capital_cash_usd": 31703.35,
   "positions_detail": "[{\"ticker\": \"AMRX\", \"entry_price\": 12.87, \"current_price\": 12.79, \"shares\": 312.0, \"pnl_usd\": -24.96, \"pnl_pct\": -0.62, \"tier\": 2}, {\"ticker\": \"BGC\", \"entry_price\": 11.3785, \"current_price\": 11.1699, \"shares\": 347.0, \"pnl_usd\": -72.36, \"pnl_pct\": -1.83, \"tier\": 2}, {\"ticker\": \"EGP\", \"entry_price\": 200.19, \"current_price\": 198.2638, \"shares\": 15.0, \"pnl_usd\": -28.89, \"pnl_pct\": -0.96, \"tier\": 3}, {\"ticker\": \"EPRT\", \"entry_price\": 31.78, \"current_price\": 31.1699, \"shares\": 96.0, \"pnl_usd\": -58.57, \"pnl_pct\": -1.92, \"tier\": 2}, {\"ticker\": \"EVR\", \"entry_price\": 345.32, \"current_price\": 324.0888, \"shares\": 9.0, \"pnl_usd\": -191.08, \"pnl_pct\": -6.15, \"tier\": 2}, {\"ticker\": \"GM\", \"entry_price\": 78.12, \"current_price\": 76.75, \"shares\": 38.0, \"pnl_usd\": -52.06, \"pnl_pct\": -1.75, \"tier\": 2}, {\"ticker\": \"HON\", \"entry_price\": 213.12, \"current_price\": 210.31, \"shares\": 14.0, \"pnl_usd\": -39.34, \"pnl_pct\": -1.32, \"tier\": 2}, {\"ticker\": \"IRM\", \"entry_price\": 115.84, \"current_price\": 114.3, \"shares\": 26.0, \"pnl_usd\": -40.04, \"pnl_pct\": -1.33, \"tier\": 3}, {\"ticker\": \"LHX\", \"entry_price\": 321.0, \"current_price\": 321.38, \"shares\": 5.0, \"pnl_usd\": 1.9, \"pnl_pct\": 0.12, \"tier\": 1}, {\"ticker\": \"NVST\", \"entry_price\": 27.21, \"current_price\": 25.8997, \"shares\": 112.0, \"pnl_usd\": -146.76, \"pnl_pct\": -4.82, \"tier\": 3}, {\"ticker\": \"PLMR\", \"entry_price\": 125.99, \"current_price\": 124.0975, \"shares\": 24.0, \"pnl_usd\": -45.42, \"pnl_pct\": -1.5, \"tier\": 2}, {\"ticker\": \"SBCF\", \"entry_price\": 31.57, \"current_price\": 31.2802, \"shares\": 96.0, \"pnl_usd\": -27.82, \"pnl_pct\": -0.92, \"tier\": 2}, {\"ticker\": \"PTGX\", \"entry_price\": 100.78, \"current_price\": 98.5646, \"shares\": 35.0, \"pnl_usd\": -77.54, \"pnl_pct\": -2.2, \"tier\": 3}, {\"ticker\": \"ALGN\", \"entry_price\": 177.28, \"current_price\": 178.64, \"shares\": 28.0, \"pnl_usd\": 38.08, \"pnl_pct\": 0.77, \"tier\": 3}, {\"ticker\": \"COHR\", \"entry_price\": 303.97, \"current_price\": 304.94, \"shares\": 12.0, \"pnl_usd\": 11.64, \"pnl_pct\": 0.32, \"tier\": 3}, {\"ticker\": \"CYTK\", \"entry_price\": 60.69, \"current_price\": 59.57, \"shares\": 63.0, \"pnl_usd\": -70.56, \"pnl_pct\": -1.85, \"tier\": 3}, {\"ticker\": \"GRMN\", \"entry_price\": 247.81, \"current_price\": 253.235, \"shares\": 15.0, \"pnl_usd\": 81.38, \"pnl_pct\": 2.19, \"tier\": 3}, {\"ticker\": \"PCG\", \"entry_price\": 16.26, \"current_price\": 16.37, \"shares\": 234.0, \"pnl_usd\": 25.74, \"pnl_pct\": 0.68, \"tier\": 1}, {\"ticker\": \"PLUS\", \"entry_price\": 83.67, \"current_price\": 83.21, \"shares\": 45.0, \"pnl_usd\": -20.7, \"pnl_pct\": -0.55, \"tier\": 2}, {\"ticker\": \"TGTX\", \"entry_price\": 34.58, \"current_price\": 33.58, \"shares\": 110.0, \"pnl_usd\": -110.0, \"pnl_pct\": -2.89, \"tier\": 3}, {\"ticker\": \"VFC\", \"entry_price\": 18.71, \"current_price\": 18.26, \"shares\": 203.0, \"pnl_usd\": -91.35, \"pnl_pct\": -2.41, \"tier\": 3}]",
   "scan_date": "2026-04-28",
-  "scan_candidates": "[{\"ticker\": \"ALGN\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 177.28, \"size_pct\": 4.9, \"consec_down\": 4, \"status\": \"pending\"}, {\"ticker\": \"COHR\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 303.97, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"pending\"}, {\"ticker\": \"CYTK\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 60.69, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"pending\"}, {\"ticker\": \"GRMN\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 247.81, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"pending\"}, {\"ticker\": \"PCG\", \"tier\": 1, \"rsi2\": 0.0, \"limit_price\": 16.26, \"size_pct\": 3.8, \"consec_down\": 6, \"status\": \"pending\"}, {\"ticker\": \"PLUS\", \"tier\": 2, \"rsi2\": 0.0, \"limit_price\": 83.67, \"size_pct\": 3.8, \"consec_down\": 5, \"status\": \"pending\"}, {\"ticker\": \"TGTX\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 34.58, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"pending\"}, {\"ticker\": \"VFC\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 18.71, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"pending\"}]",
+  "scan_candidates": "[{\"ticker\": \"ALGN\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 177.28, \"size_pct\": 4.9, \"consec_down\": 4, \"status\": \"filled\", \"fill_price\": 177.28}, {\"ticker\": \"COHR\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 303.97, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"filled\", \"fill_price\": 303.97}, {\"ticker\": \"CYTK\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 60.69, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"filled\", \"fill_price\": 60.69}, {\"ticker\": \"GRMN\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 247.81, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"filled\", \"fill_price\": 247.81}, {\"ticker\": \"PCG\", \"tier\": 1, \"rsi2\": 0.0, \"limit_price\": 16.26, \"size_pct\": 3.8, \"consec_down\": 6, \"status\": \"filled\", \"fill_price\": 16.26}, {\"ticker\": \"PLUS\", \"tier\": 2, \"rsi2\": 0.0, \"limit_price\": 83.67, \"size_pct\": 3.8, \"consec_down\": 5, \"status\": \"filled\", \"fill_price\": 83.67}, {\"ticker\": \"TGTX\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 34.58, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"filled\", \"fill_price\": 34.58}, {\"ticker\": \"VFC\", \"tier\": 3, \"rsi2\": 0.0, \"limit_price\": 18.71, \"size_pct\": 3.8, \"consec_down\": 4, \"status\": \"filled\", \"fill_price\": 18.71}]",
   "scan_signals": 8,
   "scan_orders_sent": 8,
   "spy_above_200d": true,
