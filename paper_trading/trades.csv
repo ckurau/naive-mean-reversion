@@ -1,3 +1,2 @@
 id,ticker,entry_date,exit_date,entry_price,exit_price,shares,pnl_usd,pnl_pct,exit_reason,tier
-2,VIX_CALL_SPREAD,2026-04-20,2026-05-18,18.87,0.0,1.0,-145.0,0.0,vix_call_premium,0
-1,SPY_PUT_SPREAD,2026-04-20,2026-07-17,708.72,0.0,1.0,-935.0,0.0,put_premium,0
+3,SATS,2026-04-27,2026-04-29,117.88,123.69999694824219,26.0,151.319920654297,4.9372217070259525,profit_target,3
