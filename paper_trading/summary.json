@@ -18,7 +18,7 @@
   "gold_pnl_all": 0.0,
   "secrot_pnl_all": 0.0,
   "exits_today": 0,
-  "entries_filled_today": 21,
+  "entries_filled_today": 13,
   "entries_missed_today": 0,
   "entries_missed": "[]",
   "exit_fill_issues": "[]",
@@ -101,54 +101,6 @@
       "ticker": "PTGX",
       "entry_price": 100.78,
       "shares": 35.0,
-      "tier": 3
-    },
-    {
-      "ticker": "ALGN",
-      "entry_price": 177.27999877929688,
-      "shares": 28.0,
-      "tier": 3
-    },
-    {
-      "ticker": "COHR",
-      "entry_price": 303.9700012207031,
-      "shares": 12.0,
-      "tier": 3
-    },
-    {
-      "ticker": "CYTK",
-      "entry_price": 60.689998626708984,
-      "shares": 63.0,
-      "tier": 3
-    },
-    {
-      "ticker": "GRMN",
-      "entry_price": 247.80999755859375,
-      "shares": 15.0,
-      "tier": 3
-    },
-    {
-      "ticker": "PCG",
-      "entry_price": 16.260000228881836,
-      "shares": 234.0,
-      "tier": 1
-    },
-    {
-      "ticker": "PLUS",
-      "entry_price": 83.66999816894531,
-      "shares": 45.0,
-      "tier": 2
-    },
-    {
-      "ticker": "TGTX",
-      "entry_price": 34.58000183105469,
-      "shares": 110.0,
-      "tier": 3
-    },
-    {
-      "ticker": "VFC",
-      "entry_price": 18.709999084472656,
-      "shares": 203.0,
       "tier": 3
     }
   ],
