@@ -1,2 +1,1 @@
 id,ticker,entry_date,exit_date,entry_price,exit_price,shares,pnl_usd,pnl_pct,exit_reason,tier
-3,SATS,2026-04-27,2026-04-29,117.88,123.69999694824219,26.0,151.319920654297,4.9372217070259525,profit_target,3
