@@ -1,1 +1,2 @@
 id,ticker,entry_date,exit_date,entry_price,exit_price,shares,pnl_usd,pnl_pct,exit_reason,tier
+4,AMKR,2026-05-01,2026-05-04,68.93,71.08999633789062,64.0,138.23976562499956,3.13360849831803,profit_target,3
