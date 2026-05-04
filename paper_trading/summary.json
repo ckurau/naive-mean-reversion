@@ -1,7 +1,7 @@
 {
   "date": "2026-05-04",
   "strategy_version": "V7.3",
-  "portfolio_value": 97563.73,
+  "portfolio_value": 97298.63,
   "starting_equity": 100000,
   "open_positions": 15,
   "max_positions": 60,
@@ -123,11 +123,11 @@
   "vix_call_long": 20.0,
   "vix_call_short": 40.0,
   "vix_call_expiry": "2026-05-18",
-  "unrealized_pnl_usd": -2649.96,
-  "last_intraday_update": "2026-05-04 09:41 PT",
-  "capital_deployed_usd": 128807.25,
-  "capital_deployed_pct": 132.0,
-  "capital_cash_usd": -31243.52,
-  "positions_detail": "[{\"ticker\": \"CVNA\", \"entry_price\": 389.97, \"current_price\": 375.2275, \"shares\": 9.0, \"pnl_usd\": -132.68, \"pnl_pct\": -3.78, \"tier\": 3}, {\"ticker\": \"HTO\", \"entry_price\": 57.17, \"current_price\": 57.2594, \"shares\": 61.0, \"pnl_usd\": 5.46, \"pnl_pct\": 0.16, \"tier\": 2}, {\"ticker\": \"KALU\", \"entry_price\": 170.76, \"current_price\": 166.7771, \"shares\": 20.0, \"pnl_usd\": -79.66, \"pnl_pct\": -2.33, \"tier\": 3}, {\"ticker\": \"PH\", \"entry_price\": 906.48, \"current_price\": 864.8155, \"shares\": 4.0, \"pnl_usd\": -166.66, \"pnl_pct\": -4.6, \"tier\": 3}, {\"ticker\": \"SUPN\", \"entry_price\": 48.16, \"current_price\": 47.9958, \"shares\": 72.0, \"pnl_usd\": -11.83, \"pnl_pct\": -0.34, \"tier\": 2}, {\"ticker\": \"WDFC\", \"entry_price\": 212.5, \"current_price\": 202.3903, \"shares\": 16.0, \"pnl_usd\": -161.75, \"pnl_pct\": -4.76, \"tier\": 3}, {\"ticker\": \"CENTA\", \"entry_price\": 34.49, \"current_price\": 31.9944, \"shares\": 349.0, \"pnl_usd\": -870.98, \"pnl_pct\": -7.24, \"tier\": 2}, {\"ticker\": \"CRI\", \"entry_price\": 34.24, \"current_price\": 33.214, \"shares\": 267.0, \"pnl_usd\": -273.94, \"pnl_pct\": -3.0, \"tier\": 3}, {\"ticker\": \"FCN\", \"entry_price\": 173.81, \"current_price\": 167.0081, \"shares\": 52.0, \"pnl_usd\": -353.7, \"pnl_pct\": -3.91, \"tier\": 3}, {\"ticker\": \"FLS\", \"entry_price\": 71.4, \"current_price\": 70.3135, \"shares\": 126.0, \"pnl_usd\": -136.89, \"pnl_pct\": -1.52, \"tier\": 3}, {\"ticker\": \"FTV\", \"entry_price\": 60.64, \"current_price\": 60.2043, \"shares\": 152.0, \"pnl_usd\": -66.22, \"pnl_pct\": -0.72, \"tier\": 3}, {\"ticker\": \"JLL\", \"entry_price\": 321.0, \"current_price\": 314.8516, \"shares\": 29.0, \"pnl_usd\": -178.3, \"pnl_pct\": -1.92, \"tier\": 3}, {\"ticker\": \"JOE\", \"entry_price\": 62.82, \"current_price\": 64.0123, \"shares\": 146.0, \"pnl_usd\": 174.08, \"pnl_pct\": 1.9, \"tier\": 3}, {\"ticker\": \"MGM\", \"entry_price\": 39.21, \"current_price\": 38.1374, \"shares\": 234.0, \"pnl_usd\": -250.99, \"pnl_pct\": -2.74, \"tier\": 3}, {\"ticker\": \"STC\", \"entry_price\": 69.21, \"current_price\": 68.0878, \"shares\": 130.0, \"pnl_usd\": -145.89, \"pnl_pct\": -1.62, \"tier\": 3}]",
+  "unrealized_pnl_usd": -2887.33,
+  "last_intraday_update": "2026-05-04 10:11 PT",
+  "capital_deployed_usd": 128589.85,
+  "capital_deployed_pct": 132.2,
+  "capital_cash_usd": -31291.22,
+  "positions_detail": "[{\"ticker\": \"CVNA\", \"entry_price\": 389.97, \"current_price\": 373.9344, \"shares\": 9.0, \"pnl_usd\": -144.32, \"pnl_pct\": -4.11, \"tier\": 3}, {\"ticker\": \"HTO\", \"entry_price\": 57.17, \"current_price\": 57.1236, \"shares\": 61.0, \"pnl_usd\": -2.83, \"pnl_pct\": -0.08, \"tier\": 2}, {\"ticker\": \"KALU\", \"entry_price\": 170.76, \"current_price\": 166.4762, \"shares\": 20.0, \"pnl_usd\": -85.68, \"pnl_pct\": -2.51, \"tier\": 3}, {\"ticker\": \"PH\", \"entry_price\": 906.48, \"current_price\": 866.765, \"shares\": 4.0, \"pnl_usd\": -158.86, \"pnl_pct\": -4.38, \"tier\": 3}, {\"ticker\": \"SUPN\", \"entry_price\": 48.16, \"current_price\": 47.7197, \"shares\": 72.0, \"pnl_usd\": -31.7, \"pnl_pct\": -0.91, \"tier\": 2}, {\"ticker\": \"WDFC\", \"entry_price\": 212.5, \"current_price\": 201.0112, \"shares\": 16.0, \"pnl_usd\": -183.82, \"pnl_pct\": -5.41, \"tier\": 3}, {\"ticker\": \"CENTA\", \"entry_price\": 34.49, \"current_price\": 31.9536, \"shares\": 349.0, \"pnl_usd\": -885.2, \"pnl_pct\": -7.35, \"tier\": 2}, {\"ticker\": \"CRI\", \"entry_price\": 34.24, \"current_price\": 33.0738, \"shares\": 267.0, \"pnl_usd\": -311.37, \"pnl_pct\": -3.41, \"tier\": 3}, {\"ticker\": \"FCN\", \"entry_price\": 173.81, \"current_price\": 166.4181, \"shares\": 52.0, \"pnl_usd\": -384.38, \"pnl_pct\": -4.25, \"tier\": 3}, {\"ticker\": \"FLS\", \"entry_price\": 71.4, \"current_price\": 70.554, \"shares\": 126.0, \"pnl_usd\": -106.6, \"pnl_pct\": -1.18, \"tier\": 3}, {\"ticker\": \"FTV\", \"entry_price\": 60.64, \"current_price\": 60.122, \"shares\": 152.0, \"pnl_usd\": -78.74, \"pnl_pct\": -0.85, \"tier\": 3}, {\"ticker\": \"JLL\", \"entry_price\": 321.0, \"current_price\": 314.7778, \"shares\": 29.0, \"pnl_usd\": -180.44, \"pnl_pct\": -1.94, \"tier\": 3}, {\"ticker\": \"JOE\", \"entry_price\": 62.82, \"current_price\": 63.8015, \"shares\": 146.0, \"pnl_usd\": 143.3, \"pnl_pct\": 1.56, \"tier\": 3}, {\"ticker\": \"MGM\", \"entry_price\": 39.21, \"current_price\": 37.964, \"shares\": 234.0, \"pnl_usd\": -291.56, \"pnl_pct\": -3.18, \"tier\": 3}, {\"ticker\": \"STC\", \"entry_price\": 69.21, \"current_price\": 67.786, \"shares\": 130.0, \"pnl_usd\": -185.12, \"pnl_pct\": -2.06, \"tier\": 3}]",
   "scan_candidates": "[]"
 }
