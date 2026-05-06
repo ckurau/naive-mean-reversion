@@ -1,7 +1,7 @@
 {
   "date": "2026-05-06",
   "strategy_version": "V7.3",
-  "portfolio_value": 99202.4,
+  "portfolio_value": 99386.5,
   "starting_equity": 100000,
   "open_positions": 17,
   "max_positions": 60,
@@ -31,5 +31,11 @@
   "put_spread_cost": 9.35,
   "vix_call_long": 20.0,
   "vix_call_short": 40.0,
-  "vix_call_expiry": "2026-05-18"
+  "vix_call_expiry": "2026-05-18",
+  "unrealized_pnl_usd": 504.62,
+  "last_intraday_update": "2026-05-06 06:41 PT",
+  "capital_deployed_usd": 170043.52,
+  "capital_deployed_pct": 171.1,
+  "capital_cash_usd": -70657.02,
+  "positions_detail": "[{\"ticker\": \"CVNA\", \"entry_price\": 389.97, \"current_price\": 400.7231, \"shares\": 9.0, \"pnl_usd\": 96.78, \"pnl_pct\": 2.76, \"tier\": 3}, {\"ticker\": \"HTO\", \"entry_price\": 57.17, \"current_price\": 57.6137, \"shares\": 61.0, \"pnl_usd\": 27.07, \"pnl_pct\": 0.78, \"tier\": 2}, {\"ticker\": \"PH\", \"entry_price\": 906.48, \"current_price\": 900.0101, \"shares\": 4.0, \"pnl_usd\": -25.88, \"pnl_pct\": -0.71, \"tier\": 3}, {\"ticker\": \"WDFC\", \"entry_price\": 212.5, \"current_price\": 211.1002, \"shares\": 16.0, \"pnl_usd\": -22.4, \"pnl_pct\": -0.66, \"tier\": 3}, {\"ticker\": \"CENTA\", \"entry_price\": 34.49, \"current_price\": 32.8356, \"shares\": 349.0, \"pnl_usd\": -577.37, \"pnl_pct\": -4.8, \"tier\": 2}, {\"ticker\": \"CRI\", \"entry_price\": 34.24, \"current_price\": 38.8368, \"shares\": 267.0, \"pnl_usd\": 1227.35, \"pnl_pct\": 13.43, \"tier\": 3}, {\"ticker\": \"FCN\", \"entry_price\": 173.81, \"current_price\": 165.89, \"shares\": 52.0, \"pnl_usd\": -411.84, \"pnl_pct\": -4.56, \"tier\": 3}, {\"ticker\": \"FLS\", \"entry_price\": 71.4, \"current_price\": 76.4774, \"shares\": 126.0, \"pnl_usd\": 639.75, \"pnl_pct\": 7.11, \"tier\": 3}, {\"ticker\": \"FTV\", \"entry_price\": 60.64, \"current_price\": 61.3793, \"shares\": 152.0, \"pnl_usd\": 112.38, \"pnl_pct\": 1.22, \"tier\": 3}, {\"ticker\": \"JLL\", \"entry_price\": 321.0, \"current_price\": 326.1154, \"shares\": 29.0, \"pnl_usd\": 148.35, \"pnl_pct\": 1.59, \"tier\": 3}, {\"ticker\": \"MGM\", \"entry_price\": 39.21, \"current_price\": 38.606, \"shares\": 234.0, \"pnl_usd\": -141.34, \"pnl_pct\": -1.54, \"tier\": 3}, {\"ticker\": \"STC\", \"entry_price\": 69.21, \"current_price\": 68.723, \"shares\": 130.0, \"pnl_usd\": -63.31, \"pnl_pct\": -0.7, \"tier\": 3}, {\"ticker\": \"CHRW\", \"entry_price\": 165.8, \"current_price\": 169.0437, \"shares\": 63.0, \"pnl_usd\": 204.35, \"pnl_pct\": 1.96, \"tier\": 2}, {\"ticker\": \"FE\", \"entry_price\": 46.92, \"current_price\": 45.396, \"shares\": 217.0, \"pnl_usd\": -330.71, \"pnl_pct\": -3.25, \"tier\": 3}, {\"ticker\": \"APH\", \"entry_price\": 140.19, \"current_price\": 139.4643, \"shares\": 81.0, \"pnl_usd\": -58.78, \"pnl_pct\": -0.52, \"tier\": 3}, {\"ticker\": \"INVX\", \"entry_price\": 26.7, \"current_price\": 26.0413, \"shares\": 417.0, \"pnl_usd\": -274.69, \"pnl_pct\": -2.47, \"tier\": 3}, {\"ticker\": \"MSCI\", \"entry_price\": 580.35, \"current_price\": 577.9769, \"shares\": 19.0, \"pnl_usd\": -45.09, \"pnl_pct\": -0.41, \"tier\": 3}]"
 }
