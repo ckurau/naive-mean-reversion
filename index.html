@@ -754,6 +754,35 @@ canvas { display: block; }
   </div>
 </div>
 
+<!-- Live Overlay P&L -->
+<div class="section" id="overlay-live-section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <span class="section-title gold">Live Overlay P&L</span>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span class="section-meta" id="overlay-live-total">—</span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">▼</span>
+    </div>
+  </div>
+  <div class="section-body" style="padding:0;">
+    <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);">
+          <th style="padding:8px 16px;text-align:left;color:var(--muted);font-weight:400;">Overlay</th>
+          <th style="padding:8px 8px;text-align:right;color:var(--muted);font-weight:400;">Ticker</th>
+          <th style="padding:8px 8px;text-align:right;color:var(--muted);font-weight:400;">Shares</th>
+          <th style="padding:8px 8px;text-align:right;color:var(--muted);font-weight:400;">Entry</th>
+          <th style="padding:8px 8px;text-align:right;color:var(--muted);font-weight:400;">Price</th>
+          <th style="padding:8px 8px;text-align:right;color:var(--muted);font-weight:400;">Unreal P&L</th>
+          <th style="padding:8px 16px;text-align:right;color:var(--muted);font-weight:400;">%</th>
+        </tr>
+      </thead>
+      <tbody id="overlay-live-body">
+        <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- Open MR Positions -->
 <div class="section">
   <div class="section-header" onclick="toggleSection(this)">
@@ -963,6 +992,7 @@ async function loadData() {
     renderSummary(summary);
     allTrades = parseCSV(tradesCsv);
     renderTradeLog(allTrades, currentFilter);
+    renderOverlayLive(summary);
     renderPositions(parseCSV(posCsv), summary);
     renderRejections(parseCSV(rejCsv));
     renderEquityChart(allTrades, summary);
@@ -1342,6 +1372,146 @@ function renderSummary(s) {
         <td>${c.consec_down}</td>
         <td style="color:var(--muted)">${c.status}</td>
       </tr>`).join('');
+  }
+}
+
+
+function renderOverlayLive(s) {
+  const tbody = document.getElementById('overlay-live-body');
+  const totalEl = document.getElementById('overlay-live-total');
+  if (!tbody) return;
+
+  let data;
+  try { data = JSON.parse(s.overlay_live || '{}'); } catch(e) { return; }
+  if (!data || Object.keys(data).length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;">No overlay data yet</td></tr>';
+    return;
+  }
+
+  const fmtP = (v) => {
+    if (v === undefined || v === null) return '—';
+    const cls = v >= 0 ? 'pos' : 'neg';
+    return `<span class="${cls}">${v >= 0 ? '+' : ''}$${Math.abs(v).toFixed(2)}</span>`;
+  };
+  const fmtPct = (v) => {
+    if (v === undefined || v === null) return '—';
+    const cls = v >= 0 ? 'pos' : 'neg';
+    return `<span class="${cls}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
+  };
+  const OUT_ROW = (name, reason) =>
+    `<tr style="opacity:0.45;">
+      <td style="padding:7px 16px;">${name}</td>
+      <td colspan="5" style="padding:7px 8px;color:var(--muted);">OUT — ${reason}</td>
+      <td style="padding:7px 16px;"></td>
+    </tr>`;
+  const IN_ROW = (name, ticker, shares, entry, price, unreal, pct) =>
+    `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:7px 16px;">${name}</td>
+      <td style="padding:7px 8px;text-align:right;"><b>${ticker}</b></td>
+      <td style="padding:7px 8px;text-align:right;">${shares}</td>
+      <td style="padding:7px 8px;text-align:right;">$${entry.toFixed(2)}</td>
+      <td style="padding:7px 8px;text-align:right;">$${price.toFixed(2)}</td>
+      <td style="padding:7px 8px;text-align:right;">${fmtP(unreal)}</td>
+      <td style="padding:7px 16px;text-align:right;">${fmtPct(pct)}</td>
+    </tr>`;
+
+  let rows = '';
+
+  // SECROT
+  const sec = data.secrot;
+  if (sec && sec.positions && sec.positions.length > 0) {
+    sec.positions.forEach((p, i) => {
+      rows += IN_ROW(i === 0 ? 'SECROT' : '', p.ticker, p.shares, p.entry, p.price, p.unreal, p.pct);
+    });
+    rows += `<tr style="border-bottom:2px solid var(--border);background:rgba(255,255,255,0.02);">
+      <td colspan="5" style="padding:4px 16px;color:var(--muted);font-size:10px;">SECROT TOTAL</td>
+      <td style="padding:4px 8px;text-align:right;">${fmtP(sec.total_unreal)}</td>
+      <td></td></tr>`;
+  } else {
+    rows += OUT_ROW('SECROT', 'bear regime (SPY below 200d MA)');
+  }
+
+  // FACTOR
+  const fac = data.factor;
+  if (fac && fac.active && fac.ticker) {
+    rows += IN_ROW('FACTOR', fac.ticker, fac.shares || '—', fac.entry || 0, fac.price || 0, fac.unreal, fac.pct);
+  } else {
+    rows += OUT_ROW('FACTOR (QQQ/IWM)', 'bear regime');
+  }
+
+  // PDBC
+  const pdbc = data.pdbc;
+  if (pdbc && pdbc.active) {
+    rows += IN_ROW('PDBC', 'PDBC', pdbc.shares || '—', pdbc.entry || 0, pdbc.price || 0, pdbc.unreal, pdbc.pct);
+  } else {
+    rows += OUT_ROW('PDBC', 'below 100d MA or DBC momentum negative');
+  }
+
+  // HYG
+  const hyg = data.hyg;
+  if (hyg && hyg.active) {
+    rows += IN_ROW('HYG', 'HYG', hyg.shares || '—', hyg.entry || 0, hyg.price || 0, hyg.unreal, hyg.pct);
+  } else {
+    rows += OUT_ROW('HYG', 'credit spread signal negative');
+  }
+
+  // GOLD
+  const gold = data.gold;
+  if (gold && gold.active) {
+    rows += IN_ROW('GOLD', 'GLD', gold.shares || '—', gold.entry || 0, gold.price || 0, gold.unreal, gold.pct);
+  } else {
+    rows += OUT_ROW('GOLD', 'GLD below 200d MA or rates rising');
+  }
+
+  // TLT Bear
+  const tlt = data.tlt;
+  if (tlt && tlt.active) {
+    rows += IN_ROW('TLT BEAR', 'TLT', tlt.shares || '—', tlt.entry || 0, tlt.price || 0, tlt.unreal, tlt.pct);
+  } else {
+    rows += OUT_ROW('TLT BEAR', 'bull regime (SPY above 200d MA)');
+  }
+
+  // ZROZ
+  const zroz = data.zroz;
+  if (zroz && zroz.active) {
+    rows += IN_ROW('ZROZ', 'ZROZ', zroz.shares || '—', zroz.entry || 0, zroz.price || 0, zroz.unreal, zroz.pct);
+  } else {
+    rows += OUT_ROW('ZROZ', 'VIX < 20 or no TLT rally');
+  }
+
+  // SPY Put Spread
+  const spy = data.spy_put_spread;
+  if (spy && spy.legs && spy.legs.length > 0) {
+    spy.legs.sort((a,b) => b.strike - a.strike).forEach((leg, i) => {
+      const action = leg.pos > 0 ? 'LONG' : 'SHORT';
+      const label = i === 0 ? 'SPY PUTS' : '';
+      rows += `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:7px 16px;">${label}</td>
+        <td style="padding:7px 8px;text-align:right;"><b>$${leg.strike}${leg.right} ${leg.expiry}</b></td>
+        <td style="padding:7px 8px;text-align:right;">${action} ${Math.abs(leg.pos)}</td>
+        <td style="padding:7px 8px;text-align:right;">$${leg.avg_cost.toFixed(2)}</td>
+        <td style="padding:7px 8px;text-align:right;">$${leg.mkt_val.toFixed(2)}</td>
+        <td style="padding:7px 8px;text-align:right;">${fmtP(leg.unreal)}</td>
+        <td style="padding:7px 16px;text-align:right;"></td>
+      </tr>`;
+    });
+    rows += `<tr style="background:rgba(255,255,255,0.02);">
+      <td colspan="5" style="padding:4px 16px;color:var(--muted);font-size:10px;">SPREAD NET</td>
+      <td style="padding:4px 8px;text-align:right;">${fmtP(spy.total_unreal)}</td>
+      <td></td></tr>`;
+  }
+
+  // Grand total
+  const total = data.total_unreal;
+  rows += `<tr style="border-top:2px solid var(--border);background:rgba(0,212,255,0.04);">
+    <td colspan="5" style="padding:8px 16px;font-weight:600;">TOTAL OVERLAY P&L (unrealized)</td>
+    <td style="padding:8px 8px;text-align:right;font-weight:600;">${fmtP(total)}</td>
+    <td></td></tr>`;
+
+  tbody.innerHTML = rows;
+  if (totalEl && total !== undefined) {
+    totalEl.innerHTML = `Live: ${total >= 0 ? '+' : ''}$${Math.abs(total).toFixed(2)}`;
+    totalEl.style.color = total >= 0 ? 'var(--green)' : 'var(--red)';
   }
 }
 
