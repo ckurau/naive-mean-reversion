@@ -1577,9 +1577,14 @@ function renderBreakdown(s, overlayData) {
 
   // MR Positions
   const mrUnreal = parseFloat(s.unrealized_pnl_usd) || 0;
-  const mrDeployed = parseFloat(s.capital_deployed_usd) || 0;
+  // Compute MR deployed from positions_detail (excludes overlays and cap)
+  let mrDeployed = 0;
+  try {
+    const pd = JSON.parse(s.positions_detail || '[]');
+    mrDeployed = pd.reduce((a, p) => a + (parseFloat(p.current_price)||0) * (parseFloat(p.shares)||0), 0);
+  } catch(e) { mrDeployed = parseFloat(s.capital_deployed_usd) || 0; }
   rows += HDR('MR Positions');
-  rows += ROW('Open positions (' + (s.open_positions||0) + ')', '$' + mrDeployed.toLocaleString('en-US',{maximumFractionDigits:0}), fmtPnl(mrUnreal), false);
+  rows += ROW('Open positions (' + (s.open_positions||0) + ')', '$' + Math.round(mrDeployed).toLocaleString('en-US'), fmtPnl(mrUnreal), false);
   totalUnreal += mrUnreal;
 
   // Overlays
