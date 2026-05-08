@@ -1576,13 +1576,17 @@ function renderBreakdown(s, overlayData) {
   let totalUnreal = 0;
 
   // MR Positions
-  const mrUnreal = parseFloat(s.unrealized_pnl_usd) || 0;
-  // Compute MR deployed from positions_detail (excludes overlays and cap)
+  // MR P&L: sum pnl_usd from positions_detail (most accurate)
+  let mrUnreal = 0;
   let mrDeployed = 0;
   try {
     const pd = JSON.parse(s.positions_detail || '[]');
-    mrDeployed = pd.reduce((a, p) => a + (parseFloat(p.current_price)||parseFloat(p.entry_price)||0) * (parseFloat(p.shares)||parseFloat(p.shares_remaining)||0), 0);
-  } catch(e) { mrDeployed = parseFloat(s.capital_deployed_usd) || 0; }
+    mrUnreal = pd.reduce((a, p) => a + (parseFloat(p.pnl_usd)||0), 0);
+    mrDeployed = pd.reduce((a, p) => a + (parseFloat(p.current_price)||0) * (parseFloat(p.shares)||0), 0);
+  } catch(e) {
+    mrUnreal = parseFloat(s.unrealized_pnl_usd) || 0;
+    mrDeployed = parseFloat(s.capital_deployed_usd) || 0;
+  }
   rows += HDR('MR Positions');
   rows += ROW('Open positions (' + (s.open_positions||0) + ')', '$' + Math.round(mrDeployed).toLocaleString('en-US'), fmtPnl(mrUnreal), false);
   totalUnreal += mrUnreal;
