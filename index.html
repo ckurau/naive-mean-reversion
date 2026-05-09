@@ -1604,15 +1604,34 @@ function renderBreakdown(s, overlayData) {
     const secVal = sec.positions.reduce((a,p) => a + p.price * p.shares, 0);
     rows += ROW('SECROT (' + sec.positions.map(p=>p.ticker).join(', ') + ')', '$' + secVal.toLocaleString('en-US',{maximumFractionDigits:0}), fmtPnl(sec.total_unreal), false);
   }
+  // Parse overlay history
+  let ovlHist = {};
+  try { ovlHist = JSON.parse(s.overlay_history || '{}'); } catch(e) {}
+
+  const fmtHistRow = (overlay) => {
+    const h = ovlHist[overlay];
+    if (!h || h.length === 0) return '';
+    // Find last entry and last exit
+    const entries = h.filter(e => e.event === 'entry');
+    const exits   = h.filter(e => e.event === 'exit');
+    const lastEntry = entries[0];
+    const lastExit  = exits[0];
+    if (!lastEntry && !lastExit) return '';
+    let parts = [];
+    if (lastEntry) parts.push(`Last in: ${lastEntry.date}`);
+    if (lastExit)  parts.push(`Last out: ${lastExit.date}` + (lastExit.pnl_usd !== null ? ` (${lastExit.pnl_usd >= 0 ? '+' : ''}$${Math.round(Math.abs(lastExit.pnl_usd)).toLocaleString()})` : ''));
+    return `<tr style="opacity:0.45;"><td colspan="3" style="padding:1px 0 4px 20px;font-size:10px;color:var(--muted);">${parts.join(' · ')}</td></tr>`;
+  };
+
   const overlayMap = [
-    ['factor', 'Factor (QQQ/IWM)'],
-    ['pdbc',   'PDBC'],
-    ['hyg',    'HYG'],
-    ['gold',   'GOLD (GLD)'],
-    ['tlt',    'TLT Bear'],
-    ['zroz',   'ZROZ'],
+    ['factor', 'Factor (QQQ/IWM)', 'FACTOR'],
+    ['pdbc',   'PDBC',             'PDBC'],
+    ['hyg',    'HYG',              'HYG'],
+    ['gold',   'GOLD (GLD)',       'GOLD'],
+    ['tlt',    'TLT Bear',         'TLT'],
+    ['zroz',   'ZROZ',             'ZROZ'],
   ];
-  for (const [key, label] of overlayMap) {
+  for (const [key, label, histKey] of overlayMap) {
     const o = ovlData[key];
     if (o && o.active !== false && o.price > 0) {
       const mktVal = (o.price || 0) * (o.shares || 0);
@@ -1620,6 +1639,7 @@ function renderBreakdown(s, overlayData) {
     } else {
       rows += ROW(label, 'OUT', '—', false);
     }
+    rows += fmtHistRow(histKey);
   }
 
   // Hedges (SPY puts + VIX calls)
