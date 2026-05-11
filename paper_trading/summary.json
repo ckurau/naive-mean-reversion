@@ -3,7 +3,7 @@
   "strategy_version": "V7.3",
   "portfolio_value": 94474.25,
   "starting_equity": 100000,
-  "open_positions": 18,
+  "open_positions": 20,
   "max_positions": 60,
   "vix": 18.17,
   "position_size_pct": 9.0,
@@ -18,13 +18,134 @@
   "gold_pnl_all": 0.0,
   "secrot_pnl_all": 0.0,
   "exits_today": 6,
-  "entries_filled_today": 3,
+  "entries_filled_today": 20,
   "entries_missed_today": 1,
   "entries_missed": "[{\"ticker\": \"PR\", \"date\": \"2026-05-11\", \"limit_price\": 19.719999313354492, \"open_price\": 20.09000015258789, \"gap_pct\": 1.876, \"reason\": \"MOO fill rejected \\u2014 gap 1.88% (open $20.09 vs prior close $19.72)\"}]",
   "exit_fill_issues": "[]",
   "log_entries": "[\"2026-05-11 06:35:05,575 INFO position: Position(account='DUP671219', contract=Stock(conId=756662, symbol='HTO', exchange='NASDAQ', currency='USD', localSymbol='HTO', tradingClass='NMS'), position=0.0, avgCost=0.0)\", \"2026-05-11 06:35:05,577 INFO execDetails Execution(execId='00025b45.6a02517d.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NASDAQ', side='SLD', shares=61.0, price=57.21, permId=1169042735, clientId=10, orderId=74, liquidation=0, cumQty=61.0, avgPrice=57.21, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,579 INFO execDetails: Fill(contract=Stock(conId=756662, symbol='HTO', exchange='NASDAQ', currency='USD', localSymbol='HTO', tradingClass='NMS'), execution=Execution(execId='00025b45.6a02517d.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NASDAQ', side='SLD', shares=61.0, price=57.21, permId=1169042735, clientId=10, orderId=74, liquidation=0, cumQty=61.0, avgPrice=57.21, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2026, 5, 11, 13, 35, 5, 576882, tzinfo=datetime.timezone.utc))\", \"2026-05-11 06:35:05,580 INFO orderStatus: Trade(contract=Stock(symbol='HTO', exchange='SMART', currency='USD'), order=Order(orderId=74, clientId=10, permId=1169042735, action='SELL', totalQuantity=61.0, orderType='MKT', lmtPrice=0.0, auxPrice=0.0, tif='DAY'), orderStatus=OrderStatus(orderId=74, status='Filled', filled=61.0, remaining=0.0, avgFillPrice=57.21, permId=1169042735, parentId=0, lastFillPrice=57.21, clientId=10, whyHeld='', mktCapPrice=0.0), fills=[Fill(contract=Stock(conId=756662, symbol='HTO', exchange='NASDAQ', currency='USD', localSymbol='HTO', tradingClass='NMS'), execution=Execution(execId='00025b45.6a02517d.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NASDAQ', side='SLD', shares=61.0, price=57.21, permId=1169042735, clientId=10, orderId=74, liquidation=0, cumQty=61.0, avgPrice=57.21, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2026, 5, 11, 13, 35, 5, 576882, tzinfo=datetime.timezone.utc))], log=[TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 0, 2, 836748, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 35, 5, 502314, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 35, 5, 576882, tzinfo=datetime.timezone.utc), status='Submitted', message='Fill 61.0@57.21', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 35, 5, 579792, tzinfo=datetime.timezone.utc), status='Filled', message='', errorCode=0)], advancedError='')\", \"2026-05-11 06:35:05,580 INFO commissionReport: CommissionReport(execId='00025b45.6a02517d.01.01', commission=1.083968, currency='USD', realizedPNL=0.355832, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,580 INFO position: Position(account='DUP671219', contract=Stock(conId=756662, symbol='HTO', exchange='NASDAQ', currency='USD', localSymbol='HTO', tradingClass='NMS'), position=0.0, avgCost=0.0)\", \"2026-05-11 06:35:05,580 INFO position: Position(account='DUP671219', contract=Stock(conId=756662, symbol='HTO', exchange='NASDAQ', currency='USD', localSymbol='HTO', tradingClass='NMS'), position=0.0, avgCost=0.0)\", \"2026-05-11 06:35:05,662 INFO execDetails Execution(execId='0000dc8f.6a5eeeed.01.01', time=datetime.datetime(2026, 5, 11, 13, 31, 39, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='IBKRATS', side='SLD', shares=9.0, price=76.3, permId=1169042734, clientId=10, orderId=73, liquidation=0, cumQty=9.0, avgPrice=76.3, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,662 INFO execDetails Execution(execId='00025b45.6a025169.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='ARCA', side='BOT', shares=100.0, price=28.19, permId=1169042741, clientId=10, orderId=80, liquidation=0, cumQty=100.0, avgPrice=28.19, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,664 INFO execDetails Execution(execId='00025b45.6a02516a.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NYSE', side='BOT', shares=207.0, price=28.19, permId=1169042741, clientId=10, orderId=80, liquidation=0, cumQty=307.0, avgPrice=28.19, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,664 INFO execDetails Execution(execId='00025b45.6a02516b.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NYSE', side='SLD', shares=211.0, price=50.4, permId=1169042738, clientId=10, orderId=77, liquidation=0, cumQty=211.0, avgPrice=50.4, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,664 INFO execDetails Execution(execId='0000e0d5.6a0181a5.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NASDAQ', side='BOT', shares=40.0, price=215.07, permId=1169042740, clientId=10, orderId=79, liquidation=0, cumQty=40.0, avgPrice=215.07, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,664 INFO execDetails Execution(execId='00025b49.6a020cd8.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='DRCTEDGE', side='SLD', shares=4.0, price=865.06, permId=1169042736, clientId=10, orderId=75, liquidation=0, cumQty=4.0, avgPrice=865.06, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,665 INFO execDetails Execution(execId='00025b45.6a02516e.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NYSE', side='BOT', shares=100.0, price=37.87, permId=1169042742, clientId=10, orderId=81, liquidation=0, cumQty=100.0, avgPrice=37.87, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,665 INFO execDetails Execution(execId='00025b44.6a01a7f4.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NYSE', side='SLD', shares=18.0, price=78.72, permId=1169042739, clientId=10, orderId=78, liquidation=0, cumQty=18.0, avgPrice=78.72, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,665 INFO execDetails Execution(execId='00025b45.6a02516f.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='BATS', side='BOT', shares=100.0, price=37.87, permId=1169042742, clientId=10, orderId=81, liquidation=0, cumQty=200.0, avgPrice=37.87, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,665 INFO execDetails Execution(execId='00025b44.6a01a7f6.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='DRCTEDGE', side='SLD', shares=100.0, price=78.72, permId=1169042739, clientId=10, orderId=78, liquidation=0, cumQty=118.0, avgPrice=78.72, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,666 INFO execDetails Execution(execId='00025b45.6a02517d.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 4, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='NASDAQ', side='SLD', shares=61.0, price=57.21, permId=1169042735, clientId=10, orderId=74, liquidation=0, cumQty=61.0, avgPrice=57.21, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:05,666 INFO commissionReport: CommissionReport(execId='0000dc8f.6a5eeeed.01.01', commission=1.015928, currency='USD', realizedPNL=-16.461928, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,666 INFO commissionReport: CommissionReport(execId='00025b45.6a025169.01.01', commission=1.0003, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,666 INFO commissionReport: CommissionReport(execId='00025b45.6a02516a.01.01', commission=0.535621, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,666 INFO commissionReport: CommissionReport(execId='00025b45.6a02516b.01.01', commission=1.315847, currency='USD', realizedPNL=335.668553, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,667 INFO commissionReport: CommissionReport(execId='0000e0d5.6a0181a5.01.01', commission=1.00012, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,667 INFO commissionReport: CommissionReport(execId='00025b49.6a020cd8.01.01', commission=1.072073, currency='USD', realizedPNL=-167.752073, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,667 INFO commissionReport: CommissionReport(execId='00025b45.6a02516e.01.01', commission=1.0003, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,667 INFO commissionReport: CommissionReport(execId='00025b44.6a01a7f4.01.01', commission=1.032753, currency='USD', realizedPNL=-74.265357, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,667 INFO commissionReport: CommissionReport(execId='00025b45.6a02516f.01.01', commission=0.0003, currency='USD', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,668 INFO commissionReport: CommissionReport(execId='00025b44.6a01a7f6.01.01', commission=0.181963, currency='USD', realizedPNL=-407.02976, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:05,668 INFO commissionReport: CommissionReport(execId='00025b45.6a02517d.01.01', commission=1.083968, currency='USD', realizedPNL=0.355832, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:06,030 INFO position: Position(account='DUP671219', contract=Stock(conId=275984, symbol='WDFC', exchange='NASDAQ', currency='USD', localSymbol='WDFC', tradingClass='NMS'), position=0.0, avgCost=0.0)\", \"2026-05-11 06:35:06,033 INFO execDetails Execution(execId='00025b47.6a016e5d.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 5, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='ARCA', side='SLD', shares=16.0, price=204.55, permId=1169042737, clientId=10, orderId=76, liquidation=0, cumQty=16.0, avgPrice=204.55, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False)\", \"2026-05-11 06:35:06,036 INFO execDetails: Fill(contract=Stock(conId=275984, symbol='WDFC', exchange='ARCA', currency='USD', localSymbol='WDFC', tradingClass='NMS'), execution=Execution(execId='00025b47.6a016e5d.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 5, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='ARCA', side='SLD', shares=16.0, price=204.55, permId=1169042737, clientId=10, orderId=76, liquidation=0, cumQty=16.0, avgPrice=204.55, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2026, 5, 11, 13, 35, 6, 32893, tzinfo=datetime.timezone.utc))\", \"2026-05-11 06:35:06,037 INFO orderStatus: Trade(contract=Stock(symbol='WDFC', exchange='SMART', currency='USD'), order=Order(orderId=76, clientId=10, permId=1169042737, action='SELL', totalQuantity=16.0, orderType='MKT', lmtPrice=0.0, auxPrice=0.0, tif='DAY'), orderStatus=OrderStatus(orderId=76, status='Filled', filled=16.0, remaining=0.0, avgFillPrice=204.55, permId=1169042737, parentId=0, lastFillPrice=204.55, clientId=10, whyHeld='', mktCapPrice=0.0), fills=[Fill(contract=Stock(conId=275984, symbol='WDFC', exchange='ARCA', currency='USD', localSymbol='WDFC', tradingClass='NMS'), execution=Execution(execId='00025b47.6a016e5d.01.01', time=datetime.datetime(2026, 5, 11, 13, 35, 5, tzinfo=datetime.timezone.utc), acctNumber='DUP671219', exchange='ARCA', side='SLD', shares=16.0, price=204.55, permId=1169042737, clientId=10, orderId=76, liquidation=0, cumQty=16.0, avgPrice=204.55, orderRef='', evRule='', evMultiplier=0.0, modelCode='', lastLiquidity=2, pendingPriceRevision=False), commissionReport=CommissionReport(execId='', commission=0.0, currency='', realizedPNL=0.0, yield_=0.0, yieldRedemptionDate=0), time=datetime.datetime(2026, 5, 11, 13, 35, 6, 32893, tzinfo=datetime.timezone.utc))], log=[TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 0, 2, 837659, tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 35, 5, 455802, tzinfo=datetime.timezone.utc), status='Submitted', message='', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 35, 6, 32893, tzinfo=datetime.timezone.utc), status='Submitted', message='Fill 16.0@204.55', errorCode=0), TradeLogEntry(time=datetime.datetime(2026, 5, 11, 13, 35, 6, 37541, tzinfo=datetime.timezone.utc), status='Filled', message='', errorCode=0)], advancedError='')\", \"2026-05-11 06:35:06,038 INFO commissionReport: CommissionReport(execId='00025b47.6a016e5d.01.01', commission=1.070588, currency='USD', realizedPNL=-129.270588, yield_=0.0, yieldRedemptionDate=0)\", \"2026-05-11 06:35:06,038 INFO position: Position(account='DUP671219', contract=Stock(conId=275984, symbol='WDFC', exchange='NASDAQ', currency='USD', localSymbol='WDFC', tradingClass='NMS'), position=0.0, avgCost=0.0)\", \"2026-05-11 06:35:06,038 INFO position: Position(account='DUP671219', contract=Stock(conId=275984, symbol='WDFC', exchange='NASDAQ', currency='USD', localSymbol='WDFC', tradingClass='NMS'), position=0.0, avgCost=0.0)\", \"2026-05-11 06:35:06,141 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=11094, symbol='PH', right='0', primaryExchange='NYSE', currency='USD', localSymbol='PH', tradingClass='PH'), position=0.0, marketPrice=866.7467041, marketValue=0.0, averageCost=0.0, unrealizedPNL=0.0, realizedPNL=-167.75, account='DUP671219')\", \"2026-05-11 06:35:06,141 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=12437, symbol='STC', right='0', primaryExchange='NYSE', currency='USD', localSymbol='STC', tradingClass='STC'), position=130.0, marketPrice=69.3578949, marketValue=9016.53, averageCost=69.2176954, unrealizedPNL=18.23, realizedPNL=0.0, account='DUP671219')\", \"2026-05-11 06:35:06,143 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=275984, symbol='WDFC', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='WDFC', tradingClass='NMS'), position=0.0, marketPrice=205.8491211, marketValue=0.0, averageCost=0.0, unrealizedPNL=0.0, realizedPNL=-129.27, account='DUP671219')\", \"2026-05-11 06:35:06,143 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=756662, symbol='HTO', right='0', primaryExchange='NASDAQ', currency='USD', localSymbol='HTO', tradingClass='NMS'), position=0.0, marketPrice=57.537529, marketValue=0.0, averageCost=0.0, unrealizedPNL=0.0, realizedPNL=0.36, account='DUP671219')\", \"2026-05-11 06:35:06,144 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=4215235, symbol='XLU', right='0', primaryExchange='ARCA', currency='USD', localSymbol='XLU', tradingClass='XLU'), position=59.0, marketPrice=44.94400025, marketValue=2651.7, averageCost=46.20538475, unrealizedPNL=-74.42, realizedPNL=0.0, account='DUP671219')\", \"2026-05-11 06:35:06,144 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=30351217, symbol='WLK', right='0', primaryExchange='NYSE', currency='USD', localSymbol='WLK', tradingClass='WLK'), position=103.0, marketPrice=94.40824125, marketValue=9724.05, averageCost=99.70971165, unrealizedPNL=-546.05, realizedPNL=0.0, account='DUP671219')\", \"2026-05-11 06:35:06,144 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=47101335, symbol='MSCI', right='0', primaryExchange='NYSE', currency='USD', localSymbol='MSCI', tradingClass='MSCI'), position=19.0, marketPrice=583.036499, marketValue=11077.69, averageCost=580.40263685, unrealizedPNL=50.04, realizedPNL=0.0, account='DUP671219')\", \"2026-05-11 06:35:06,144 INFO updatePortfolio: PortfolioItem(contract=Stock(conId=284447308, symbol='TDW', right='0', primaryExchange='NYSE', currency='USD', localSymbol='TDW', tradingClass='TDW'), position=126.0, marketPrice=81.4115982, marketValue=10257.86, averageCost=79.9979397, unrealizedPNL=178.12, realizedPNL=0.0, account='DUP671219')\", \"2026-05-11 06:35:06,144 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864003648, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=600.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00600000', tradingClass='SPY'), position=-1.0, marketPrice=1.89097895, marketValue=-189.1, averageCost=384.9408, unrealizedPNL=195.84, realizedPNL=0.0, account='DUP671219')\", \"2026-05-11 06:35:06,145 INFO updatePortfolio: PortfolioItem(contract=Option(conId=864004198, symbol='SPY', lastTradeDateOrContractMonth='20260717', strike=675.0, right='P', multiplier='100', primaryExchange='AMEX', currency='USD', localSymbol='SPY   260717P00675000', tradingClass='SPY'), position=1.0, marketPrice=5.5570774, marketValue=555.71, averageCost=1134.048, unrealizedPNL=-578.34, realizedPNL=0.0, account='DUP671219')\", \"2026-05-11 06:35:08,680 INFO Fills received: ['CVNA', 'MGY', 'NWN', 'ALL', 'PH', 'MUR', 'GMED', 'HTO', 'WDFC']\", \"2026-05-11 06:35:08,903 INFO MOO fill confirmed: ALL @ $215.07 (prior close was $213.15)\", \"2026-05-11 06:35:08,909 INFO MOO fill confirmed: MGY @ $28.19 (prior close was $27.80)\", \"2026-05-11 06:35:08,915 INFO MOO fill confirmed: MUR @ $37.87 (prior close was $36.98)\", \"2026-05-11 06:35:08,922 INFO MOO not filled: PR | MOO fill rejected \\ufffd gap 1.88% (open $20.09 vs prior close $19.72)\", \"2026-05-11 06:35:08,928 INFO Exit fill confirmed: CVNA @ $76.30\", \"2026-05-11 06:35:08,928 INFO Exit fill confirmed: HTO @ $57.21\", \"2026-05-11 06:35:08,929 INFO Exit fill confirmed: PH @ $865.06\", \"2026-05-11 06:35:08,929 INFO Exit fill confirmed: WDFC @ $204.55\", \"2026-05-11 06:35:08,929 INFO Exit fill confirmed: NWN @ $50.40\", \"2026-05-11 06:35:08,929 INFO Exit fill confirmed: GMED @ $78.72\", \"2026-05-11 06:35:08,929 INFO Disconnecting from 127.0.0.1:4002, 2.02 kB sent in 19 messages, 195 kB received in 3342 messages, session time 2.11 ks.\", \"2026-05-11 06:35:08,929 INFO Disconnecting\", \"2026-05-11 06:35:08,930 INFO Disconnected from IBKR\"]",
   "exits_summary": "[\"TIME_STOP: CVNA 9sh | -0.1% | est. P&L: $-0\", \"TIME_STOP: HTO 61sh | +1.4% | est. P&L: $+49\", \"TIME_STOP: PH 4sh | -3.1% | est. P&L: $-111\", \"TIME_STOP: WDFC 16sh | -2.1% | est. P&L: $-71\", \"PROFIT_TARGET: NWN 211sh | +3.3% | est. P&L: $+338\", \"TIME_STOP: GMED 118sh | -5.8% | est. P&L: $-571\"]",
-  "entries_summary": "[\"FILLED: ALL 40sh @ $215.07 (limit $213.15)\", \"FILLED: MGY 307sh @ $28.19 (limit $27.80)\", \"FILLED: MUR 231sh @ $37.87 (limit $36.98)\"]",
+  "entries_summary": [
+    {
+      "ticker": "CENTA",
+      "entry_price": 34.49,
+      "shares": 349.0,
+      "tier": 2
+    },
+    {
+      "ticker": "FCN",
+      "entry_price": 173.81,
+      "shares": 52.0,
+      "tier": 3
+    },
+    {
+      "ticker": "STC",
+      "entry_price": 69.21,
+      "shares": 130.0,
+      "tier": 3
+    },
+    {
+      "ticker": "INVX",
+      "entry_price": 26.7,
+      "shares": 417.0,
+      "tier": 3
+    },
+    {
+      "ticker": "MSCI",
+      "entry_price": 580.35,
+      "shares": 19.0,
+      "tier": 3
+    },
+    {
+      "ticker": "DTE",
+      "entry_price": 142.04,
+      "shares": 72.0,
+      "tier": 3
+    },
+    {
+      "ticker": "FDP",
+      "entry_price": 37.87,
+      "shares": 274.0,
+      "tier": 3
+    },
+    {
+      "ticker": "GNL",
+      "entry_price": 9.07,
+      "shares": 1139.0,
+      "tier": 3
+    },
+    {
+      "ticker": "MSGS",
+      "entry_price": 337.39,
+      "shares": 31.0,
+      "tier": 3
+    },
+    {
+      "ticker": "OGS",
+      "entry_price": 86.71,
+      "shares": 120.0,
+      "tier": 3
+    },
+    {
+      "ticker": "SR",
+      "entry_price": 87.33,
+      "shares": 119.0,
+      "tier": 3
+    },
+    {
+      "ticker": "TDW",
+      "entry_price": 79.99,
+      "shares": 126.0,
+      "tier": 3
+    },
+    {
+      "ticker": "TPL",
+      "entry_price": 447.57,
+      "shares": 25.0,
+      "tier": 3
+    },
+    {
+      "ticker": "WLK",
+      "entry_price": 99.7,
+      "shares": 103.0,
+      "tier": 3
+    },
+    {
+      "ticker": "PRAA",
+      "entry_price": 19.91,
+      "shares": 479.0,
+      "tier": 3
+    },
+    {
+      "ticker": "ALL",
+      "entry_price": 215.07,
+      "shares": 40.0,
+      "tier": 3
+    },
+    {
+      "ticker": "MGY",
+      "entry_price": 28.19,
+      "shares": 307.0,
+      "tier": 3
+    },
+    {
+      "ticker": "MUR",
+      "entry_price": 37.87,
+      "shares": 231.0,
+      "tier": 3
+    },
+    {
+      "ticker": "PR",
+      "entry_price": 20.095003,
+      "shares": 433.0,
+      "tier": 3
+    },
+    {
+      "ticker": "CVNA",
+      "entry_price": 78.0162222,
+      "shares": 36.0,
+      "tier": 3
+    }
+  ],
   "put_spread_long": 675.0,
   "put_spread_short": 600.0,
   "put_spread_expiry": "2026-07-17",
@@ -40,5 +161,6 @@
   "positions_detail": "[{\"ticker\": \"CENTA\", \"entry_price\": 34.49, \"current_price\": 34.195, \"shares\": 349.0, \"pnl_usd\": -102.96, \"pnl_pct\": -0.86, \"tier\": 2}, {\"ticker\": \"FCN\", \"entry_price\": 173.81, \"current_price\": 159.09, \"shares\": 52.0, \"pnl_usd\": -765.44, \"pnl_pct\": -8.47, \"tier\": 3}, {\"ticker\": \"STC\", \"entry_price\": 69.21, \"current_price\": 68.06, \"shares\": 130.0, \"pnl_usd\": -149.5, \"pnl_pct\": -1.66, \"tier\": 3}, {\"ticker\": \"INVX\", \"entry_price\": 26.7, \"current_price\": 27.25, \"shares\": 417.0, \"pnl_usd\": 229.35, \"pnl_pct\": 2.06, \"tier\": 3}, {\"ticker\": \"MSCI\", \"entry_price\": 580.35, \"current_price\": 584.7027, \"shares\": 19.0, \"pnl_usd\": 82.7, \"pnl_pct\": 0.75, \"tier\": 3}, {\"ticker\": \"DTE\", \"entry_price\": 142.04, \"current_price\": 142.4504, \"shares\": 72.0, \"pnl_usd\": 29.55, \"pnl_pct\": 0.29, \"tier\": 3}, {\"ticker\": \"FDP\", \"entry_price\": 37.87, \"current_price\": 35.5399, \"shares\": 274.0, \"pnl_usd\": -638.46, \"pnl_pct\": -6.15, \"tier\": 3}, {\"ticker\": \"GNL\", \"entry_price\": 9.07, \"current_price\": 9.1298, \"shares\": 1139.0, \"pnl_usd\": 68.14, \"pnl_pct\": 0.66, \"tier\": 3}, {\"ticker\": \"MSGS\", \"entry_price\": 337.39, \"current_price\": 343.9, \"shares\": 31.0, \"pnl_usd\": 201.81, \"pnl_pct\": 1.93, \"tier\": 3}, {\"ticker\": \"OGS\", \"entry_price\": 86.71, \"current_price\": 84.45, \"shares\": 120.0, \"pnl_usd\": -271.2, \"pnl_pct\": -2.61, \"tier\": 3}, {\"ticker\": \"SR\", \"entry_price\": 87.33, \"current_price\": 86.0, \"shares\": 119.0, \"pnl_usd\": -158.27, \"pnl_pct\": -1.52, \"tier\": 3}, {\"ticker\": \"TDW\", \"entry_price\": 79.99, \"current_price\": 81.3445, \"shares\": 126.0, \"pnl_usd\": 170.67, \"pnl_pct\": 1.69, \"tier\": 3}, {\"ticker\": \"TPL\", \"entry_price\": 447.57, \"current_price\": 403.0316, \"shares\": 25.0, \"pnl_usd\": -1113.46, \"pnl_pct\": -9.95, \"tier\": 3}, {\"ticker\": \"WLK\", \"entry_price\": 99.7, \"current_price\": 97.5042, \"shares\": 103.0, \"pnl_usd\": -226.17, \"pnl_pct\": -2.2, \"tier\": 3}, {\"ticker\": \"PRAA\", \"entry_price\": 19.91, \"current_price\": 17.13, \"shares\": 479.0, \"pnl_usd\": -1331.62, \"pnl_pct\": -13.96, \"tier\": 3}, {\"ticker\": \"ALL\", \"entry_price\": 215.07, \"current_price\": 213.77, \"shares\": 40.0, \"pnl_usd\": -52.0, \"pnl_pct\": -0.6, \"tier\": 3}, {\"ticker\": \"MGY\", \"entry_price\": 28.19, \"current_price\": 28.21, \"shares\": 307.0, \"pnl_usd\": 6.14, \"pnl_pct\": 0.07, \"tier\": 3}, {\"ticker\": \"MUR\", \"entry_price\": 37.87, \"current_price\": 37.611, \"shares\": 231.0, \"pnl_usd\": -59.83, \"pnl_pct\": -0.68, \"tier\": 3}]",
   "overlay_history": "{}",
   "overlay_live": "\"FACTOR\"",
-  "vxc_live_pnl": 0.0
+  "vxc_live_pnl": 0.0,
+  "scan_candidates": "[]"
 }
