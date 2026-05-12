@@ -1,13 +1,13 @@
 {
   "date": "2026-05-12",
   "strategy_version": "V7.3",
-  "portfolio_value": 93755.49,
+  "portfolio_value": 93798.91,
   "starting_equity": 100000,
   "open_positions": 18,
   "max_positions": 60,
   "vix": 18.68,
   "position_size_pct": 9.0,
-  "win_rate": 55.56,
+  "win_rate": 55.6,
   "total_closed_trades": 18,
   "total_pnl_usd": 507.77,
   "hedge_pnl_30d": 0.0,
@@ -31,5 +31,14 @@
   "put_spread_cost": 9.35,
   "vix_call_long": 20.0,
   "vix_call_short": 40.0,
-  "vix_call_expiry": "2026-05-18"
+  "vix_call_expiry": "2026-05-18",
+  "unrealized_pnl_usd": -3072.94,
+  "last_intraday_update": "2026-05-12 06:41 PT",
+  "capital_deployed_usd": 100000.0,
+  "capital_deployed_pct": 100.0,
+  "capital_cash_usd": 0.0,
+  "positions_detail": "[{\"ticker\": \"INVX\", \"entry_price\": 26.7, \"current_price\": 27.3328, \"shares\": 417.0, \"pnl_usd\": 263.87, \"pnl_pct\": 2.37, \"tier\": 3}, {\"ticker\": \"MSCI\", \"entry_price\": 580.35, \"current_price\": 584.8054, \"shares\": 19.0, \"pnl_usd\": 84.65, \"pnl_pct\": 0.77, \"tier\": 3}, {\"ticker\": \"DTE\", \"entry_price\": 142.04, \"current_price\": 141.8654, \"shares\": 72.0, \"pnl_usd\": -12.57, \"pnl_pct\": -0.12, \"tier\": 3}, {\"ticker\": \"FDP\", \"entry_price\": 37.87, \"current_price\": 35.9152, \"shares\": 274.0, \"pnl_usd\": -535.62, \"pnl_pct\": -5.16, \"tier\": 3}, {\"ticker\": \"GNL\", \"entry_price\": 9.07, \"current_price\": 9.1257, \"shares\": 1139.0, \"pnl_usd\": 63.5, \"pnl_pct\": 0.61, \"tier\": 3}, {\"ticker\": \"MSGS\", \"entry_price\": 337.39, \"current_price\": 342.8926, \"shares\": 31.0, \"pnl_usd\": 170.58, \"pnl_pct\": 1.63, \"tier\": 3}, {\"ticker\": \"OGS\", \"entry_price\": 86.71, \"current_price\": 84.6305, \"shares\": 120.0, \"pnl_usd\": -249.54, \"pnl_pct\": -2.4, \"tier\": 3}, {\"ticker\": \"SR\", \"entry_price\": 87.33, \"current_price\": 85.9147, \"shares\": 119.0, \"pnl_usd\": -168.42, \"pnl_pct\": -1.62, \"tier\": 3}, {\"ticker\": \"TDW\", \"entry_price\": 79.99, \"current_price\": 81.3656, \"shares\": 126.0, \"pnl_usd\": 173.32, \"pnl_pct\": 1.72, \"tier\": 3}, {\"ticker\": \"TPL\", \"entry_price\": 447.57, \"current_price\": 403.6603, \"shares\": 25.0, \"pnl_usd\": -1097.74, \"pnl_pct\": -9.81, \"tier\": 3}, {\"ticker\": \"WLK\", \"entry_price\": 99.7, \"current_price\": 98.3415, \"shares\": 103.0, \"pnl_usd\": -139.92, \"pnl_pct\": -1.36, \"tier\": 3}, {\"ticker\": \"PRAA\", \"entry_price\": 19.91, \"current_price\": 17.0239, \"shares\": 479.0, \"pnl_usd\": -1382.44, \"pnl_pct\": -14.5, \"tier\": 3}, {\"ticker\": \"ALL\", \"entry_price\": 215.07, \"current_price\": 214.9628, \"shares\": 40.0, \"pnl_usd\": -4.29, \"pnl_pct\": -0.05, \"tier\": 3}, {\"ticker\": \"MGY\", \"entry_price\": 28.19, \"current_price\": 28.1434, \"shares\": 307.0, \"pnl_usd\": -14.31, \"pnl_pct\": -0.17, \"tier\": 3}, {\"ticker\": \"MUR\", \"entry_price\": 37.87, \"current_price\": 37.8419, \"shares\": 231.0, \"pnl_usd\": -6.5, \"pnl_pct\": -0.07, \"tier\": 3}, {\"ticker\": \"AROC\", \"entry_price\": 36.54, \"current_price\": 36.4196, \"shares\": 267.0, \"pnl_usd\": -32.13, \"pnl_pct\": -0.33, \"tier\": 3}, {\"ticker\": \"COKE\", \"entry_price\": 171.99, \"current_price\": 170.737, \"shares\": 57.0, \"pnl_usd\": -71.42, \"pnl_pct\": -0.73, \"tier\": 3}, {\"ticker\": \"STBA\", \"entry_price\": 44.16, \"current_price\": 43.6467, \"shares\": 222.0, \"pnl_usd\": -113.96, \"pnl_pct\": -1.16, \"tier\": 3}]",
+  "overlay_history": "{}",
+  "overlay_live": "\"FACTOR\"",
+  "vxc_live_pnl": 0.0
 }
