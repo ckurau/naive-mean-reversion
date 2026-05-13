@@ -1,4 +1,8 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+19,XPO,2026-05-13,196.02000427246094,200.0,2.03,MOO fill rejected — gap 2.03% (open $200.00 vs prior close $196.02)
+18,WSFS,2026-05-13,70.41999816894531,70.2699966430664,-0.213,Open $70.27 was at/below limit $70.42 — possible Gateway disconnect
+17,TCBI,2026-05-13,97.44999694824219,97.13999938964844,-0.318,Open $97.14 was at/below limit $97.45 — possible Gateway disconnect
+16,REZI,2026-05-13,36.68000030517578,37.13999938964844,1.254,MOO fill rejected — gap 1.25% (open $37.14 vs prior close $36.68)
 15,PR,2026-05-11,19.719999313354492,20.09000015258789,1.876,MOO fill rejected — gap 1.88% (open $20.09 vs prior close $19.72)
 14,GMED,2026-05-08,85.06999969482422,90.29000091552734,6.136,MOO fill rejected — gap 6.14% (open $90.29 vs prior close $85.07)
 13,ROST,2026-04-30,225.0800018310547,226.79800415039062,0.763,MOO fill rejected — gap 0.76% (open $226.80 vs prior close $225.08)
