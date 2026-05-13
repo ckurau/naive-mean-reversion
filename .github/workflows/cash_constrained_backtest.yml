@@ -1,0 +1,42 @@
+name: Cash-Constrained V7.5 Backtest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 1 * *'  # Run monthly on the 1st at 10am UTC
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas numpy yfinance tqdm
+
+      - name: Run cash-constrained backtest
+        run: |
+          python backtest_v75_cash_constrained.py
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: cash-constrained-results-${{ github.run_number }}
+          path: results_v75_cash_constrained/
+          retention-days: 90
+
+      - name: Display results summary
+        run: |
+          echo "=== CASH-CONSTRAINED BACKTEST COMPLETE ==="
+          if [ -f results_v75_cash_constrained/summary_cash_constrained.json ]; then
+            cat results_v75_cash_constrained/summary_cash_constrained.json
+          fi
