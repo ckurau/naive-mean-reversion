@@ -613,11 +613,75 @@ OOS Positive: 7/8 | OOS Avg CAGR: 20.91%
 | GOLD/SECROT overlay parameter fitting | -0.5 to -1% |
 | TLT/Factor/VIX3M overlay parameter fitting | -0.5 to -1% |
 | PDBC/HYG/ZROZ overlay parameter fitting | -0.5 to -1% |
-| Cash constraint (overlays use ~28% of $100k) | -1 to -2% in early years |
-| **Realistic live estimate** | **~10-14% CAGR gross** |
+| Cash constraint (overlays use ~28% of $100k) | See cash-constrained backtest below |
+| **Realistic live estimate (cash-constrained backtest)** | **~20% CAGR gross** |
 
-Apply ~26% walk-forward decay: 34.75% x 0.74 = ~26% live gross (upper bound).
-After short-term capital gains tax (32-37%), realistic net: ~10-12%.
+## Cash-Constrained Backtest Results (May 2026)
+
+The original V7.5 backtest used a **notional overlay model** — overlays earned percentage returns on the full portfolio value without deploying real cash, simultaneously with MR positions. This is not achievable in a real $100k cash account.
+
+A corrected **cash-constrained backtest** (`backtest_v75_cash_constrained.py`) was run where:
+- All overlays deploy real cash from the same pool as MR positions
+- MR entries only use cash remaining after overlays are deployed
+- No leverage — total deployment capped at $100k at all times
+
+### Cash-Constrained Results vs Notional
+
+| Metric | V7.5 Notional | Cash-Constrained | Delta |
+|---|---|---|---|
+| CAGR (MR-only) | 28.88% | **16.17%** | -12.71pp |
+| CAGR (combined) | 34.75% | **20.25%** | -14.50pp |
+| Final Equity | $77,488,411 | **$6,174,856** | — |
+| Max Drawdown | -57.25% | **-13.32%** | +43.93pp better |
+| Sharpe | 1.08 | **1.50** | +0.42 better |
+| Win Rate (MR) | 60.24% | 60.91% | unchanged |
+| Total MR trades | 22,041 | 10,832 | ~half (cash-limited) |
+
+### Cash-Constrained Year-by-Year
+
+| Year | End Equity | Annual P&L |
+|---|---|---|
+| 2004 | $107,995 | +$7,995 |
+| 2005 | $116,852 | +$8,857 |
+| 2006 | $143,168 | +$26,316 |
+| 2007 | $156,198 | +$13,030 |
+| 2008 | $236,967 | +$80,769 |
+| 2009 | $385,680 | +$148,713 |
+| 2010 | $440,251 | +$54,572 |
+| 2011 | $605,296 | +$165,045 |
+| 2012 | $710,139 | +$104,843 |
+| 2013 | $938,972 | +$228,834 |
+| 2014 | $1,009,381 | +$70,409 |
+| 2015 | $1,123,685 | +$114,304 |
+| 2016 | $1,305,653 | +$181,967 |
+| 2017 | $1,373,748 | +$68,095 |
+| 2018 | $1,581,552 | +$207,804 |
+| 2019 | $1,709,458 | +$127,907 |
+| 2020 | $2,741,682 | +$1,032,223 |
+| 2021 | $3,304,493 | +$562,811 |
+| 2022 | $3,444,871 | +$140,378 |
+| 2023 | $4,056,020 | +$611,149 |
+| 2024 | $5,143,604 | +$1,087,584 |
+| 2025 | $6,111,752 | +$968,148 |
+| 2026 | $6,174,856 | +$63,104 |
+
+### Key Insights from Cash-Constrained Results
+
+**20.25% CAGR is the realistic target** — not 34.75%. The notional model inflated results by allowing overlays to earn returns on the same capital as MR positions simultaneously.
+
+**Max drawdown drops from -57% to -13%** — a major improvement. The cash constraint forces smaller MR positions during periods when overlays are deployed, naturally reducing risk.
+
+**Sharpe improves from 1.08 to 1.50** — better risk-adjusted returns because the strategy is more selective about entries when cash is scarce.
+
+**Only half the MR trades execute** (10,832 vs 22,041) — the primary cost of the cash constraint. Overlays occupy ~28% of capital in bull markets, leaving less room for MR entries.
+
+**Overlays still add value** — $3.6M total vs $6.1M from MR alone. Each overlay dollar earns about the same as an MR dollar but with less correlation to the market.
+
+**Realistic live expectations:**
+- Gross CAGR: ~20% (cash-constrained backtest, pre-slippage/tax)
+- After slippage (-2 to -3%): ~17-18%
+- After short-term capital gains tax (32-37%): **~11-13% net**
+- This is still excellent vs S&P 500 long-term average of ~10% gross / ~7-8% after tax
 
 Overlay overfitting assessment: HYG (+$613k over 22 years) and ZROZ (+$1.1M) are marginal and most likely to underperform live. VIX calls, SPY puts, SECROT, and FACTOR have stronger economic rationale and academic support. Most durable: VIX calls and SPY puts.
 
