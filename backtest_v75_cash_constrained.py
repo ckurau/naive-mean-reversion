@@ -406,15 +406,9 @@ def run_cash_constrained(price_data, spy_df, vix_df, sector_data,
             should_be_in = trend and carry
 
             if gold_in and not should_be_in:
-                # Exit: return cash
+                # Exit: return cash to pv
                 gold_in = False
-                pv += overlay_cash["gold"]  # return deployed cash
-                trades.append({"ticker":"OVL_GOLD","entry_date":today,
-                    "exit_date":today,"entry_price":0,"exit_price":0,
-                    "shares":0,"commission":0,
-                    "pnl_usd":round(overlay_cash["gold"] - pv * GOLD_ALLOC_PCT, 4),
-                    "pnl_pct":0,"days_held":1,"exit_reason":"gold_exit",
-                    "tier":0,"consec_down":0,"portfolio_val":pv})
+                pv += overlay_cash["gold"]
                 overlay_cash["gold"] = 0.0
             elif not gold_in and should_be_in:
                 # Entry: deploy cash
@@ -447,7 +441,7 @@ def run_cash_constrained(price_data, spy_df, vix_df, sector_data,
             should_be_in = (not spy_above) and not np.isnan(ma50) and price > ma50
             if tlt_in and not should_be_in:
                 tlt_in = False
-                ret = float(tlt_s.pct_change().loc[today])
+                ret = float(tlt_s.pct_change().loc[today]) if today in tlt_s.index else 0.0
                 if not np.isnan(ret):
                     pnl = overlay_cash["tlt"] * ret
                     overlay_cash["tlt"] += pnl; pv += pnl
@@ -484,22 +478,17 @@ def run_cash_constrained(price_data, spy_df, vix_df, sector_data,
                         m = float(ovl_px[s].pct_change(SECROT_MOM_DAYS).loc[today])
                         if not np.isnan(m): moms[s] = m
                 new_top = set(sorted(moms, key=moms.get, reverse=True)[:SECROT_TOP_N])
-                # Exit sectors leaving top-3
-                for s in list(secrot_sectors - new_top):
-                    if s in ovl_px and today in ovl_px[s].index:
-                        ret = float(ovl_px[s].pct_change().loc[today])
-                        if not np.isnan(ret) and overlay_cash["secrot"] > 0:
-                            pnl = (overlay_cash["secrot"] / len(secrot_sectors)) * ret
-                            pv += pnl
-                        pv += overlay_cash["secrot"] / max(1, len(secrot_sectors))
-                        overlay_cash["secrot"] -= overlay_cash["secrot"] / max(1, len(secrot_sectors))
-                # Enter new sectors
+                # On rebalance: liquidate ALL secrot, redeploy into new top-3
+                # This simplifies accounting and matches live behavior
+                if overlay_cash["secrot"] > 0:
+                    pv += overlay_cash["secrot"]
+                    overlay_cash["secrot"] = 0.0
+                # Redeploy into new top-3 if bull regime
                 avail_cash = pv - mr_deployed - sum(overlay_cash.values())
-                for s in new_top - secrot_sectors:
-                    deploy = pv * SECROT_ALLOC
-                    if deploy <= avail_cash * 0.9:
-                        overlay_cash["secrot"] += deploy
-                        pv -= deploy
+                new_deploy = pv * SECROT_ALLOC * len(new_top)
+                if new_top and new_deploy <= avail_cash * 0.9:
+                    overlay_cash["secrot"] = new_deploy
+                    pv -= new_deploy
                 secrot_sectors = new_top
 
             # Daily mark-to-market for held sectors
