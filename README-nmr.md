@@ -629,13 +629,13 @@ A corrected **cash-constrained backtest** (`backtest_v75_cash_constrained.py`) w
 
 | Metric | V7.5 Notional | Cash-Constrained | Delta |
 |---|---|---|---|
-| CAGR (MR-only) | 28.88% | **16.17%** | -12.71pp |
-| CAGR (combined) | 34.75% | **20.25%** | -14.50pp |
-| Final Equity | $77,488,411 | **$6,174,856** | — |
-| Max Drawdown | -57.25% | **-13.32%** | +43.93pp better |
-| Sharpe | 1.08 | **1.50** | +0.42 better |
+| CAGR (MR-only) | 28.88% | **16.2%** | -12.68pp |
+| CAGR (combined) | 34.75% | **20.2%** | -14.55pp |
+| Final Equity | $77,488,411 | **$6,097,937** | — |
+| Max Drawdown | -57.25% | **-13.3%** | +43.95pp better |
+| Sharpe | 1.08 | **1.51** | +0.43 better |
 | Win Rate (MR) | 60.24% | 60.91% | unchanged |
-| Total MR trades | 22,041 | 10,832 | ~half (cash-limited) |
+| Total MR trades | 22,041 | 10,889 | ~half (cash-limited) |
 
 ### Cash-Constrained Year-by-Year
 
@@ -678,7 +678,7 @@ A corrected **cash-constrained backtest** (`backtest_v75_cash_constrained.py`) w
 **Overlays still add value** — $3.6M total vs $6.1M from MR alone. Each overlay dollar earns about the same as an MR dollar but with less correlation to the market.
 
 **Realistic live expectations:**
-- Gross CAGR: ~20% (cash-constrained backtest, pre-slippage/tax)
+- Gross CAGR: ~20.2% (cash-constrained backtest, pre-slippage/tax, confirmed twice)
 - After slippage (-2 to -3%): ~17-18%
 - After short-term capital gains tax (32-37%): **~11-13% net**
 - This is still excellent vs S&P 500 long-term average of ~10% gross / ~7-8% after tax
