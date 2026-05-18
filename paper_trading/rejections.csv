@@ -1,4 +1,17 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+42,WBS,2026-05-18,71.16000366210938,71.55999755859375,0.562,MOO fill rejected — gap 0.56% (open $71.56 vs prior close $71.16)
+41,TTC,2026-05-18,88.68000030517578,90.36000061035156,1.894,MOO fill rejected — gap 1.89% (open $90.36 vs prior close $88.68)
+40,SWK,2026-05-18,75.13999938964844,76.16999816894531,1.371,MOO fill rejected — gap 1.37% (open $76.17 vs prior close $75.14)
+39,SNEX,2026-05-18,110.20999908447266,110.58000183105469,0.336,MOO fill rejected — gap 0.34% (open $110.58 vs prior close $110.21)
+38,SNA,2026-05-18,359.6499938964844,362.54998779296875,0.806,MOO fill rejected — gap 0.81% (open $362.55 vs prior close $359.65)
+37,SITM,2026-05-18,774.0599975585938,785.0,1.413,MOO fill rejected — gap 1.41% (open $785.00 vs prior close $774.06)
+36,SBAC,2026-05-18,199.6199951171875,200.67999267578125,0.531,MOO fill rejected — gap 0.53% (open $200.68 vs prior close $199.62)
+35,RHP,2026-05-18,104.79000091552734,105.61000061035156,0.783,MOO fill rejected — gap 0.78% (open $105.61 vs prior close $104.79)
+34,POWL,2026-05-18,292.6499938964844,289.04998779296875,-1.23,No fill confirmation: open $289.05 vs prior close $292.65 — order skipped (buying power) or fill arrived after poll window
+33,PARR,2026-05-18,58.29999923706055,60.34000015258789,3.499,MOO fill rejected — gap 3.50% (open $60.34 vs prior close $58.30)
+32,NLY,2026-05-18,21.68000030517578,21.799999237060547,0.554,MOO fill rejected — gap 0.55% (open $21.80 vs prior close $21.68)
+31,ITT,2026-05-18,194.57000732421875,200.00999450683594,2.796,MOO fill rejected — gap 2.80% (open $200.01 vs prior close $194.57)
+30,INCY,2026-05-18,95.30999755859375,95.47000122070312,0.168,MOO fill rejected — gap 0.17% (open $95.47 vs prior close $95.31)
 29,TTC,2026-05-15,89.45999908447266,91.61000061035156,2.403,MOO fill rejected — gap 2.40% (open $91.61 vs prior close $89.46)
 28,TDS,2026-05-15,41.86000061035156,42.439998626708984,1.386,MOO fill rejected — gap 1.39% (open $42.44 vs prior close $41.86)
 27,SNEX,2026-05-15,115.37999725341797,112.81999969482422,-2.219,Open $112.82 was at/below limit $115.38 — possible Gateway disconnect
