@@ -1,13 +1,13 @@
 {
   "date": "2026-05-19",
   "strategy_version": "V7.3",
-  "portfolio_value": 88494.17,
+  "portfolio_value": 88526.62,
   "starting_equity": 100000,
   "open_positions": 12,
   "max_positions": 60,
   "vix": 17.94,
   "position_size_pct": 9.0,
-  "win_rate": 55.26,
+  "win_rate": 55.3,
   "total_closed_trades": 38,
   "total_pnl_usd": -4110.05,
   "hedge_pnl_30d": -105.0,
@@ -31,5 +31,14 @@
   "put_spread_cost": 9.35,
   "vix_call_long": 20.0,
   "vix_call_short": 40.0,
-  "vix_call_expiry": "2026-06-16"
+  "vix_call_expiry": "2026-06-16",
+  "unrealized_pnl_usd": -2182.43,
+  "last_intraday_update": "2026-05-19 06:41 PT",
+  "capital_deployed_usd": 100000.0,
+  "capital_deployed_pct": 100.0,
+  "capital_cash_usd": 0.0,
+  "positions_detail": "[{\"ticker\": \"COKE\", \"entry_price\": 171.99, \"current_price\": 169.8125, \"shares\": 57.0, \"pnl_usd\": -124.11, \"pnl_pct\": -1.27, \"tier\": 3}, {\"ticker\": \"STBA\", \"entry_price\": 44.16, \"current_price\": 44.0218, \"shares\": 222.0, \"pnl_usd\": -30.68, \"pnl_pct\": -0.31, \"tier\": 3}, {\"ticker\": \"LQDT\", \"entry_price\": 34.21, \"current_price\": 33.7533, \"shares\": 318.0, \"pnl_usd\": -145.22, \"pnl_pct\": -1.33, \"tier\": 3}, {\"ticker\": \"MCHP\", \"entry_price\": 98.6, \"current_price\": 92.8343, \"shares\": 109.0, \"pnl_usd\": -628.47, \"pnl_pct\": -5.85, \"tier\": 3}, {\"ticker\": \"AMRX\", \"entry_price\": 12.16, \"current_price\": 11.79, \"shares\": 891.0, \"pnl_usd\": -329.67, \"pnl_pct\": -3.04, \"tier\": 2}, {\"ticker\": \"CBT\", \"entry_price\": 81.29, \"current_price\": 80.4526, \"shares\": 130.0, \"pnl_usd\": -108.87, \"pnl_pct\": -1.03, \"tier\": 2}, {\"ticker\": \"FORM\", \"entry_price\": 121.96, \"current_price\": 116.8869, \"shares\": 83.0, \"pnl_usd\": -421.06, \"pnl_pct\": -4.16, \"tier\": 3}, {\"ticker\": \"GATX\", \"entry_price\": 175.87, \"current_price\": 170.2884, \"shares\": 61.0, \"pnl_usd\": -340.48, \"pnl_pct\": -3.17, \"tier\": 3}, {\"ticker\": \"HST\", \"entry_price\": 21.49, \"current_price\": 21.594, \"shares\": 378.0, \"pnl_usd\": 39.31, \"pnl_pct\": 0.48, \"tier\": 2}, {\"ticker\": \"ARR\", \"entry_price\": 16.2723, \"current_price\": 16.2139, \"shares\": 653.0, \"pnl_usd\": -38.16, \"pnl_pct\": -0.36, \"tier\": 2}, {\"ticker\": \"LUV\", \"entry_price\": 37.57, \"current_price\": 37.4345, \"shares\": 241.0, \"pnl_usd\": -32.65, \"pnl_pct\": -0.36, \"tier\": 1}, {\"ticker\": \"NLY\", \"entry_price\": 21.2581, \"current_price\": 21.206, \"shares\": 429.0, \"pnl_usd\": -22.37, \"pnl_pct\": -0.25, \"tier\": 1}]",
+  "overlay_history": "{\"FACTOR\": [{\"ticker\": \"QQQ\", \"event\": \"entry\", \"date\": \"2026-05-12\", \"shares\": 8.0, \"price\": 704.1, \"pnl_usd\": null}], \"HYG\": [{\"ticker\": \"HYG\", \"event\": \"entry\", \"date\": \"2026-05-12\", \"shares\": 59.0, \"price\": 79.85, \"pnl_usd\": null}]}",
+  "overlay_live": "{\"secrot\": {\"total_unreal\": -135.07, \"positions\": [{\"ticker\": \"XLU\", \"shares\": 65, \"entry\": 46.18, \"price\": 43.92, \"unreal\": -135.07, \"pct\": -4.9}]}, \"factor\": {\"ticker\": \"QQQ\", \"active\": true, \"unreal\": 0, \"shares\": 8, \"entry\": 704.1, \"price\": 0, \"pct\": 0}, \"pdbc\": {\"shares\": 281, \"entry\": 17.79, \"active\": true, \"price\": 18.83, \"unreal\": 251.49, \"pct\": 5.8}, \"hyg\": {\"shares\": 59, \"entry\": 79.85, \"active\": true, \"price\": 0.0, \"unreal\": 0.0, \"pct\": 0}, \"gold\": {\"active\": false}, \"tlt\": {\"active\": false}, \"zroz\": {\"active\": false}, \"spy_put_spread\": {\"legs\": [{\"right\": \"P\", \"strike\": 600.0, \"expiry\": \"202607\", \"pos\": -1, \"avg_cost\": 384.94, \"mkt_val\": -160.0, \"unreal\": 224.94}, {\"right\": \"P\", \"strike\": 675.0, \"expiry\": \"202607\", \"pos\": 1, \"avg_cost\": 1134.05, \"mkt_val\": 506.0, \"unreal\": -628.05}], \"total_unreal\": -403.11}, \"total_unreal\": 116.42}",
+  "vxc_live_pnl": 0.0
 }
