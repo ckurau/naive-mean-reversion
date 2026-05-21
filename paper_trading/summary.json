@@ -1,13 +1,13 @@
 {
   "date": "2026-05-21",
   "strategy_version": "V7.3",
-  "portfolio_value": 89001.87,
+  "portfolio_value": 88222.1,
   "starting_equity": 100000,
   "open_positions": 15,
   "max_positions": 60,
   "vix": 17.7,
   "position_size_pct": 9.0,
-  "win_rate": 56.82,
+  "win_rate": 56.8,
   "total_closed_trades": 44,
   "total_pnl_usd": -3872.85,
   "hedge_pnl_30d": -105.0,
@@ -31,5 +31,14 @@
   "put_spread_cost": 9.35,
   "vix_call_long": 20.0,
   "vix_call_short": 40.0,
-  "vix_call_expiry": "2026-06-16"
+  "vix_call_expiry": "2026-06-16",
+  "unrealized_pnl_usd": -1967.84,
+  "last_intraday_update": "2026-05-21 06:41 PT",
+  "capital_deployed_usd": 100000.0,
+  "capital_deployed_pct": 100.0,
+  "capital_cash_usd": 0.0,
+  "positions_detail": "[{\"ticker\": \"AMRX\", \"entry_price\": 12.16, \"current_price\": 12.0166, \"shares\": 891.0, \"pnl_usd\": -127.77, \"pnl_pct\": -1.18, \"tier\": 2}, {\"ticker\": \"CBT\", \"entry_price\": 81.29, \"current_price\": 76.4991, \"shares\": 130.0, \"pnl_usd\": -622.82, \"pnl_pct\": -5.89, \"tier\": 2}, {\"ticker\": \"GATX\", \"entry_price\": 175.87, \"current_price\": 169.5038, \"shares\": 61.0, \"pnl_usd\": -388.34, \"pnl_pct\": -3.62, \"tier\": 3}, {\"ticker\": \"ARR\", \"entry_price\": 16.2723, \"current_price\": 16.354, \"shares\": 653.0, \"pnl_usd\": 53.32, \"pnl_pct\": 0.5, \"tier\": 2}, {\"ticker\": \"LUV\", \"entry_price\": 37.57, \"current_price\": 38.9965, \"shares\": 121.0, \"pnl_usd\": 172.61, \"pnl_pct\": 3.8, \"tier\": 1}, {\"ticker\": \"NLY\", \"entry_price\": 21.2581, \"current_price\": 21.334, \"shares\": 215.0, \"pnl_usd\": 16.31, \"pnl_pct\": 0.36, \"tier\": 1}, {\"ticker\": \"AKAM\", \"entry_price\": 141.4, \"current_price\": 144.0769, \"shares\": 75.0, \"pnl_usd\": 200.77, \"pnl_pct\": 1.89, \"tier\": 3}, {\"ticker\": \"ALKS\", \"entry_price\": 37.53, \"current_price\": 36.5204, \"shares\": 288.0, \"pnl_usd\": -290.77, \"pnl_pct\": -2.69, \"tier\": 3}, {\"ticker\": \"CC\", \"entry_price\": 22.2, \"current_price\": 21.2938, \"shares\": 490.0, \"pnl_usd\": -444.06, \"pnl_pct\": -4.08, \"tier\": 3}, {\"ticker\": \"COHU\", \"entry_price\": 43.8, \"current_price\": 44.7282, \"shares\": 236.0, \"pnl_usd\": 219.06, \"pnl_pct\": 2.12, \"tier\": 1}, {\"ticker\": \"CW\", \"entry_price\": 722.04, \"current_price\": 715.2137, \"shares\": 14.0, \"pnl_usd\": -95.57, \"pnl_pct\": -0.95, \"tier\": 3}, {\"ticker\": \"AGX\", \"entry_price\": 660.12, \"current_price\": 645.6874, \"shares\": 17.0, \"pnl_usd\": -245.35, \"pnl_pct\": -2.19, \"tier\": 3}, {\"ticker\": \"CTVA\", \"entry_price\": 78.3, \"current_price\": 78.324, \"shares\": 119.0, \"pnl_usd\": 2.86, \"pnl_pct\": 0.03, \"tier\": 2}, {\"ticker\": \"ENS\", \"entry_price\": 240.96, \"current_price\": 232.5825, \"shares\": 44.0, \"pnl_usd\": -368.61, \"pnl_pct\": -3.48, \"tier\": 3}, {\"ticker\": \"GVA\", \"entry_price\": 129.39, \"current_price\": 128.7027, \"shares\": 72.0, \"pnl_usd\": -49.49, \"pnl_pct\": -0.53, \"tier\": 2}]",
+  "overlay_history": "{\"FACTOR\": [{\"ticker\": \"QQQ\", \"event\": \"entry\", \"date\": \"2026-05-12\", \"shares\": 8.0, \"price\": 704.1, \"pnl_usd\": null}], \"HYG\": [{\"ticker\": \"HYG\", \"event\": \"entry\", \"date\": \"2026-05-12\", \"shares\": 59.0, \"price\": 79.85, \"pnl_usd\": null}]}",
+  "overlay_live": "{\"secrot\": {\"total_unreal\": -99.79, \"positions\": [{\"ticker\": \"XLU\", \"shares\": 65, \"entry\": 46.18, \"price\": 44.51, \"unreal\": -99.79, \"pct\": -3.6}]}, \"factor\": {\"ticker\": \"QQQ\", \"active\": true, \"unreal\": 0, \"shares\": 8, \"entry\": 704.1, \"price\": 0, \"pct\": 0}, \"pdbc\": {\"shares\": 281, \"entry\": 17.79, \"active\": true, \"price\": 18.64, \"unreal\": 196.7, \"pct\": 4.7}, \"hyg\": {\"shares\": 59, \"entry\": 79.85, \"active\": true, \"price\": 0.0, \"unreal\": 0.0, \"pct\": 0}, \"gold\": {\"active\": false}, \"tlt\": {\"active\": false}, \"zroz\": {\"active\": false}, \"spy_put_spread\": {\"legs\": [{\"right\": \"P\", \"strike\": 600.0, \"expiry\": \"202607\", \"pos\": -1, \"avg_cost\": 384.94, \"mkt_val\": -145.3, \"unreal\": 239.64}, {\"right\": \"P\", \"strike\": 675.0, \"expiry\": \"202607\", \"pos\": 1, \"avg_cost\": 1134.05, \"mkt_val\": 453.0, \"unreal\": -681.05}], \"total_unreal\": -441.41}, \"total_unreal\": 96.91}",
+  "vxc_live_pnl": 0.0
 }
