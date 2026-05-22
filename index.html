@@ -587,7 +587,7 @@ canvas { display: block; }
 
   <!-- HYG CREDIT -->
   <div class="overlay-panel hyg-panel">
-    <div class="overlay-title pink">◈ HYG Credit Carry (Idea O, 5% alloc)</div>
+    <!-- HYG removed -->
     <div id="hyg-status-pill" class="status-pill pill-out">checking...</div>
     <div class="overlay-stat">
       <span class="overlay-stat-label">HYG/LQD Ratio</span>
@@ -691,7 +691,7 @@ canvas { display: block; }
         <div class="pnl-item-value" style="color:var(--purple)" id="pb-secrot">—</div>
       </div>
       <div class="pnl-item">
-        <div class="pnl-item-label">TLT Bear Net</div>
+        
         <div class="pnl-item-value teal" id="pb-tlt">—</div>
       </div>
       <div class="pnl-item">
@@ -703,11 +703,11 @@ canvas { display: block; }
         <div class="pnl-item-value orange" id="pb-pdbc">—</div>
       </div>
       <div class="pnl-item">
-        <div class="pnl-item-label">HYG Net</div>
+        
         <div class="pnl-item-value pink" id="pb-hyg">—</div>
       </div>
       <div class="pnl-item">
-        <div class="pnl-item-label">ZROZ Net</div>
+        
         <div class="pnl-item-value cyan" id="pb-zroz">—</div>
       </div>
     </div>
@@ -1075,7 +1075,7 @@ function renderSummary(s) {
 
   // ── TLT Bear overlay (Idea I) ──
   const tltIn = s.tlt_in_position;
-  const tltPill = document.getElementById('tlt-status-pill');
+  const tltPill = (document.getElementById('tlt-removed') || {});
   if (tltIn === true) {
     tltPill.textContent = '● IN POSITION (BEAR REGIME)';
     tltPill.className = 'status-pill pill-in';
@@ -1086,17 +1086,17 @@ function renderSummary(s) {
     tltPill.textContent = '— checking';
     tltPill.className = 'status-pill pill-out';
   }
-  document.getElementById('tlt-price').textContent = s.tlt_price ? `$${Number(s.tlt_price).toFixed(2)}` : '—';
-  document.getElementById('tlt-ma50').textContent  = s.tlt_ma50  ? `$${Number(s.tlt_ma50).toFixed(2)}`  : '—';
+  (document.getElementById('tlt-price') || {}).textContent = s.tlt_price ? `$${Number(s.tlt_price).toFixed(2)}` : '—';
+  (document.getElementById('tlt-ma50') || {}).textContent  = s.tlt_ma50  ? `$${Number(s.tlt_ma50).toFixed(2)}`  : '—';
   if (s.spy_bear_regime !== undefined) {
     const regEl = document.getElementById('tlt-spy-regime');
     regEl.innerHTML = s.spy_bear_regime
       ? '<span class="neg">Bear — TLT eligible</span>'
       : '<span class="pos">Bull — TLT inactive</span>';
   }
-  document.getElementById('tlt-pnl-30d').innerHTML = s.tlt_pnl_30d !== undefined ? fmtPnl(s.tlt_pnl_30d) : '—';
-  document.getElementById('tlt-pnl-all').innerHTML = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
-  document.getElementById('pb-tlt').innerHTML      = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
+  (document.getElementById('tlt-pnl-30d') || {}).innerHTML = s.tlt_pnl_30d !== undefined ? fmtPnl(s.tlt_pnl_30d) : '—';
+  (document.getElementById('tlt-pnl-all') || {}).innerHTML = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
+  (document.getElementById('pb-tlt-removed') || {}).innerHTML      = s.tlt_pnl_all !== undefined ? fmtPnl(s.tlt_pnl_all) : '—';
 
   // ── Factor Rotation (Idea J) ──
   const facActive = s.factor_active;
@@ -1147,43 +1147,43 @@ function renderSummary(s) {
 
   // ── HYG Credit Carry (Idea O) ──
   const hygIn = s.hyg_in_position;
-  const hygPill = document.getElementById('hyg-status-pill');
+  const hygPill = (document.getElementById('hyg-removed') || {});
   if (hygIn === true)  { hygPill.textContent='● IN POSITION'; hygPill.className='status-pill pill-in'; }
   else if (hygIn === false) { hygPill.textContent='○ OUT / FLAT'; hygPill.className='status-pill pill-out'; }
   else { hygPill.textContent='— checking'; hygPill.className='status-pill pill-out'; }
-  if (s.hyg_ratio)    document.getElementById('hyg-ratio').textContent = Number(s.hyg_ratio).toFixed(4);
+  if (s.hyg_ratio)    (document.getElementById('hyg-ratio') || {}).textContent = Number(s.hyg_ratio).toFixed(4);
   if (s.hyg_ratio_ma) {
     const rising = s.hyg_ratio > s.hyg_ratio_ma;
-    document.getElementById('hyg-ratio-ma').innerHTML =
+    (document.getElementById('hyg-ratio-ma') || {}).innerHTML =
       `${Number(s.hyg_ratio_ma).toFixed(4)} <span class="${rising?'pos':'neg'}">(${rising?'↑ rising':'↓ falling'})</span>`;
   }
-  document.getElementById('hyg-pnl-30d').innerHTML = s.hyg_pnl_30d !== undefined ? fmtPnl(s.hyg_pnl_30d) : '—';
-  document.getElementById('hyg-pnl-all').innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
-  document.getElementById('pb-hyg').innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
+  (document.getElementById('hyg-pnl-30d') || {}).innerHTML = s.hyg_pnl_30d !== undefined ? fmtPnl(s.hyg_pnl_30d) : '—';
+  (document.getElementById('hyg-pnl-all') || {}).innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
+  (document.getElementById('pb-hyg-removed') || {}).innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
 
   // ── ZROZ Panic (Idea Q) ──
   const zrozIn = s.zroz_in_position;
-  const zrozPill = document.getElementById('zroz-status-pill');
+  const zrozPill = (document.getElementById('zroz-removed') || {});
   if (zrozIn === true)  { zrozPill.textContent='⚡ IN POSITION (PANIC ACTIVE)'; zrozPill.className='status-pill pill-in'; }
   else if (zrozIn === false) { zrozPill.textContent='○ OUT (calm)'; zrozPill.className='status-pill pill-out'; }
   else { zrozPill.textContent='— checking'; zrozPill.className='status-pill pill-out'; }
   if (s.vix !== undefined) {
     const vl = Number(s.vix);
-    document.getElementById('zroz-vix').innerHTML =
+    (document.getElementById('zroz-vix') || {}).innerHTML =
       `<span class="${vl>20?'neg':''}">${vl.toFixed(1)} ${vl>20?'(>20 ✓)':'(<20)'}`;
   }
   if (s.tlt_5d_ret !== undefined) {
     const tc = s.tlt_5d_ret > 0.005 ? 'pos' : 'muted';
-    document.getElementById('zroz-tlt5d').innerHTML =
+    (document.getElementById('zroz-tlt5d') || {}).innerHTML =
       `<span class="${tc}">${(s.tlt_5d_ret*100).toFixed(2)}% ${s.tlt_5d_ret>0.005?'(>0.5% ✓)':'(<0.5%)'}`;
   }
   const zrozSig = s.zroz_signal_active;
   if (zrozSig !== undefined) {
-    document.getElementById('zroz-signal').innerHTML =
+    (document.getElementById('zroz-signal') || {}).innerHTML =
       zrozSig ? '<span class="neg">⚡ ACTIVE — VIX + TLT rally</span>' : '<span class="pos">No panic signal</span>';
   }
-  document.getElementById('zroz-pnl-all').innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
-  document.getElementById('pb-zroz').innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
+  (document.getElementById('zroz-pnl-all') || {}).innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
+  (document.getElementById('pb-zroz-removed') || {}).innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
 
   // ── Idea P put strike regime ──
   if (s.vix !== undefined) {
