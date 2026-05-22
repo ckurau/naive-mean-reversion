@@ -586,31 +586,7 @@ canvas { display: block; }
   </div>
 
   <!-- HYG CREDIT -->
-  <div class="overlay-panel hyg-panel">
-    <!-- HYG removed -->
-    <div id="hyg-status-pill" class="status-pill pill-out">checking...</div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">HYG/LQD Ratio</span>
-      <span class="overlay-stat-value" id="hyg-ratio">—</span>
-    </div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">Ratio vs 20d MA</span>
-      <span class="overlay-stat-value" id="hyg-ratio-ma">—</span>
-    </div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">P&L (30d)</span>
-      <span class="overlay-stat-value" id="hyg-pnl-30d">—</span>
-    </div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">P&L (all-time)</span>
-      <span class="overlay-stat-value" id="hyg-pnl-all">—</span>
-    </div>
-    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
-      Entry: HYG/LQD ratio &gt; 20d MA + SPY bull<br>
-      Exit: ratio turns down or SPY bear<br>
-      Orders: MOC via overlay_etf.py (6:10 PM)
-    </div>
-  </div>
+  <!-- HYG panel fully removed -->
 </div>
 
 <div class="overlay-grid" style="margin-bottom:12px;">
@@ -1161,29 +1137,7 @@ function renderSummary(s) {
   (document.getElementById('hyg-pnl-all') || {}).innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
   (document.getElementById('pb-hyg-removed') || {}).innerHTML = s.hyg_pnl_all !== undefined ? fmtPnl(s.hyg_pnl_all) : '—';
 
-  // ── ZROZ Panic (Idea Q) ──
-  const zrozIn = s.zroz_in_position;
-  const zrozPill = (document.getElementById('zroz-removed') || {});
-  if (zrozIn === true)  { zrozPill.textContent='⚡ IN POSITION (PANIC ACTIVE)'; zrozPill.className='status-pill pill-in'; }
-  else if (zrozIn === false) { zrozPill.textContent='○ OUT (calm)'; zrozPill.className='status-pill pill-out'; }
-  else { zrozPill.textContent='— checking'; zrozPill.className='status-pill pill-out'; }
-  if (s.vix !== undefined) {
-    const vl = Number(s.vix);
-    (document.getElementById('zroz-vix') || {}).innerHTML =
-      `<span class="${vl>20?'neg':''}">${vl.toFixed(1)} ${vl>20?'(>20 ✓)':'(<20)'}`;
-  }
-  if (s.tlt_5d_ret !== undefined) {
-    const tc = s.tlt_5d_ret > 0.005 ? 'pos' : 'muted';
-    (document.getElementById('zroz-tlt5d') || {}).innerHTML =
-      `<span class="${tc}">${(s.tlt_5d_ret*100).toFixed(2)}% ${s.tlt_5d_ret>0.005?'(>0.5% ✓)':'(<0.5%)'}`;
-  }
-  const zrozSig = s.zroz_signal_active;
-  if (zrozSig !== undefined) {
-    (document.getElementById('zroz-signal') || {}).innerHTML =
-      zrozSig ? '<span class="neg">⚡ ACTIVE — VIX + TLT rally</span>' : '<span class="pos">No panic signal</span>';
-  }
-  (document.getElementById('zroz-pnl-all') || {}).innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
-  (document.getElementById('pb-zroz-removed') || {}).innerHTML = s.zroz_pnl_all !== undefined ? fmtPnl(s.zroz_pnl_all) : '—';
+  // ZROZ removed
 
   // ── Idea P put strike regime ──
   if (s.vix !== undefined) {
@@ -1413,9 +1367,7 @@ function renderOverlayLive(s) {
   // HYG
   const hyg = data.hyg;
   if (hyg && hyg.active) {
-    rows += IN_ROW('HYG', 'HYG', hyg.shares || '—', hyg.entry || 0, hyg.price || 0, hyg.unreal, hyg.pct);
   } else {
-    rows += OUT_ROW('HYG', 'credit spread signal negative');
   }
 
   // GOLD
@@ -1429,17 +1381,13 @@ function renderOverlayLive(s) {
   // TLT Bear
   const tlt = data.tlt;
   if (tlt && tlt.active) {
-    rows += IN_ROW('TLT BEAR', 'TLT', tlt.shares || '—', tlt.entry || 0, tlt.price || 0, tlt.unreal, tlt.pct);
   } else {
-    rows += OUT_ROW('TLT BEAR', 'bull regime (SPY above 200d MA)');
   }
 
   // ZROZ
   const zroz = data.zroz;
   if (zroz && zroz.active) {
-    rows += IN_ROW('ZROZ', 'ZROZ', zroz.shares || '—', zroz.entry || 0, zroz.price || 0, zroz.unreal, zroz.pct);
   } else {
-    rows += OUT_ROW('ZROZ', 'VIX < 20 or no TLT rally');
   }
 
   // SPY Put Spread
@@ -1570,8 +1518,7 @@ function renderBreakdown(s, overlayData) {
     ['pdbc',   'PDBC',             'PDBC'],
     ['hyg',    'HYG',              'HYG'],
     ['gold',   'GOLD (GLD)',       'GOLD'],
-    ['tlt',    'TLT Bear',         'TLT'],
-    ['zroz',   'ZROZ',             'ZROZ'],
+    // TLT/ZROZ removed 2026-05-22
   ];
   for (const [key, label, histKey] of overlayMap) {
     const o = ovlData[key];
