@@ -509,11 +509,7 @@ canvas { display: block; }
       <span class="overlay-stat-label">P&L (all-time)</span>
       <span class="overlay-stat-value" id="secrot-pnl-all">—</span>
     </div>
-    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
-      Monthly rebalance — top-3 SPDR by 63d momentum<br>
-      Bull regime only (SPY &gt; 200d MA)<br>
-      Orders: MOC via overlay_etf.py (6:10 PM)
-    </div>
+    <!-- TLT Bear removed 2026-05-22 -->
   </div>
 </div>
 
@@ -646,33 +642,7 @@ canvas { display: block; }
 </div>
 
 <div class="overlay-grid" style="margin-bottom:12px;">
-  <!-- ZROZ PANIC -->
-  <div class="overlay-panel" style="border:1px solid var(--border);padding:16px 18px;position:relative;overflow:hidden;">
-    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#80deea,transparent);"></div>
-    <div class="overlay-title cyan">⚡ ZROZ Panic Overlay (Idea Q, 6% alloc)</div>
-    <div id="zroz-status-pill" class="status-pill pill-out">checking...</div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">VIX Level</span>
-      <span class="overlay-stat-value" id="zroz-vix">—</span>
-    </div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">TLT 5d Return</span>
-      <span class="overlay-stat-value" id="zroz-tlt5d">—</span>
-    </div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">Signal Active</span>
-      <span class="overlay-stat-value" id="zroz-signal">—</span>
-    </div>
-    <div class="overlay-stat">
-      <span class="overlay-stat-label">P&L (all-time)</span>
-      <span class="overlay-stat-value" id="zroz-pnl-all">—</span>
-    </div>
-    <div style="margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;">
-      Entry: VIX &gt; 20 AND TLT 5d return &gt; 0.5%<br>
-      Exit: VIX normalizes below 20<br>
-      Orders: MOC via overlay_etf.py (6:10 PM)
-    </div>
-  </div>
+  <!-- ZROZ removed 2026-05-22 -->
   <!-- Put Spread Idea P note -->
   <div class="overlay-panel" style="border:1px solid var(--border);padding:16px 18px;position:relative;overflow:hidden;">
     <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);"></div>
