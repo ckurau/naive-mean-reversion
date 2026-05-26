@@ -76,7 +76,7 @@
   "factor_qqq_mom": 19.5,
   "factor_iwm_mom": 9.6,
   "factor_alloc_pct": 6.0,
-  "vix3m": NaN,
+  "vix3m": null,
   "vix_backwardation": false,
   "vix_call_alloc_pct": 0.3,
   "pdbc_in_position": true,
