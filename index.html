@@ -1065,7 +1065,7 @@ function renderSummary(s) {
   (document.getElementById('tlt-price') || {}).textContent = s.tlt_price ? `$${Number(s.tlt_price).toFixed(2)}` : '—';
   (document.getElementById('tlt-ma50') || {}).textContent  = s.tlt_ma50  ? `$${Number(s.tlt_ma50).toFixed(2)}`  : '—';
   if (s.spy_bear_regime !== undefined) {
-    const regEl = document.getElementById('tlt-spy-regime');
+    const regEl = (document.getElementById('tlt-spy-regime') || {});
     regEl.innerHTML = s.spy_bear_regime
       ? '<span class="neg">Bear — TLT eligible</span>'
       : '<span class="pos">Bull — TLT inactive</span>';
