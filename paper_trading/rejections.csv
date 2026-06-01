@@ -1,4 +1,30 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+86,WMB,2026-06-01,71.38999938964844,72.9800033569336,2.227,MOO fill rejected — gap 2.23% (open $72.98 vs prior close $71.39)
+85,TRV,2026-06-01,291.8900146484375,293.8500061035156,0.671,MOO fill rejected — gap 0.67% (open $293.85 vs prior close $291.89)
+84,TRGP,2026-06-01,255.07000732421875,260.79998779296875,2.246,MOO fill rejected — gap 2.25% (open $260.80 vs prior close $255.07)
+83,SWX,2026-06-01,86.20999908447266,86.62000274658203,0.476,MOO fill rejected — gap 0.48% (open $86.62 vs prior close $86.21)
+82,SPNT,2026-06-01,21.350000381469727,21.479999542236328,0.609,MOO fill rejected — gap 0.61% (open $21.48 vs prior close $21.35)
+81,SIGI,2026-06-01,86.54000091552734,85.8499984741211,-0.797,No fill confirmation: open $85.85 vs prior close $86.54 — order skipped (buying power) or fill arrived after poll window
+80,RNR,2026-06-01,280.3500061035156,284.6199951171875,1.523,MOO fill rejected — gap 1.52% (open $284.62 vs prior close $280.35)
+79,PTEN,2026-06-01,11.210000038146973,11.470000267028809,2.319,MOO fill rejected — gap 2.32% (open $11.47 vs prior close $11.21)
+78,OUT,2026-06-01,32.2400016784668,32.40999984741211,0.527,MOO fill rejected — gap 0.53% (open $32.41 vs prior close $32.24)
+77,OKE,2026-06-01,83.94000244140625,86.0,2.454,MOO fill rejected — gap 2.45% (open $86.00 vs prior close $83.94)
+76,OGE,2026-06-01,47.22999954223633,47.2400016784668,0.021,MOO fill rejected — gap 0.02% (open $47.24 vs prior close $47.23)
+75,MUSA,2026-06-01,506.0299987792969,510.1700134277344,0.818,MOO fill rejected — gap 0.82% (open $510.17 vs prior close $506.03)
+74,LPG,2026-06-01,40.220001220703125,41.099998474121094,2.188,MOO fill rejected — gap 2.19% (open $41.10 vs prior close $40.22)
+73,LITE,2026-06-01,854.9600219726562,825.625,-3.431,No fill confirmation: open $825.62 vs prior close $854.96 — order skipped (buying power) or fill arrived after poll window
+72,LIN,2026-06-01,497.69000244140625,500.0,0.464,MOO fill rejected — gap 0.46% (open $500.00 vs prior close $497.69)
+71,KNTK,2026-06-01,45.95000076293945,46.36000061035156,0.892,MOO fill rejected — gap 0.89% (open $46.36 vs prior close $45.95)
+70,KMI,2026-06-01,31.079999923706055,31.760000228881836,2.188,MOO fill rejected — gap 2.19% (open $31.76 vs prior close $31.08)
+69,INVX,2026-06-01,26.709999084472656,26.899999618530273,0.711,MOO fill rejected — gap 0.71% (open $26.90 vs prior close $26.71)
+68,GRMN,2026-06-01,233.9199981689453,235.92999267578125,0.859,MOO fill rejected — gap 0.86% (open $235.93 vs prior close $233.92)
+67,FAF,2026-06-01,66.2300033569336,66.36000061035156,0.196,MOO fill rejected — gap 0.20% (open $66.36 vs prior close $66.23)
+66,DTM,2026-06-01,139.97999572753906,142.82000732421875,2.029,MOO fill rejected — gap 2.03% (open $142.82 vs prior close $139.98)
+65,CVSA,2026-06-01,117.80000305175781,120.88999938964844,2.623,MOO fill rejected — gap 2.62% (open $120.89 vs prior close $117.80)
+64,CSR,2026-06-01,67.4800033569336,67.20999908447266,-0.4,No fill confirmation: open $67.21 vs prior close $67.48 — order skipped (buying power) or fill arrived after poll window
+63,CNO,2026-06-01,45.970001220703125,45.939998626708984,-0.065,No fill confirmation: open $45.94 vs prior close $45.97 — order skipped (buying power) or fill arrived after poll window
+62,CBOE,2026-06-01,333.55999755859375,345.07000732421875,3.451,MOO fill rejected — gap 3.45% (open $345.07 vs prior close $333.56)
+61,CB,2026-06-01,311.7300109863281,315.7799987792969,1.299,MOO fill rejected — gap 1.30% (open $315.78 vs prior close $311.73)
 60,VNOM,2026-05-25,46.88999938964844,47.060001373291016,0.363,MOO fill rejected — gap 0.36% (open $47.06 vs prior close $46.89)
 59,LYB,2026-05-25,69.72000122070312,70.52999877929688,1.162,MOO fill rejected — gap 1.16% (open $70.53 vs prior close $69.72)
 58,VIAV,2026-05-21,48.099998474121094,47.939998626708984,-0.333,No fill confirmation: open $47.94 vs prior close $48.10 — order skipped (buying power) or fill arrived after poll window
@@ -46,4 +72,3 @@ id,ticker,date,limit_price,open_price,gap_pct,reason
 16,REZI,2026-05-13,36.68000030517578,37.13999938964844,1.254,MOO fill rejected — gap 1.25% (open $37.14 vs prior close $36.68)
 15,PR,2026-05-11,19.719999313354492,20.09000015258789,1.876,MOO fill rejected — gap 1.88% (open $20.09 vs prior close $19.72)
 14,GMED,2026-05-08,85.06999969482422,90.29000091552734,6.136,MOO fill rejected — gap 6.14% (open $90.29 vs prior close $85.07)
-13,ROST,2026-04-30,225.0800018310547,226.79800415039062,0.763,MOO fill rejected — gap 0.76% (open $226.80 vs prior close $225.08)
