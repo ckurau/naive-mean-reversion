@@ -1,4 +1,7 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+117,VSAT,2026-06-04,69.62000274658203,68.0,-2.327,No fill confirmation: open $68.00 vs prior close $69.62 — order skipped (buying power) or fill arrived after poll window
+116,UNH,2026-06-04,377.0,380.0,0.796,MOO fill rejected — gap 0.80% (open $380.00 vs prior close $377.00)
+115,OUT,2026-06-04,31.260000228881836,30.989999771118164,-0.864,No fill confirmation: open $30.99 vs prior close $31.26 — order skipped (buying power) or fill arrived after poll window
 114,PTGX,2026-06-03,93.2300033569336,93.93000030517578,0.751,MOO fill rejected — gap 0.75% (open $93.93 vs prior close $93.23)
 113,OHI,2026-06-03,44.810001373291016,45.27000045776367,1.027,MOO fill rejected — gap 1.03% (open $45.27 vs prior close $44.81)
 112,WWD,2026-06-02,341.760009765625,343.4200134277344,0.486,MOO fill rejected — gap 0.49% (open $343.42 vs prior close $341.76)
