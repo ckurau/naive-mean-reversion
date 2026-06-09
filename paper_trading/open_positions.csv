@@ -1,5 +1,4 @@
 ticker,entry_date,entry_price,shares,shares_remaining,tier,hold_days,profit_target,partial_enabled,partial_frac,partial_trigger,partial_done,entry_commission,consec_down_at_entry,rsi2_at_entry
-CASY,2026-06-01,770.0,14.0,14.0,3,8,0.02,0,0.0,0.0,0,0.35,4,0.0
 ACT,2026-06-02,41.64,259.0,259.0,3,8,0.02,0,0.0,0.0,0,1.295,4,0.0
 AZZ,2026-06-02,139.0,79.0,79.0,3,8,0.02,0,0.0,0.0,0,0.395,4,0.0
 CBOE,2026-06-02,288.33,35.0,35.0,2,8,0.02,0,0.0,0.0,0,0.35,5,0.0
