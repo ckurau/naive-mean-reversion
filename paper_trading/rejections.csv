@@ -1,4 +1,5 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+118,REX,2026-06-09,44.790000915527344,45.959999084472656,2.612,MOO fill rejected — gap 2.61% (open $45.96 vs prior close $44.79)
 117,VSAT,2026-06-04,69.62000274658203,68.0,-2.327,No fill confirmation: open $68.00 vs prior close $69.62 — order skipped (buying power) or fill arrived after poll window
 116,UNH,2026-06-04,377.0,380.0,0.796,MOO fill rejected — gap 0.80% (open $380.00 vs prior close $377.00)
 115,OUT,2026-06-04,31.260000228881836,30.989999771118164,-0.864,No fill confirmation: open $30.99 vs prior close $31.26 — order skipped (buying power) or fill arrived after poll window
