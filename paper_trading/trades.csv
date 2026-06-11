@@ -82,3 +82,4 @@ id,ticker,entry_date,exit_date,entry_price,exit_price,shares,pnl_usd,pnl_pct,exi
 87,AZZ,2026-06-02,2026-06-10,139.0,,79.0,,,time_stop,3
 88,CBOE,2026-06-02,2026-06-10,288.33,,35.0,,,time_stop,2
 89,FAF,2026-06-02,2026-06-10,65.8,,142.0,,,time_stop,2
+90,LIN,2026-06-03,2026-06-11,500.87,509.1600036621094,10.0,82.9000366210937,1.655120822191261,time_stop,1
