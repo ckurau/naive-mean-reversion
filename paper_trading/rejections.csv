@@ -1,4 +1,10 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+124,WT,2026-06-11,16.770000457763672,16.84000015258789,0.417,MOO fill rejected — gap 0.42% (open $16.84 vs prior close $16.77)
+123,VSAT,2026-06-11,61.5,62.880001068115234,2.244,MOO fill rejected — gap 2.24% (open $62.88 vs prior close $61.50)
+122,PWR,2026-06-11,650.9199829101562,684.6900024414062,5.188,MOO fill rejected — gap 5.19% (open $684.69 vs prior close $650.92)
+121,POWI,2026-06-11,74.62999725341797,76.66000366210938,2.72,MOO fill rejected — gap 2.72% (open $76.66 vs prior close $74.63)
+120,NXT,2026-06-11,111.94999694824219,112.37999725341797,0.384,MOO fill rejected — gap 0.38% (open $112.38 vs prior close $111.95)
+119,MTZ,2026-06-11,335.5799865722656,350.7900085449219,4.532,MOO fill rejected — gap 4.53% (open $350.79 vs prior close $335.58)
 118,REX,2026-06-09,44.790000915527344,45.959999084472656,2.612,MOO fill rejected — gap 2.61% (open $45.96 vs prior close $44.79)
 117,VSAT,2026-06-04,69.62000274658203,68.0,-2.327,No fill confirmation: open $68.00 vs prior close $69.62 — order skipped (buying power) or fill arrived after poll window
 116,UNH,2026-06-04,377.0,380.0,0.796,MOO fill rejected — gap 0.80% (open $380.00 vs prior close $377.00)
@@ -102,4 +108,3 @@ id,ticker,date,limit_price,open_price,gap_pct,reason
 18,WSFS,2026-05-13,70.41999816894531,70.2699966430664,-0.213,Open $70.27 was at/below limit $70.42 — possible Gateway disconnect
 17,TCBI,2026-05-13,97.44999694824219,97.13999938964844,-0.318,Open $97.14 was at/below limit $97.45 — possible Gateway disconnect
 16,REZI,2026-05-13,36.68000030517578,37.13999938964844,1.254,MOO fill rejected — gap 1.25% (open $37.14 vs prior close $36.68)
-15,PR,2026-05-11,19.719999313354492,20.09000015258789,1.876,MOO fill rejected — gap 1.88% (open $20.09 vs prior close $19.72)
