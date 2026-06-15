@@ -94,17 +94,3 @@ id,ticker,date,limit_price,open_price,gap_pct,reason
 32,NLY,2026-05-18,21.68000030517578,21.799999237060547,0.554,MOO fill rejected — gap 0.55% (open $21.80 vs prior close $21.68)
 31,ITT,2026-05-18,194.57000732421875,200.00999450683594,2.796,MOO fill rejected — gap 2.80% (open $200.01 vs prior close $194.57)
 30,INCY,2026-05-18,95.30999755859375,95.47000122070312,0.168,MOO fill rejected — gap 0.17% (open $95.47 vs prior close $95.31)
-29,TTC,2026-05-15,89.45999908447266,91.61000061035156,2.403,MOO fill rejected — gap 2.40% (open $91.61 vs prior close $89.46)
-28,TDS,2026-05-15,41.86000061035156,42.439998626708984,1.386,MOO fill rejected — gap 1.39% (open $42.44 vs prior close $41.86)
-27,SNEX,2026-05-15,115.37999725341797,112.81999969482422,-2.219,Open $112.82 was at/below limit $115.38 — possible Gateway disconnect
-26,SBAC,2026-05-15,201.2100067138672,208.99000549316406,3.867,MOO fill rejected — gap 3.87% (open $208.99 vs prior close $201.21)
-25,RXO,2026-05-15,17.510000228881836,20.049999237060547,14.506,MOO fill rejected — gap 14.51% (open $20.05 vs prior close $17.51)
-24,RHP,2026-05-15,105.9800033569336,107.68000030517578,1.604,MOO fill rejected — gap 1.60% (open $107.68 vs prior close $105.98)
-23,MMI,2026-05-15,28.93000030517578,29.56999969482422,2.212,MOO fill rejected — gap 2.21% (open $29.57 vs prior close $28.93)
-22,MBIN,2026-05-15,45.060001373291016,44.900001525878906,-0.355,Open $44.90 was at/below limit $45.06 — possible Gateway disconnect
-21,LSTR,2026-05-15,167.9499969482422,168.16000366210938,0.125,MOO fill rejected — gap 0.13% (open $168.16 vs prior close $167.95)
-20,CHRW,2026-05-15,159.77999877929688,162.80999755859375,1.896,MOO fill rejected — gap 1.90% (open $162.81 vs prior close $159.78)
-19,XPO,2026-05-13,196.02000427246094,200.0,2.03,MOO fill rejected — gap 2.03% (open $200.00 vs prior close $196.02)
-18,WSFS,2026-05-13,70.41999816894531,70.2699966430664,-0.213,Open $70.27 was at/below limit $70.42 — possible Gateway disconnect
-17,TCBI,2026-05-13,97.44999694824219,97.13999938964844,-0.318,Open $97.14 was at/below limit $97.45 — possible Gateway disconnect
-16,REZI,2026-05-13,36.68000030517578,37.13999938964844,1.254,MOO fill rejected — gap 1.25% (open $37.14 vs prior close $36.68)
