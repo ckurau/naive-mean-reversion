@@ -1,6 +1,4 @@
 ticker,entry_date,entry_price,shares,shares_remaining,tier,hold_days,profit_target,partial_enabled,partial_frac,partial_trigger,partial_done,entry_commission,consec_down_at_entry,rsi2_at_entry
-APP,2026-06-08,561.76,15.0,15.0,3,8,0.02,0,0.0,0.0,0,0.35,4,0.0
-DDOG,2026-06-08,232.19,37.0,37.0,3,8,0.02,0,0.0,0.0,0,0.35,4,0.0
 CIEN,2026-06-09,466.0,21.0,21.0,3,8,0.02,0,0.0,0.0,0,0.35,4,0.0
 AAON,2026-06-10,130.0,82.0,82.0,3,8,0.02,0,0.0,0.0,0,0.41000000000000003,4,0.0
 EQIX,2026-06-11,1046.6,10.0,10.0,3,8,0.02,0,0.0,0.0,0,0.35,4,0.0
