@@ -1,2 +1,3 @@
 ticker,entry_date,entry_price,shares,shares_remaining,tier,hold_days,profit_target,partial_enabled,partial_frac,partial_trigger,partial_done,entry_commission,consec_down_at_entry,rsi2_at_entry
 AAON,2026-06-10,130.0,82.0,82.0,3,8,0.02,0,0.0,0.0,0,0.41000000000000003,4,0.0
+FIZZ,2026-06-17,36.28,302.0,302.0,2,8,0.02,0,0.0,0.0,0,1.51,5,0.0
