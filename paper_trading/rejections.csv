@@ -1,4 +1,13 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+189,UNIT,2026-06-23,11.199999809265137,11.029999732971191,-1.518,No fill confirmation: open $11.03 vs prior close $11.20 — order skipped (buying power) or fill arrived after poll window
+188,ULS,2026-06-23,89.70999908447266,90.01000213623047,0.334,MOO fill rejected — gap 0.33% (open $90.01 vs prior close $89.71)
+187,TDC,2026-06-23,29.670000076293945,30.739999771118164,3.606,MOO fill rejected — gap 3.61% (open $30.74 vs prior close $29.67)
+186,SHEN,2026-06-23,13.850000381469727,13.949999809265137,0.722,MOO fill rejected — gap 0.72% (open $13.95 vs prior close $13.85)
+185,SAIC,2026-06-23,100.5999984741211,102.08000183105469,1.471,MOO fill rejected — gap 1.47% (open $102.08 vs prior close $100.60)
+184,RES,2026-06-23,6.46999979019165,6.630000114440918,2.473,MOO fill rejected — gap 2.47% (open $6.63 vs prior close $6.47)
+183,MSCI,2026-06-23,580.8499755859375,579.0499877929688,-0.31,No fill confirmation: open $579.05 vs prior close $580.85 — order skipped (buying power) or fill arrived after poll window
+182,LYV,2026-06-23,170.55999755859375,171.02000427246094,0.27,MOO fill rejected — gap 0.27% (open $171.02 vs prior close $170.56)
+181,DOW,2026-06-23,30.790000915527344,31.200000762939453,1.332,MOO fill rejected — gap 1.33% (open $31.20 vs prior close $30.79)
 180,UNIT,2026-06-22,11.640000343322754,11.430000305175781,-1.804,No fill confirmation: open $11.43 vs prior close $11.64 — order skipped (buying power) or fill arrived after poll window
 179,TWLO,2026-06-22,186.1699981689453,185.27000427246094,-0.483,No fill confirmation: open $185.27 vs prior close $186.17 — order skipped (buying power) or fill arrived after poll window
 178,SHEN,2026-06-22,14.180000305175781,14.039999961853027,-0.987,No fill confirmation: open $14.04 vs prior close $14.18 — order skipped (buying power) or fill arrived after poll window
