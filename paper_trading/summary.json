@@ -1,7 +1,7 @@
 {
   "date": "2026-06-24",
   "strategy_version": "V7.3",
-  "portfolio_value": 94184.04,
+  "portfolio_value": 94180.31,
   "starting_equity": 100000,
   "open_positions": 13,
   "max_positions": 60,
@@ -33,7 +33,7 @@
   "vix_call_short": 40.0,
   "vix_call_expiry": "2026-07-21",
   "unrealized_pnl_usd": -2331.46,
-  "last_intraday_update": "2026-06-24 20:11 PT",
+  "last_intraday_update": "2026-06-24 20:41 PT",
   "capital_deployed_usd": 100000.0,
   "capital_deployed_pct": 100.0,
   "capital_cash_usd": 0.0,
