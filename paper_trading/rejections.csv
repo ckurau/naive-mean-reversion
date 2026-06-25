@@ -128,5 +128,3 @@ id,ticker,date,limit_price,open_price,gap_pct,reason
 63,CNO,2026-06-01,45.970001220703125,45.939998626708984,-0.065,No fill confirmation: open $45.94 vs prior close $45.97 — order skipped (buying power) or fill arrived after poll window
 62,CBOE,2026-06-01,333.55999755859375,345.07000732421875,3.451,MOO fill rejected — gap 3.45% (open $345.07 vs prior close $333.56)
 61,CB,2026-06-01,311.7300109863281,315.7799987792969,1.299,MOO fill rejected — gap 1.30% (open $315.78 vs prior close $311.73)
-60,VNOM,2026-05-25,46.88999938964844,47.060001373291016,0.363,MOO fill rejected — gap 0.36% (open $47.06 vs prior close $46.89)
-59,LYB,2026-05-25,69.72000122070312,70.52999877929688,1.162,MOO fill rejected — gap 1.16% (open $70.53 vs prior close $69.72)
