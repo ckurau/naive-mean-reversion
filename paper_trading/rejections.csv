@@ -1,4 +1,21 @@
 id,ticker,date,limit_price,open_price,gap_pct,reason
+207,WT,2026-06-29,17.200000762939453,17.399999618530273,1.163,MOO fill rejected — gap 1.16% (open $17.40 vs prior close $17.20)
+206,SYNA,2026-06-29,121.0,118.90039825439453,-1.735,No fill confirmation: open $118.90 vs prior close $121.00 — order skipped (buying power) or fill arrived after poll window
+205,SWKS,2026-06-29,68.0,68.5,0.735,MOO fill rejected — gap 0.74% (open $68.50 vs prior close $68.00)
+204,SITM,2026-06-29,672.1900024414062,674.8200073242188,0.391,MOO fill rejected — gap 0.39% (open $674.82 vs prior close $672.19)
+203,SEIC,2026-06-29,87.25,87.5,0.287,MOO fill rejected — gap 0.29% (open $87.50 vs prior close $87.25)
+202,ROST,2026-06-29,213.25999450683594,211.02000427246094,-1.05,No fill confirmation: open $211.02 vs prior close $213.26 — order skipped (buying power) or fill arrived after poll window
+201,RMBS,2026-06-29,114.7300033569336,115.80999755859375,0.941,MOO fill rejected — gap 0.94% (open $115.81 vs prior close $114.73)
+200,QRVO,2026-06-29,93.87999725341797,93.93000030517578,0.053,MOO fill rejected — gap 0.05% (open $93.93 vs prior close $93.88)
+199,NXT,2026-06-29,106.94999694824219,109.41000366210938,2.3,MOO fill rejected — gap 2.30% (open $109.41 vs prior close $106.95)
+198,INVX,2026-06-29,25.43000030517578,25.25,-0.708,No fill confirmation: open $25.25 vs prior close $25.43 — order skipped (buying power) or fill arrived after poll window
+197,IBKR,2026-06-29,89.81999969482422,90.29000091552734,0.523,MOO fill rejected — gap 0.52% (open $90.29 vs prior close $89.82)
+196,GS,2026-06-29,1019.6099853515625,1054.739990234375,3.445,MOO fill rejected — gap 3.45% (open $1054.74 vs prior close $1019.61)
+195,FN,2026-06-29,524.7899780273438,550.7999877929688,4.956,MOO fill rejected — gap 4.96% (open $550.80 vs prior close $524.79)
+194,FCFS,2026-06-29,212.4499969482422,212.1300048828125,-0.151,No fill confirmation: open $212.13 vs prior close $212.45 — order skipped (buying power) or fill arrived after poll window
+193,EVR,2026-06-29,342.0199890136719,347.239990234375,1.526,MOO fill rejected — gap 1.53% (open $347.24 vs prior close $342.02)
+192,DD,2026-06-29,137.22000122070312,136.35000610351562,-0.634,No fill confirmation: open $136.35 vs prior close $137.22 — order skipped (buying power) or fill arrived after poll window
+191,CRUS,2026-06-29,146.5,145.47999572753906,-0.696,No fill confirmation: open $145.48 vs prior close $146.50 — order skipped (buying power) or fill arrived after poll window
 190,AKAM,2026-06-26,112.88999938964844,113.06999969482422,0.159,MOO fill rejected — gap 0.16% (open $113.07 vs prior close $112.89)
 189,UNIT,2026-06-23,11.199999809265137,11.029999732971191,-1.518,No fill confirmation: open $11.03 vs prior close $11.20 — order skipped (buying power) or fill arrived after poll window
 188,ULS,2026-06-23,89.70999908447266,90.01000213623047,0.334,MOO fill rejected — gap 0.33% (open $90.01 vs prior close $89.71)
