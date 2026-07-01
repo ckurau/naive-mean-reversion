@@ -1,5 +1,4 @@
 ticker,entry_date,entry_price,shares,shares_remaining,tier,hold_days,profit_target,partial_enabled,partial_frac,partial_trigger,partial_done,entry_commission,consec_down_at_entry,rsi2_at_entry
-ARWR,2026-06-29,79.69,144.0,144.0,3,8,0.02,0,0.0,0.0,0,0.72,4,0.0
 BWXT,2026-06-29,199.99,58.0,58.0,3,8,0.02,0,0.0,0.0,0,0.35,4,0.0
 CHRD,2026-06-29,119.41,98.0,98.0,3,8,0.02,0,0.0,0.0,0,0.49,4,0.0
 CRUS,2026-06-30,146.92,79.0,79.0,2,8,0.02,0,0.0,0.0,0,0.395,5,0.0
